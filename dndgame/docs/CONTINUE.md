@@ -482,3 +482,10 @@ by default. Verified live: all twelve classes resolve the right helm/cloak/boot
 stack, an explicit `helm-none` wizard still comes out bare-headed, a wizard in
 half-plate gets sabatons, and a rolled goliath paladin previews in helm, long
 cloak and armoured feet.
+
+## Session: the overhaul (paused 23 Sep 2026)
+
+A multi-agent visual / music / sandbox overhaul began on 22 Sep. The contract is
+docs/OVERHAUL.md; where it stands, what is on which branch and how to resume is
+docs/overhaul/STATUS.md; each role's notes are docs/overhaul/<role>.md. The repo
+is now under git (branch main); deploy copies must exclude .git.

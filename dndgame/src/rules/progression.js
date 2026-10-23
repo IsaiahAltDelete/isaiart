@@ -9,7 +9,7 @@ import { bus, EV } from '../core/events.js';
 import {
   recomputeSpells, spellList, cantripsKnownFor, preparedMaxForClass, slotSummary,
   castingClasses, isPreparedCaster, slotKindForClass, highestSlotLevel, tableAt,
-  setArcanum, MYSTIC_ARCANUM_LEVELS,
+  setArcanum, MYSTIC_ARCANUM_LEVELS, FULL_SLOTS, HALF_SLOTS, THIRD_SLOTS, PACT_SLOTS,
 } from './spellcasting.js';
 
 // character.js owns `recalc`, the single derivation pass. It is imported as a
@@ -67,6 +67,12 @@ export function levelForXp(xp) {
   let lv = 1;
   for (let i = 0; i < XP_TABLE.length; i++) if (x >= XP_TABLE[i]) lv = i + 1;
   return lv;
+}
+
+/** Earned advancement still awaiting player choices; XP is the authority. */
+export function pendingLevelsFor(ch) {
+  if (!ch) return 0;
+  return Math.max(0, levelForXp(ch.xp || 0) - Math.max(1, Math.floor(ch.level || 1)));
 }
 
 /** 2024 proficiency bonus: 2 + floor((level-1)/4), capped at +6 by the level-20 ceiling. */
@@ -129,7 +135,7 @@ export function grantXp(ch, amount) {
   for (let l = before + 1; l <= newLevel; l++) levels.push(l);
 
   ch.flags = ch.flags || {};
-  if (leveled) ch.flags.pendingLevels = (ch.flags.pendingLevels || 0) + levels.length;
+  ch.flags.pendingLevels = pendingLevelsFor(ch);
   if (tierAfter > tierBefore) ch.flags.pendingMythic = tierAfter - mythicLevel(ch);
 
   bus.emit(EV.XP_GAIN, { ch, uid: ch.uid, amount: gained, xp: ch.xp, level: newLevel });
@@ -933,7 +939,10 @@ export function pendingChoicesFor(ch, level, opts = {}) {
 function pushSpellChoices(out, seen, ch, classId, curClassLevel, newClassLevel, subclassId) {
   const kind = slotKindForClass(classId, subclassId);
   const prepared = isPreparedCaster(classId, subclassId);
-  const slotCap = Math.max(1, highestSlotLevel(ch) || 1);
+  // Learn for the class level being gained, not the old or combined slot pool.
+  const classSlots = (kind === 'full' ? FULL_SLOTS : kind === 'half' ? HALF_SLOTS : THIRD_SLOTS)[newClassLevel] || {};
+  const slotCap = kind === 'pact' ? (PACT_SLOTS[newClassLevel]?.level || 1)
+    : Math.max(1, ...Object.keys(classSlots).filter((level) => classSlots[level] > 0).map(Number));
 
   if (kind) {
     // Cantrips.

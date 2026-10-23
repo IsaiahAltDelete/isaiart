@@ -19,6 +19,8 @@
 //     outlaw: { [region]: true }, witnessed: n, lastCrimeDay: n }
 
 import { setFlag, addReputation } from '../state.js';
+import { noteDeed } from './deeds.js';
+import { rememberNPC, socialRegion } from './reputation.js';
 
 /** Nobody gets to draw steel on these, whatever the player types. */
 const PROTECTED_TAGS = new Set(['child', 'animal']);
@@ -122,14 +124,16 @@ function asList(entities) {
 }
 
 /** Everyone within `radius` tiles who could see it happen. */
-export function witnessesNear(entities, x, y, radius = 7, ignore = null) {
+export function witnessesNear(entities, x, y, radius = 7, ignore = null, map = null) {
   const out = [];
   const src = asList(entities);
   if (!src) return out;
   for (const e of src) {
     if (!e || e === ignore || e.removed || e.hidden) continue;
     if (e.kind !== 'npc') continue;
+    if (e.tag === 'animal' || e.npc?.tag === 'animal') continue;
     if (Math.max(Math.abs(e.x - x), Math.abs(e.y - y)) > radius) continue;
+    if (map?.lineOfSight && !map.lineOfSight(e.x, e.y, x, y)) continue;
     out.push(e);
   }
   return out;
@@ -149,7 +153,7 @@ export function guardsAmong(list) {
  *
  * @returns {{bounty:number, outlaw:boolean, witnesses:number, faction:string|null}}
  */
-export function reportAssault(st, { map, npc, entity, witnesses = 0 }) {
+export function reportAssault(st, { map, npc, entity, witnesses = 0, witnessEntities = [] }) {
   const cs = crimeState(st);
   if (!cs) return { bounty: 0, outlaw: false, witnesses: 0, faction: null };
 
@@ -172,6 +176,11 @@ export function reportAssault(st, { map, npc, entity, witnesses = 0 }) {
   if (faction) addReputation(st, faction, seen ? -4 : -1);
   if (seen) addReputation(st, 'lords-alliance', -2);
   setFlag(st, `crime:${region}`, true);
+  rememberNPC(st, entity?.npcId || npc?.id, 'attacked');
+  if (seen) {
+    for (const w of witnessEntities) rememberNPC(st, w.npcId || w.id, 'witnessed');
+    noteDeed(st, { kind: 'crime', npcId: entity?.npcId || npc?.id, mapId: map?.id, region: socialRegion(map), weight: 3 });
+  }
 
   return { bounty: cs.bounty[region], outlaw: !!cs.outlaw[region], witnesses, faction };
 }
@@ -197,6 +206,7 @@ export function reportDeath(st, npcId, { map, witnessed = false } = {}) {
   cs.outlaw[region] = true;
   // The watch is now overdue a visit. The overworld checks this as you walk.
   cs.watchDue[region] = (cs.watchDue[region] || 0) + 1;
+  noteDeed(st, { kind: 'murder', npcId, mapId: map?.id, region: socialRegion(map), weight: 3 });
   return { found: true };
 }
 

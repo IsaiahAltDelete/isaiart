@@ -42,7 +42,7 @@ import {
   curtain, keepTower, gateway, ruinShell, bend, carriageway, milestone,
   openThickets, connectRegions, packDungeon, siteMouth,
   stallRow, garden, wearPatches,
-  innFloor,
+  innFloor, noticeBoard,
 } from './mapkit.js';
 
 // ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ function brook(map, r, y0, spine, res, stone) {
 function buildTradeWayNorth(root) {
   const map = new TileMap({
     w: 60, h: 80, id: 'trade-way-north', name: 'The Trade Way — Waterdeep Reach',
-    biome: 'road', indoor: false, music: 'field',
+    biome: 'road', indoor: false, music: 'road',
     encounterRate: 0.05, encounterTable: 'high-road-highwaymen', region: 'trade-way',
   });
   const { npcs, res } = reserve('trade-way-north');
@@ -328,7 +328,7 @@ function buildTradeWayNorth(root) {
 function buildTradeWaySouth(root) {
   const map = new TileMap({
     w: 60, h: 80, id: 'trade-way-south', name: 'The Trade Way — Fields Reach',
-    biome: 'road', indoor: false, music: 'field',
+    biome: 'road', indoor: false, music: 'road',
     encounterRate: 0.062, encounterTable: 'ogre-shakedown', region: 'trade-way',
   });
   const { npcs, res } = reserve('trade-way-south');
@@ -400,7 +400,7 @@ function buildTradeWaySouth(root) {
 function buildCoastWayNorth(root) {
   const map = new TileMap({
     w: 60, h: 64, id: 'coast-way-north', name: 'The Coast Way — Chionthar Reach',
-    biome: 'road', indoor: false, music: 'field',
+    biome: 'road', indoor: false, music: 'road',
     encounterRate: 0.05, encounterTable: 'zhentarim-strongarms', region: 'coast-way',
   });
   const { npcs, res } = reserve('coast-way-north');
@@ -475,7 +475,7 @@ function buildCoastWayNorth(root) {
 function buildCoastWaySouth(root) {
   const map = new TileMap({
     w: 60, h: 80, id: 'coast-way-south', name: 'The Coast Way — Beregost Reach',
-    biome: 'road', indoor: false, music: 'field',
+    biome: 'road', indoor: false, music: 'road',
     encounterRate: 0.065, encounterTable: 'ankheg-field', region: 'coast-way',
   });
   const { npcs, res } = reserve('coast-way-south');
@@ -708,6 +708,7 @@ function buildDaggerford(root) {
   stallRow(map, 35, 25, 5, 'h', rd, { step: 2, face: -1, res, wares: table(T_STALL) });
   wearPatches(map, rd, { x: 31, y: 22, w: 15, h: 4 }, 'COBBLE_ISLE', 5, { res });
   prop(map, 32, 24, tid('WELL', 'FOUNTAIN'), res);
+  noticeBoard(map, 31, 22, res);                 // the Duchess's notices, by the well
   signpost(map, 33, 25, 'THE DAGGERFORD MARKET — by the Duchess’s charter, three days in ten. Coin of Waterdeep, Baldur’s Gate and Amn all taken; coin of Zhentil Keep is not.', res);
 
   // Houses. Every one a different footprint, because a town that repeats one
@@ -779,7 +780,7 @@ function buildDaggerford(root) {
 
 // --- The River Shining Tavern -----------------------------------------------
 function buildRiverShining(root) {
-  const map = interiorMap({ id: 'river-shining-tavern', name: 'The River Shining Tavern', w: 24, h: 18, music: 'inn', region: 'daggerford' });
+  const map = interiorMap({ id: 'river-shining-tavern', name: 'The River Shining Tavern', w: 24, h: 18, music: 'tavern', region: 'daggerford' });
   const { npcs, res } = reserve('river-shining-tavern');
   const r = root.fork('tavern');
   const rm = room(map, {
@@ -817,7 +818,7 @@ function buildRiverShining(root) {
 
 // --- The Happy Cow ----------------------------------------------------------
 function buildHappyCow(root) {
-  const map = interiorMap({ id: 'happy-cow', name: 'The Happy Cow', w: 20, h: 16, music: 'inn', region: 'daggerford' });
+  const map = interiorMap({ id: 'happy-cow', name: 'The Happy Cow', w: 20, h: 16, music: 'tavern', region: 'daggerford' });
   const { npcs, res } = reserve('happy-cow');
   const r = root.fork('cow');
   const rm = room(map, { w: 20, h: 16, floor: 'WOOD_FLOOR_H', wall: 'WATTLE_WALL', exit: 10 });
@@ -845,7 +846,7 @@ function buildHappyCow(root) {
 // --- Morninglow Tower -------------------------------------------------------
 function buildMorninglowTower(root) {
   const map = interiorMap({
-    id: 'morninglow-tower', name: 'Morninglow Tower', w: 20, h: 18, music: 'town',
+    id: 'morninglow-tower', name: 'Morninglow Tower', w: 20, h: 18, music: 'temple',
     region: 'daggerford', ambient: { color: '#3a2c14', alpha: 0.1 },
   });
   const { npcs, res } = reserve('morninglow-tower');
@@ -897,8 +898,9 @@ function buildDaggerfordSmithy(root) {
   prop(map, 6, 3, tid('GRINDSTONE', 'ROCK'), res);
   prop(map, 2, 6, tid('BARREL', 'CRATE'), res);            // the slack tub
   for (let x = 8; x <= 13; x++) prop(map, x, 5, tid('COUNTER', 'TABLE'), res);
-  for (let x = 9; x <= 17; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
-  for (let y = 2; y <= 5; y++) prop(map, 18, y, tid('SHELF_GOODS', 'BOOKSHELF'), res);
+  // finished work on the walls: blades racked, mail on its stands, the small goods shelved
+  for (let x = 9; x <= 17; x++) prop(map, x, 1, tid(['WEAPON_RACK', 'SHELF_GOODS', 'ARMOR_STAND'][x % 3], 'SHELF_GOODS'), res);
+  for (let y = 2; y <= 5; y++) prop(map, 18, y, tid('WEAPON_RACK', 'SHELF_GOODS'), res);
   for (const [px, py] of [[2, 10], [3, 10], [17, 8], [17, 9], [16, 11], [4, 11]]) prop(map, px, py, pickT(r, table([['CRATE', 5], ['ORE_IRON', 3], ['BARREL', 3], ['SACK', 2]])), res);
   prop(map, 8, 3, tid('CANDLE', 'TORCH'), res);
   prop(map, 14, 10, tid('TABLE', 'BENCH'), res);
@@ -908,8 +910,8 @@ function buildDaggerfordSmithy(root) {
   // read as a hall somebody had left an anvil in: fill it with the trade —
   // a second anvil under the window, the stock rack, and the day's iron.
   prop(map, 5, 5, tid('ANVIL', 'ROCK'), res);
-  prop(map, 6, 6, tid('TIMBER_SUPPORT', 'CRATE'), res);     // the finished-work rack
-  prop(map, 6, 7, tid('TIMBER_SUPPORT', 'CRATE'), res);
+  prop(map, 6, 6, tid('WEAPON_RACK', 'CRATE'), res);        // the finished-work rack
+  prop(map, 6, 7, tid('WEAPON_RACK', 'CRATE'), res);
   for (const [px, py] of [[2, 8], [5, 9], [8, 8], [9, 11], [11, 8], [16, 6]]) {
     prop(map, px, py, pickT(r, table([['ORE_IRON', 5], ['CRATE', 4], ['BARREL', 3], ['SACK', 3]])), res);
   }
@@ -936,7 +938,7 @@ function buildDaggerfordSmithy(root) {
 function buildTheWayInn(root) {
   const map = new TileMap({
     w: 44, h: 34, id: 'the-way-inn', name: 'The Way Inn', biome: 'plains',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'trade-way',
+    indoor: false, music: 'village', safe: true, encounterRate: 0, region: 'trade-way',
   });
   const { npcs, res } = reserve('the-way-inn');
   const rg = root.fork('ground');
@@ -1110,7 +1112,7 @@ function buildWayInnCommon(root) {
 function buildFieldsOfTheDead(root) {
   const map = new TileMap({
     w: 72, h: 56, id: 'fields-of-the-dead', name: 'The Fields of the Dead', biome: 'plains',
-    indoor: false, music: 'wilds', encounterRate: 0.07, encounterTable: 'crypt-of-the-restless',
+    indoor: false, music: 'tense', encounterRate: 0.07, encounterTable: 'crypt-of-the-restless',
     ambient: { color: '#1a1a24', alpha: 0.1 }, weather: 'fog', region: 'fields-of-the-dead',
   });
   const { npcs, res } = reserve('fields-of-the-dead');
@@ -1246,7 +1248,7 @@ function buildFieldsOfTheDead(root) {
 function buildRosymornMonastery(root) {
   const map = new TileMap({
     w: 48, h: 40, id: 'rosymorn-monastery', name: 'Rosymorn Monastery', biome: 'mountain',
-    indoor: false, music: 'wilds', encounterRate: 0.05, encounterTable: 'griffon-crag',
+    indoor: false, music: 'mountain', encounterRate: 0.05, encounterTable: 'griffon-crag',
     ambient: { color: '#1c1a26', alpha: 0.12 }, region: 'rosymorn-monastery',
   });
   const { npcs, res } = reserve('rosymorn-monastery');
@@ -1362,7 +1364,7 @@ function buildRosymornMonastery(root) {
 function buildUlgothsBeard(root) {
   const map = new TileMap({
     w: 44, h: 36, id: 'ulgoths-beard', name: 'Ulgoth’s Beard', biome: 'coast',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'ulgoths-beard',
+    indoor: false, music: 'coast', safe: true, encounterRate: 0, region: 'ulgoths-beard',
   });
   const { npcs, res } = reserve('ulgoths-beard');
   const rg = root.fork('ground');
@@ -1497,7 +1499,7 @@ function buildUlgothsBeardInn(root) {
 function buildFriendlyArmInn(root) {
   const map = new TileMap({
     w: 44, h: 36, id: 'friendly-arm-inn', name: 'The Friendly Arm', biome: 'plains',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'coast-way',
+    indoor: false, music: 'village', safe: true, encounterRate: 0, region: 'coast-way',
   });
   const { npcs, res } = reserve('friendly-arm-inn');
   const rg = root.fork('ground');
@@ -1645,7 +1647,7 @@ function buildFriendlyArmCommon(root) {
 
 function buildGarlShrine(root) {
   const map = interiorMap({
-    id: 'garl-shrine', name: 'The Shrine of Garl Glittergold', w: 18, h: 14, music: 'town',
+    id: 'garl-shrine', name: 'The Shrine of Garl Glittergold', w: 18, h: 14, music: 'temple',
     region: 'coast-way', ambient: { color: '#33280f', alpha: 0.1 },
   });
   const { npcs, res } = reserve('garl-shrine');
@@ -1856,7 +1858,7 @@ function buildFeldeposts(root) {
 
 // --- The Jovial Juggler -----------------------------------------------------
 function buildJovialJuggler(root) {
-  const map = interiorMap({ id: 'jovial-juggler', name: 'The Jovial Juggler', w: 22, h: 18, music: 'inn', region: 'beregost' });
+  const map = interiorMap({ id: 'jovial-juggler', name: 'The Jovial Juggler', w: 22, h: 18, music: 'tavern', region: 'beregost' });
   const { npcs, res } = reserve('jovial-juggler');
   const r = root.fork('juggler');
   const rm = room(map, {
@@ -1921,7 +1923,7 @@ function buildBurningWizard(root) {
 // --- The Song of the Morning ------------------------------------------------
 function buildSongOfTheMorning(root) {
   const map = interiorMap({
-    id: 'song-of-the-morning', name: 'The Song of the Morning', w: 26, h: 22, music: 'town',
+    id: 'song-of-the-morning', name: 'The Song of the Morning', w: 26, h: 22, music: 'temple',
     region: 'beregost', ambient: { color: '#3a2c12', alpha: 0.08 },
   });
   const { npcs, res } = reserve('song-of-the-morning');
@@ -2004,7 +2006,7 @@ function buildThunderhammerSmithy(root) {
 function buildHighHedge(root) {
   const map = new TileMap({
     w: 36, h: 30, id: 'high-hedge', name: 'High Hedge', biome: 'plains',
-    indoor: false, music: 'wilds', safe: true, encounterRate: 0, region: 'beregost',
+    indoor: false, music: 'mystery', safe: true, encounterRate: 0, region: 'beregost',
     ambient: { color: '#1e1c26', alpha: 0.1 },
   });
   const { npcs, res } = reserve('high-hedge');
@@ -2116,7 +2118,7 @@ function buildHighHedge(root) {
 function buildCandlekeepApproach(root) {
   const map = new TileMap({
     w: 52, h: 44, id: 'candlekeep-approach', name: 'Candlekeep', biome: 'coast',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'candlekeep',
+    indoor: false, music: 'castle', safe: true, encounterRate: 0, region: 'candlekeep',
   });
   const { npcs, res } = reserve('candlekeep-approach');
   const rg = root.fork('ground');
@@ -2231,7 +2233,7 @@ function buildCandlekeepApproach(root) {
 
 function buildCandlekeepGatehouse(root) {
   const map = interiorMap({
-    id: 'candlekeep-gatehouse', name: 'The Gatehouse of Candlekeep', w: 26, h: 20, music: 'town',
+    id: 'candlekeep-gatehouse', name: 'The Gatehouse of Candlekeep', w: 26, h: 20, music: 'mystery',
     region: 'candlekeep', ambient: { color: '#221c2c', alpha: 0.16 },
   });
   const { npcs, res } = reserve('candlekeep-gatehouse');
@@ -2451,13 +2453,13 @@ const buildDragonspearCastle = packDungeon(
 
 const buildRosymornCloister = packDungeon(
   'rosymorn-cloister', 'The Cloister of the Dawn',
-  { gen: 'dungeon', theme: 'dungeon', biome: 'ruins', size: 'medium', level: 12, music: 'dungeon', region: 'rosymorn-monastery', encounterTable: 'petrified-gallery' },
+  { gen: 'dungeon', theme: 'dungeon', biome: 'ruins', size: 'medium', level: 12, music: 'crypt', region: 'rosymorn-monastery', encounterTable: 'petrified-gallery' },
   { map: 'rosymorn-monastery', x: 24, y: 15, dir: 'up' },
 );
 
 const buildNashkelMines = packDungeon(
   'nashkel-mines', 'The Nashkel Mines',
-  { gen: 'mine', theme: 'mine', biome: 'mine', size: 'large', level: 13, music: 'dungeon', region: 'nashkel-mines', encounterTable: 'kobold-warren' },
+  { gen: 'mine', theme: 'mine', biome: 'mine', size: 'large', level: 13, music: 'cave', region: 'nashkel-mines', encounterTable: 'kobold-warren' },
   { map: 'nashkel', x: 38, y: 31, dir: 'up' },
 );
 
@@ -2474,22 +2476,22 @@ export const REGION_MAPS = {
   // --- the road itself -----------------------------------------------------
   'trade-way-north': {
     name: 'The Trade Way — Waterdeep Reach', kind: 'road', biome: 'road', w: 60, h: 80,
-    music: 'field', level: 8, region: 'trade-way', build: buildTradeWayNorth,
+    music: 'road', level: 8, region: 'trade-way', build: buildTradeWayNorth,
     desc: 'The great south road out of Waterdeep: tithe barns, an Alliance post, and a toll house nobody mans.',
   },
   'trade-way-south': {
     name: 'The Trade Way — Fields Reach', kind: 'road', biome: 'road', w: 60, h: 80,
-    music: 'field', level: 10, region: 'trade-way', build: buildTradeWaySouth,
+    music: 'road', level: 10, region: 'trade-way', build: buildTradeWaySouth,
     desc: 'Where the ploughland gives out and the Trollbark begins. Ogres take a toll of their own.',
   },
   'coast-way-north': {
     name: 'The Coast Way — Chionthar Reach', kind: 'road', biome: 'road', w: 60, h: 64,
-    music: 'field', level: 11, region: 'coast-way', build: buildCoastWayNorth,
+    music: 'road', level: 11, region: 'coast-way', build: buildCoastWayNorth,
     desc: 'The last approach to Baldur’s Gate: a Fist post, a refugee camp, and the city’s smoke on the skyline.',
   },
   'coast-way-south': {
     name: 'The Coast Way — Beregost Reach', kind: 'road', biome: 'road', w: 60, h: 80,
-    music: 'field', level: 12, region: 'coast-way', build: buildCoastWaySouth,
+    music: 'road', level: 12, region: 'coast-way', build: buildCoastWaySouth,
     desc: 'South out of Rivington through the ankheg fields, past a Bhaalist chapel nobody dares burn.',
   },
 
@@ -2501,17 +2503,17 @@ export const REGION_MAPS = {
   },
   'river-shining-tavern': {
     name: 'The River Shining Tavern', kind: 'interior', biome: 'city', w: 24, h: 18, indoor: true,
-    safe: true, music: 'inn', parent: 'daggerford', region: 'daggerford', build: buildRiverShining,
+    safe: true, music: 'tavern', parent: 'daggerford', region: 'daggerford', build: buildRiverShining,
     desc: 'Filarion Filvendorson keeps the best beds and the deepest cellar between Waterdeep and the Gate.',
   },
   'happy-cow': {
     name: 'The Happy Cow', kind: 'interior', biome: 'city', w: 20, h: 16, indoor: true,
-    safe: true, music: 'inn', parent: 'daggerford', region: 'daggerford', build: buildHappyCow,
+    safe: true, music: 'tavern', parent: 'daggerford', region: 'daggerford', build: buildHappyCow,
     desc: 'Fulbar Hardcheese’s long tables: cheap, hot, and never once quiet.',
   },
   'morninglow-tower': {
     name: 'Morninglow Tower', kind: 'interior', biome: 'city', w: 20, h: 18, indoor: true,
-    safe: true, music: 'town', parent: 'daggerford', region: 'daggerford', build: buildMorninglowTower,
+    safe: true, music: 'temple', parent: 'daggerford', region: 'daggerford', build: buildMorninglowTower,
     desc: 'Amaunator’s house in Daggerford, and the flame its Keeper will not let go out.',
   },
   'daggerford-smithy': {
@@ -2522,7 +2524,7 @@ export const REGION_MAPS = {
 
   // --- the Way Inn ---------------------------------------------------------
   'the-way-inn': {
-    name: 'The Way Inn', kind: 'town', biome: 'plains', w: 44, h: 34, safe: true, music: 'town',
+    name: 'The Way Inn', kind: 'town', biome: 'plains', w: 44, h: 34, safe: true, music: 'village',
     level: 9, region: 'trade-way', build: buildTheWayInn,
     desc: 'A fortified caravanserai at the Dusk Road turning: one walled yard, one great fire, every rumour on the road.',
   },
@@ -2534,7 +2536,7 @@ export const REGION_MAPS = {
 
   // --- the Fields of the Dead and its two spurs ----------------------------
   'fields-of-the-dead': {
-    name: 'The Fields of the Dead', kind: 'wild', biome: 'plains', w: 72, h: 56, music: 'wilds',
+    name: 'The Fields of the Dead', kind: 'wild', biome: 'plains', w: 72, h: 56, music: 'tense',
     level: 10, region: 'fields-of-the-dead', build: buildFieldsOfTheDead,
     desc: 'Ranked barrows, headstone fields and rotted siege engines, between the Trollbark and the Chionthar.',
   },
@@ -2544,19 +2546,19 @@ export const REGION_MAPS = {
     desc: 'The ruined fortress over the hellgate. Shut twice by the armies of the Coast, and open again.',
   },
   'rosymorn-monastery': {
-    name: 'Rosymorn Monastery', kind: 'ruins', biome: 'mountain', w: 48, h: 40, music: 'wilds',
+    name: 'Rosymorn Monastery', kind: 'ruins', biome: 'mountain', w: 48, h: 40, music: 'mountain',
     level: 12, region: 'rosymorn-monastery', build: buildRosymornMonastery,
     desc: 'A Lathanderite house on a cliff shelf, abandoned by the Order of the Sun and held by something else.',
   },
   'rosymorn-cloister': {
     name: 'The Cloister of the Dawn', kind: 'dungeon', biome: 'ruins', w: 0, h: 0, indoor: true,
-    music: 'dungeon', level: 12, region: 'rosymorn-monastery', build: buildRosymornCloister,
+    music: 'crypt', level: 12, region: 'rosymorn-monastery', build: buildRosymornCloister,
     desc: 'The monastery under its own floor: cells, chapter house, and a forge somebody has been using.',
   },
 
   // --- Ulgoth's Beard ------------------------------------------------------
   'ulgoths-beard': {
-    name: 'Ulgoth’s Beard', kind: 'town', biome: 'coast', w: 44, h: 36, safe: true, music: 'town',
+    name: 'Ulgoth’s Beard', kind: 'town', biome: 'coast', w: 44, h: 36, safe: true, music: 'coast',
     level: 10, region: 'ulgoths-beard', build: buildUlgothsBeard,
     desc: 'A fishing village on the coast north-east of the Gate: a quay, a shipwright, and passage to the isles.',
   },
@@ -2568,7 +2570,7 @@ export const REGION_MAPS = {
 
   // --- the Friendly Arm ----------------------------------------------------
   'friendly-arm-inn': {
-    name: 'The Friendly Arm', kind: 'town', biome: 'plains', w: 44, h: 36, safe: true, music: 'town',
+    name: 'The Friendly Arm', kind: 'town', biome: 'plains', w: 44, h: 36, safe: true, music: 'village',
     level: 12, region: 'coast-way', build: buildFriendlyArmInn,
     desc: 'A gnome-kept keep behind a curtain wall — a Bhaalite priest built it, and Bentley Mirrorshade scrubbed it out.',
   },
@@ -2579,7 +2581,7 @@ export const REGION_MAPS = {
   },
   'garl-shrine': {
     name: 'The Shrine of Garl Glittergold', kind: 'interior', biome: 'plains', w: 18, h: 14, indoor: true,
-    safe: true, music: 'town', parent: 'friendly-arm-inn', region: 'coast-way', build: buildGarlShrine,
+    safe: true, music: 'temple', parent: 'friendly-arm-inn', region: 'coast-way', build: buildGarlShrine,
     desc: 'Gellana Mirrorshade heals, blesses, and tells a joke you understand three days later.',
   },
 
@@ -2596,7 +2598,7 @@ export const REGION_MAPS = {
   },
   'jovial-juggler': {
     name: 'The Jovial Juggler', kind: 'interior', biome: 'city', w: 22, h: 18, indoor: true,
-    safe: true, music: 'inn', parent: 'beregost', region: 'beregost', build: buildJovialJuggler,
+    safe: true, music: 'tavern', parent: 'beregost', region: 'beregost', build: buildJovialJuggler,
     desc: 'Music most nights, a cleared floor to play it on, and the south’s recruit board by the hearth.',
   },
   'burning-wizard': {
@@ -2606,7 +2608,7 @@ export const REGION_MAPS = {
   },
   'song-of-the-morning': {
     name: 'The Song of the Morning', kind: 'interior', biome: 'city', w: 26, h: 22, indoor: true,
-    safe: true, music: 'town', parent: 'beregost', region: 'beregost', build: buildSongOfTheMorning,
+    safe: true, music: 'temple', parent: 'beregost', region: 'beregost', build: buildSongOfTheMorning,
     desc: 'Lathander’s great house on the Coast Way, high priest Kelddath Ormlyr. Everyone is fed at dawn.',
   },
   'thunderhammer-smithy': {
@@ -2617,18 +2619,18 @@ export const REGION_MAPS = {
 
   // --- the far south -------------------------------------------------------
   'high-hedge': {
-    name: 'High Hedge', kind: 'ruins', biome: 'plains', w: 36, h: 30, safe: true, music: 'wilds',
+    name: 'High Hedge', kind: 'ruins', biome: 'plains', w: 36, h: 30, safe: true, music: 'mystery',
     level: 12, region: 'beregost', build: buildHighHedge,
     desc: 'Thalantyr the Conjurer’s keep in its maze of hedge, and the guardians that stand where they were put.',
   },
   'candlekeep-approach': {
-    name: 'Candlekeep', kind: 'city', biome: 'coast', w: 52, h: 44, safe: true, music: 'town',
+    name: 'Candlekeep', kind: 'city', biome: 'coast', w: 52, h: 44, safe: true, music: 'castle',
     level: 13, region: 'candlekeep', build: buildCandlekeepApproach,
     desc: 'The library-fortress on its crag over the Sea of Swords. The gate price is one book it does not hold.',
   },
   'candlekeep-gatehouse': {
     name: 'The Gatehouse of Candlekeep', kind: 'interior', biome: 'coast', w: 26, h: 20, indoor: true,
-    safe: true, music: 'town', parent: 'candlekeep-approach', region: 'candlekeep', build: buildCandlekeepGatehouse,
+    safe: true, music: 'mystery', parent: 'candlekeep-approach', region: 'candlekeep', build: buildCandlekeepGatehouse,
     desc: 'Books to the ceiling, one desk, and an inner door of black iron you are not going through.',
   },
   nashkel: {
@@ -2643,7 +2645,7 @@ export const REGION_MAPS = {
   },
   'nashkel-mines': {
     name: 'The Nashkel Mines', kind: 'dungeon', biome: 'mine', w: 0, h: 0, indoor: true,
-    music: 'dungeon', level: 13, region: 'nashkel-mines', build: buildNashkelMines,
+    music: 'cave', level: 13, region: 'nashkel-mines', build: buildNashkelMines,
     desc: 'The iron mine under the Cloud Peaks, and whatever is in the ore that the assay keeps failing.',
   },
 };

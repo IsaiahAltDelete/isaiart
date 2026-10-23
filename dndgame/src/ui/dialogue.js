@@ -3,7 +3,8 @@
 //
 // Layout (400x240 logical):
 //   y 100..156   choice window (only while a node offers choices)
-//   y 162..236   the message box: 44px portrait bust, gold speaker tab, typewriter
+//   y 162..236   the message box: a 64px gilt-framed painted bust, the speaker's
+//                name plate, a drop-cap initial opening each speech, typewriter
 //   centre       an animated d20 whenever a [Persuasion 15] style check is rolled
 //
 // The scene is non-opaque and pauses the scene below, so Phandalin keeps sitting
@@ -14,7 +15,10 @@
 // written yet leaves an empty holder instead of breaking the module graph.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
 import { ShopScene } from './shop.js';
+import { AcademyTrainingScene } from './academy.js';
+import { syncAcademy } from '../rules/academy.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Save } from '../core/save.js';
@@ -23,8 +27,6 @@ import { FX } from '../render/fx.js';
 import { VIEW_W, VIEW_H, clamp, titleCase } from '../constants.js';
 import { rng, hashStr } from '../core/rng.js';
 import { bus, EV, toast } from '../core/events.js';
-import { drawActorBust } from '../render/actor.js';
-import { hasSprite } from '../render/sprites.js';
 import { SKILLS, ABILITIES, ABILITY_ABBR } from '../rules/abilities.js';
 import { abilityCheck } from '../rules/actions.js';
 import {
@@ -32,12 +34,15 @@ import {
 } from '../rules/character.js';
 import { recomputeSpells } from '../rules/spellcasting.js';
 import { canAttack } from '../rules/crime.js';
+import { socialGreeting } from '../rules/reputation.js';
+import { noteDeed } from '../rules/deeds.js';
 import { isCharmed, socialCheckMods, speakingWithAnimals } from '../rules/fieldworld.js';
 import { BEAST_MOMENTS, BEAST_VOICES } from '../data/tables.js';
 import { grantXp } from '../rules/progression.js';
 import { getSpell } from '../data/spells.js';
 import { resolveItem, itemName as catalogueItemName } from '../data/items.js';
 import { Party } from '../world/party.js';
+import { topicsFor } from './topics.js';
 import {
   setFlag, hasFlag, isQuestActive, isQuestDone, startQuest, completeQuest,
   addReputation, advanceTime,
@@ -103,14 +108,22 @@ const BOX_W = VIEW_W - 8;          // 392
 const BOX_H = 74;
 const BOX_Y = VIEW_H - BOX_H - 4;  // 162
 
-const PORT_S = 44;
-const PORT_X = BOX_X + 6;
-const PORT_Y = BOX_Y + 7;
+// The bust is painted 40px square and drawn at whole device-pixel multiples;
+// a 60px interior on the 2x layer is 120 device px, so it shows at exactly 3x.
+const PORT_S = 64;
+const PORT_X = BOX_X + 5;
+const PORT_Y = BOX_Y + 5;
 
-const TEXT_X = PORT_X + PORT_S + 7;             // 61
-const TEXT_W = BOX_X + BOX_W - 7 - TEXT_X;      // 328
-const TEXT_Y = BOX_Y + 10;
+const TEXT_X = PORT_X + PORT_S + 8;             // 81
+const TEXT_W = BOX_X + BOX_W - 8 - TEXT_X;      // 307
+const TEXT_Y = BOX_Y + 11;
 const TEXT_LINES = 5;
+const TEXT_LH = 9;
+
+// The drop cap opening a speech: the kit's large initial (a 24px box) stands
+// beside the first three lines of body text, which start this far in.
+const CAP_LINES = 3;
+const CAP_INDENT = 29;
 
 const CH_X = 96;
 const CH_W = 300;
@@ -193,12 +206,14 @@ function advOf(size) {
 
 /**
  * Wrap the runs into drawable line segments.
- * -> [{ start, segs:[{ text, color, off }] }]  where `start` is the absolute
- * character index of the line and `off` the segment's offset inside it.
+ * -> [{ start, ind, segs:[{ text, color, off }] }]  where `start` is the absolute
+ * character index of the line, `ind` its indent in px (the lines beside a drop
+ * cap) and `off` the segment's offset inside it.
+ * indent: { lines, px } narrows the first `lines` lines by `px`.
  */
-function layoutRuns(parsed, maxW, size) {
+function layoutRuns(parsed, maxW, size, indent = null) {
   const adv = advOf(size);
-  const maxChars = Math.max(1, Math.floor((maxW + 1) / adv));
+  const fullChars = Math.max(1, Math.floor((maxW + 1) / adv));
   const plain = parsed.plain;
   const n = plain.length;
 
@@ -212,6 +227,8 @@ function layoutRuns(parsed, maxW, size) {
   let guard = 0;
   while (i <= n && guard++ < 4000) {
     if (i === n && lines.length) break;
+    const ind = indent && lines.length < indent.lines ? indent.px : 0;
+    const maxChars = ind ? Math.max(1, Math.floor((maxW - ind + 1) / adv)) : fullChars;
     const hardEnd = Math.min(n, i + maxChars);
     const nl = plain.indexOf('\n', i);
     let start = i;
@@ -237,10 +254,35 @@ function layoutRuns(parsed, maxW, size) {
       segs.push({ text: plain.slice(sIdx, e), color: c, off: sIdx - start });
       sIdx = e;
     }
-    lines.push({ start, segs });
+    lines.push({ start, ind, segs });
     if (i > n) break;
   }
   return lines;
+}
+
+/**
+ * Lift the opening letter off a parsed page to be drawn as a drop cap. Only a
+ * plain letter qualifies: a speech that opens on a quotation mark, an ellipsis
+ * or an *action* keeps its first character in the line. A one-letter first
+ * word ("A", "I") loses the space after it too, since the cap stands apart.
+ */
+function takeInitial(parsed) {
+  const first = parsed.plain.charAt(0);
+  if (!/^\p{L}$/u.test(first) || parsed.plain.length < 12) return null;
+  let cut = 1;
+  if (parsed.plain.charAt(1) === ' ') cut = 2;
+  let left = cut;
+  for (const r of parsed.runs) {
+    if (!left) break;
+    const k = Math.min(left, r.text.length);
+    r.text = r.text.slice(k);
+    left -= k;
+  }
+  parsed.runs = parsed.runs.filter((r) => r.text.length);
+  parsed.plain = parsed.plain.slice(cut);
+  parsed.length = parsed.plain.length;
+  parsed.pauses = new Set([...parsed.pauses].map((at) => Math.max(0, at - cut)));
+  return first;
 }
 
 // ===========================================================================
@@ -475,7 +517,7 @@ export class DialogueScene {
     this.dialogueId = typeof dialogueId === 'string' ? dialogueId : (opts.id || 'inline');
     this.inlineTree = isObj(dialogueId) ? dialogueId : (opts.tree || null);
     this.npc = npc || null;
-    this.npcId = (npc && (npc.id || npc.npcId)) || (typeof dialogueId === 'string' ? dialogueId : 'stranger');
+    this.npcId = (npc && (npc.npcId || npc.id)) || (typeof dialogueId === 'string' ? dialogueId : 'stranger');
     this.opts = opts || {};
     this.onClose = opts.onClose || null;
 
@@ -714,9 +756,20 @@ export class DialogueScene {
     let pages = Array.isArray(raw) ? raw.slice() : String(raw == null ? '' : raw).split(/\n\s*\n/);
     pages = pages.map((p) => String(p == null ? '' : p).trim()).filter((p) => p.length);
     if (!pages.length) pages = ['…'];
-    this.pages = pages.map((p) => {
+    if (!this._socialGreeted) {
+      this._socialGreeted = true;
+      // Add one opening beat, preserving every authored line and quest choice.
+      const map = Game.scenes.find(s => s.id === 'overworld')?.map;
+      const greeting = !this._isBeast() && socialGreeting(S(), this.npc || this._record(), map);
+      if (greeting) pages.unshift(greeting);
+    }
+    this.pages = pages.map((p, i) => {
       const parsed = parseRuns(expandTokens(p, name));
-      return { ...parsed, lines: layoutRuns(parsed, TEXT_W, 'sm') };
+      // A speech opens with a drop cap, the way a chapter does in a book of
+      // hours; the pages after it inside the same speech run on without one.
+      const cap = i === 0 ? takeInitial(parsed) : null;
+      const lines = layoutRuns(parsed, TEXT_W, 'sm', cap ? { lines: CAP_LINES, px: CAP_INDENT } : null);
+      return { ...parsed, cap, lines };
     });
     this.page = 0;
     this.shown = 0;
@@ -757,6 +810,12 @@ export class DialogueScene {
     // tell the two apart: an engine-added option must never be the reason a
     // node stops and shows a menu instead of following its own `goto`.
     this.authoredCount = out.length;
+
+    // Topics the world modules registered (ui/topics.js): the news, the work
+    // going, the job you came back to report. Opening menu only, like the attack.
+    for (const t of this._topics(node)) {
+      out.push({ raw: { topic: t.id }, index: -1, label: t.label, tag: null, check: null, spentKey: null, topic: t, disabled: false, reason: null });
+    }
 
     // --- the option that is always on the table -----------------------------
     //
@@ -808,6 +867,37 @@ export class DialogueScene {
     }
     this._entryIds = ids;
     return ids;
+  }
+
+  /** The ui/topics.js context for this conversation. */
+  _topicCtx() {
+    const record = this._record();
+    const npcId = (this.npc && this.npc.npcId) || (record && record.id) || this.npcId;
+    return { st: S(), npcId, npc: this.npc, record, back: 'topic:back', dialogue: this };
+  }
+
+  /** Registered topics for this node: the opening of a conversation with a person. */
+  _topics(node) {
+    if (!node || !this.npc || !this._entryNodes().has(this.nodeId)) return [];
+    if ((this.tree && this.tree.noTopics) || node.noTopics || this._isBeast()) return [];
+    return safe(() => topicsFor(this._topicCtx()), []);
+  }
+
+  /**
+   * Play a topic's tree inside this conversation. Its nodes join the tree, and
+   * `topic:back` is the menu the topic was picked from — the same choices,
+   * without replaying that node's narration or its `do:` block.
+   */
+  _openTopic(t) {
+    const back = this.nodeId;
+    const tree = safe(() => t.run(this._topicCtx()), null);
+    if (!tree || !isObj(tree.nodes) || !tree.nodes[tree.start]) { this._say('They have nothing to say about that.'); return; }
+    this._homeNodes = this._homeNodes || this.tree.nodes;
+    const home = (back === 'topic:back' ? this.tree.nodes[back] : this._homeNodes[back]) || {};
+    const backNode = { ...home, text: tree.backText || 'Anything else?', do: undefined, once: false, goto: undefined, next: undefined };
+    this.tree = { ...this.tree, nodes: { ...this._homeNodes, ...tree.nodes, 'topic:back': backNode } };
+    this._entryNodes().add('topic:back');
+    this._goto(tree.start);
   }
 
   /** Is "Draw your weapon" a legal thing to offer on this node? */
@@ -990,6 +1080,7 @@ export class DialogueScene {
       return;
     }
     if (c.attack) { sfx('select'); this._doAttack(); return; }
+    if (c.topic) { sfx('select'); this._openTopic(c.topic); return; }
     if (c.check) { this._beginRoll(c); return; }
     sfx('select');
     this._resolveChoice(c, true);
@@ -1134,9 +1225,17 @@ export class DialogueScene {
         safe(() => toast(`Quest: ${def.title || id}`, { kind: 'quest' }));
       }
     }
+    if(d.academySync || d.academy) syncAcademy(st);
+    if(d.academy === 'practice') {
+      this._close();
+      Game.push(new AcademyTrainingScene());
+      out.close=true;
+      return out;
+    }
     for (const q of arr(d.complete ?? d.turnIn ?? d.questDone)) {
       const id = isObj(q) ? q.id : String(q);
       if (st && completeQuest(st, id)) {
+        noteDeed(st, { kind: 'quest', questId: id, npcId: this.npcId, mapId: st.mapId, weight: 2 });
         sfx('quest');
         this._grantQuestRewards(QUESTS()[id]);
         safe(() => toast(`Completed: ${QUESTS()[id]?.title || id}`, { kind: 'quest' }));
@@ -1168,6 +1267,14 @@ export class DialogueScene {
 
     if (d.battle) { this._startBattle(isObj(d.battle) ? d.battle : { group: String(d.battle) }); out.close = true; }
     if (d.warp) { this._warp(d.warp); out.close = true; }
+
+    // A runtime tree (ui/topics.js) can carry its own action: fn(ctx) -> { say, goto, close }.
+    if (typeof d.call === 'function') {
+      const r = safe(() => d.call(this._topicCtx()), null);
+      if (r && r.say) msgs.push(String(r.say));
+      if (r && r.close) out.close = true;
+      if (r && r.goto) out.goto = r.goto;
+    }
 
     if (d.say) msgs.push(String(d.say));
     if (msgs.length) this._say(msgs.join('   '));
@@ -1339,7 +1446,13 @@ export class DialogueScene {
   // --- draw --------------------------------------------------------------
 
   draw(ctx) {
-    UI.scrim(ctx, 0.30);
+    // The street stays in view: only the lower part of the screen sinks into
+    // shade, so the box reads as a lit page laid over the scene.
+    UI.scrim(ctx, 0.16);
+    const shadeTop = BOX_Y - 64;
+    const g = ctx.createLinearGradient(0, shadeTop, 0, VIEW_H);
+    g.addColorStop(0, 'rgba(6,4,8,0)'); g.addColorStop(1, 'rgba(6,4,8,0.6)');
+    ctx.fillStyle = g; ctx.fillRect(0, shadeTop, VIEW_W, VIEW_H - shadeTop);
     if (!this.tree) { this._drawBox(ctx, '…'); return; }
     this._drawBox(ctx, null);
     if (this.mode === 'choose' || (this.mode === 'roll' && this.choices.length)) this._drawChoices(ctx);
@@ -1348,68 +1461,105 @@ export class DialogueScene {
 
   _drawBox(ctx, placeholder) {
     const p = UI.panel(ctx, BOX_X, BOX_Y, BOX_W, BOX_H, { style: 'window' });
-    const speaker = this._speakerName(this.node);
-
-    // --- brass name plate, notched over the top-left corner -----------------
-    // The 'gold' panel is a light plate, so the name is struck in dark ink with a
-    // pale highlight beneath it — like lettering stamped into metal.
-    const tw = Math.min(184, safe(() => UI.measure(speaker, 'md'), 60) + 16);
-    UI.panel(ctx, BOX_X + 8, BOX_Y - 7, tw, 15, { style: 'gold', shadow: 0.35, studs: false });
-    UI.text(ctx, BOX_X + 15, BOX_Y - 3, speaker, {
-      size: 'md', color: '#2a1c07', shadow: 'rgba(255,246,214,0.55)', maxWidth: tw - 14,
-    });
-
-    this._drawPortrait(ctx, this._portraitOf(), PORT_X, PORT_Y, PORT_S);
+    const ch = this._portraitOf();
+    this._drawPortrait(ctx, ch, PORT_X, PORT_Y, PORT_S);
+    this._drawNamePlate(ctx, this._speakerName(this.node), this._captionFor(ch));
 
     if (placeholder != null) {
-      UI.text(ctx, TEXT_X, TEXT_Y + 12, placeholder, { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
+      MK.text(ctx, TEXT_X, TEXT_Y + 12, placeholder, { size: 'sm', color: UI.COLORS.inkDim });
       return;
     }
 
     // --- typewriter body ----------------------------------------------------
     const pg = this.pages[this.page];
+    const ink = p.ink || UI.COLORS.ink;
     if (pg) {
       const adv = advOf('sm');
-      const lineH = 9;
       const shown = Math.floor(this.shown);
-      const first = Math.max(0, Math.min(pg.lines.length - TEXT_LINES,
-        this._scrollFor(pg, shown)));
+      const first = Math.max(0, Math.min(pg.lines.length - TEXT_LINES, this._scrollFor(pg, shown)));
+      if (pg.cap && first < CAP_LINES) {
+        // the initial scrolls away with the lines it stands beside
+        ctx.save();
+        ctx.beginPath(); ctx.rect(TEXT_X - 2, BOX_Y + 4, CAP_INDENT, BOX_H - 8); ctx.clip();
+        safe(() => UI.initial(ctx, TEXT_X, TEXT_Y - 0.5 - first * TEXT_LH, pg.cap, { size: 'lg', vine: false }));
+        ctx.restore();
+      }
       for (let li = 0; li < TEXT_LINES; li++) {
         const line = pg.lines[first + li];
         if (!line) break;
-        const ly = TEXT_Y + li * lineH;
+        const ly = TEXT_Y + li * TEXT_LH;
+        const lx = TEXT_X + (line.ind || 0);
         for (const seg of line.segs) {
           const segStart = line.start + seg.off;
           const vis = clamp(shown - segStart, 0, seg.text.length);
           if (vis <= 0) continue;
-          UI.text(ctx, TEXT_X + seg.off * adv, ly, seg.text.slice(0, vis), {
-            size: 'sm', color: seg.color || p.ink || UI.COLORS.ink, shadow: true,
+          UI.text(ctx, lx + seg.off * adv, ly, seg.text.slice(0, vis), {
+            size: 'sm', color: seg.color || ink, shadow: true,
           });
         }
       }
-      // page pips when a node runs longer than one screen
-      if (this.pages.length > 1) {
-        for (let i = 0; i < this.pages.length && i < 12; i++) {
-          ctx.fillStyle = i === this.page ? UI.COLORS.gold : UI.COLORS.goldDim;
-          ctx.fillRect(TEXT_X + i * 5, BOX_Y + BOX_H - 9, 3, 2);
-        }
+    }
+
+    // --- foot of the page: status line, page lozenges, keys -----------------
+    const fy = BOX_Y + BOX_H - 11;
+    if (this.footer) {
+      MK.text(ctx, TEXT_X, fy + 1.5, this.footer, { color: UI.COLORS.goldBright, maxWidth: TEXT_W - 90 });
+    }
+    let rx = BOX_X + BOX_W - 8;
+    if (this.mode === 'choose') {
+      rx = this._drawKeys(ctx, rx, fy, [['X', 'Leave'], ['Z', 'Choose']]);
+    } else if (pg && this.shown >= pg.length) {
+      UI.advanceCaret(ctx, BOX_X + BOX_W - 14, BOX_Y + BOX_H - 14, this.t);
+      rx -= 14;
+    }
+    if (pg && this.pages.length > 1 && this.mode === 'text') {
+      // one lozenge per page of this speech, the current one lit
+      const n = Math.min(12, this.pages.length);
+      for (let i = n - 1; i >= 0; i--) {
+        const cx = rx - 3 - (n - 1 - i) * 5;
+        const on = i === this.page;
+        ctx.fillStyle = on ? UI.COLORS.goldBright : 'rgba(184,137,58,0.45)';
+        ctx.fillRect(cx - 0.5, fy + 2, 1, 3); ctx.fillRect(cx - 1.5, fy + 3, 3, 1);
+        if (on) { ctx.fillStyle = '#fff4c8'; ctx.fillRect(cx - 0.5, fy + 2, 1, 0.5); }
       }
     }
+  }
 
-    // --- footer: status line, then key hints --------------------------------
-    const fy = BOX_Y + BOX_H - 12;
-    if (this.footer) {
-      UI.text(ctx, TEXT_X + 42, fy, this.footer, {
-        size: 'sm', color: UI.COLORS.gold, shadow: true, maxWidth: TEXT_W - 100,
-      });
-    } else if (this.mode === 'choose') {
-      UI.text(ctx, BOX_X + BOX_W - 8, fy, 'Z choose   X leave', {
-        size: 'sm', color: UI.COLORS.inkDim, align: 'right', shadow: true,
-      });
+  /** [KEY] label pairs laid out leftwards from `right`; returns the new left edge. */
+  _drawKeys(ctx, right, y, pairs) {
+    let x = right;
+    for (const [k, label] of pairs) {
+      x -= MK.measure(label);
+      MK.text(ctx, x, y + 2, label, { color: '#cfc3a6', shadow: 'rgba(0,0,0,0.8)' });
+      x -= 2.5 + Math.max(6.5, MK.measure(k, 'fineb') + 3);
+      MK.keycap(ctx, x, y + 0.5, k);
+      x -= 7;
     }
+    return x;
+  }
 
-    const pgDone = pg && this.shown >= pg.length;
-    if (this.mode === 'text' && pgDone) UI.advanceCaret(ctx, BOX_X + BOX_W - 14, BOX_Y + BOX_H - 14, this.t);
+  /**
+   * The speaker's cartouche over the top rule of the box: the name in the
+   * display face (a gilt Lombardic capital, textura after it) and, in the fine
+   * face after it, who they are.
+   */
+  _drawNamePlate(ctx, speaker, caption) {
+    const nameW = MK.measure(speaker, 'title');
+    const capW = caption ? MK.measure(caption) : 0;
+    const w = Math.min(TEXT_W - 8, Math.ceil(nameW + (caption ? capW + 9 : 0) + 12));
+    const x = TEXT_X - 3;
+    const y = BOX_Y - 7;
+    MK.plate(ctx, x, y, w, 13);
+    const r = MK.title(ctx, x + 6, y + 2.5, speaker, { maxWidth: w - 12 });
+    if (caption) {
+      const cx = x + 6 + ((r && r.w) || nameW) + 5;
+      const left = x + w - 6 - cx;
+      if (left > 14) {
+        ctx.fillStyle = 'rgba(217,164,65,0.6)';
+        ctx.fillRect(cx - 3, y + 6, 1, 1);
+        MK.text(ctx, cx, y + 5, caption, { color: '#bfae8a', maxWidth: left });
+      }
+    }
   }
 
   /** Which wrapped line to scroll to while a long page is still typing. */
@@ -1421,46 +1571,9 @@ export class DialogueScene {
   }
 
   _drawPortrait(ctx, ch, x, y, size) {
-    const f = UI.panel(ctx, x, y, size, size, { style: 'inset', shadow: 0.3 });
-    const ix = f.ix + 1;
-    const iy = f.iy + 1;
-    const iw = Math.max(1, f.iw - 2);
-    const ih = Math.max(1, f.ih - 2);
-    ctx.fillStyle = '#16110d';
-    ctx.fillRect(ix, iy, iw, ih);
-
-    const art = !!(ch && (ch.appearance || (ch.sprite && safe(() => hasSprite(ch.sprite), false))));
-    if (art) {
-      safe(() => { drawActorBust(ctx, ch, ix, iy, Math.min(iw, ih)); return true; }, false);
-    } else {
-      // No sprite family registered yet: a lettered signet still reads as a person.
-      const name = (ch && ch.name) || this._speakerName(this.node);
-      ctx.fillStyle = 'rgba(227,179,74,0.10)';
-      ctx.fillRect(ix, iy, iw, ih);
-      UI.text(ctx, ix + iw / 2, iy + ih / 2 - 6, String(name).charAt(0).toUpperCase(), {
-        size: 'lg', color: UI.COLORS.goldDim, align: 'center', shadow: true,
-      });
-    }
-
-    // Caption under the bust — free characterisation, zero words. It reads the
-    // AUTHORED title ("The Inn Cat", "Master of Barthen's Provisions"), never
-    // `role`, which is an internal enum: every townsfolk defaults to 'flavor'
-    // and the game was captioning half the cast with the word "flavor".
-    const caption = this._captionFor(ch);
-    if (caption) {
-      // It cannot grow sideways — the caption row sits level with the fifth
-      // line of dialogue, so anything past the portrait column would run into
-      // the text. It wraps instead: "Gate Watch" over two lines beats "Gate Wa…".
-      // Two lines is all the floor allows, but the overflow must SAY it
-      // overflowed: "The Mad Mage of Undermountain" used to stop dead after
-      // "The Mad / Mage of", which is a different (and wrong) title. wrapped()
-      // ellipsises the last line it can show.
-      const room = (TEXT_X - BOX_X) - 8;
-      UI.textWrapped(ctx, x + size / 2 - room / 2, y + size + 3, room, caption, {
-        size: 'sm', color: UI.COLORS.gold, align: 'center',
-        shadow: 'rgba(0,0,0,0.8)', maxLines: 2, lineHeight: 8,
-      });
-    }
+    // A person gets the painted bust at a whole multiple of device pixels, a
+    // beast its sprite's head, anyone else a gilt signet (menukit.portrait).
+    MK.portrait(ctx, ch, x, y, size, size, { ground: ['#3b2b1d', '#0d0907'] });
   }
 
   /**
@@ -1490,26 +1603,48 @@ export class DialogueScene {
   _drawChoices(ctx) {
     const L = this._choiceLayout();
     UI.panel(ctx, L.x, L.y, L.w, L.h, { style: 'window' });
+    const n = this.choices.length;
+    let top = clamp(this.listTop | 0, 0, Math.max(0, n - L.rows));
+    if (this.index < top) top = this.index;
+    if (this.index >= top + L.rows) top = this.index - L.rows + 1;
+    this.listTop = top;
+    const scroll = n > L.rows;
+    const rowW = L.listW - (scroll ? 6 : 0);
+    const m = Input.mouse;
+    for (let r = 0; r < L.rows; r++) {
+      const i = top + r;
+      const c = this.choices[i];
+      if (!c) break;
+      const ry = L.listY + r * CH_ROW;
+      const sel = i === this.index;
+      if (sel) MK.selRow(ctx, L.listX, ry, rowW, CH_ROW, this.t);
+      else if (m && m.over && m.x >= L.listX && m.x <= L.listX + rowW && m.y >= ry && m.y < ry + CH_ROW) MK.hoverRow(ctx, L.listX, ry, rowW, CH_ROW);
 
-    const items = this.choices.map((c) => {
-      const hint = c.disabled
-        ? (c.reason ? `✗ ${c.reason}` : '✗')
-        : (c.tag || '');
-      return {
-        label: c.label,
-        hint: c.attack ? 'ATTACK' : hint,
-        hintColor: c.disabled ? UI.COLORS.bad : c.attack ? UI.COLORS.red : UI.COLORS.gold,
-        disabled: c.disabled,
-        icon: c.attack ? 'sword' : undefined,
-        // Violence is offered in red so it is never picked by accident.
-        color: c.disabled ? UI.COLORS.disabled : c.attack ? UI.COLORS.red : undefined,
-      };
-    });
-
-    const r = UI.list(ctx, L.listX, L.listY, L.listW, items, this.index, {
-      rows: L.rows, rowH: CH_ROW, top: this.listTop, t: this.t, scrollbar: this.choices.length > L.rows,
-    });
-    this.listTop = r.top;
+      // What the option costs or risks, hard right in the fine face: the check
+      // it calls for, why it is barred, or that it means a fight.
+      const hint = c.disabled ? (c.reason || 'barred') : c.attack ? 'means a fight' : (c.tag ? c.tag.replace(/^\[|\]$/g, '') : '');
+      const hintCol = c.disabled ? '#b0605a' : c.attack ? '#e0664f' : UI.COLORS.goldBright;
+      let hintW = 0;
+      if (hint) {
+        hintW = Math.min(rowW * 0.45, MK.measure(hint) + 9);
+        const hx = L.listX + rowW - hintW;
+        if (c.tag && !c.disabled) {
+          // a check sits on a small dark slip ruled in gilt
+          ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(hx, ry + 2.5, hintW - 1, 7);
+          ctx.fillStyle = 'rgba(217,164,65,0.35)';
+          ctx.fillRect(hx, ry + 2.5, hintW - 1, 0.5); ctx.fillRect(hx, ry + 9, hintW - 1, 0.5);
+        }
+        MK.bullet(ctx, hx + 3, ry + 6, hintCol);
+        MK.text(ctx, hx + 6, ry + 4.5, hint, { color: hintCol, maxWidth: hintW - 7 });
+      }
+      // the option itself, in the body face; violence in red so it is never picked by accident
+      const icon = c.attack ? 'sword' : c.topic ? 'quill' : null;
+      let lx = L.listX + 4;
+      if (icon) { safe(() => UI.icon(ctx, icon, lx, ry + 2, 8, c.attack ? UI.COLORS.red : UI.COLORS.gold)); lx += 11; }
+      const col = c.disabled ? UI.COLORS.disabled : c.attack ? UI.COLORS.red : sel ? UI.COLORS.inkBright : UI.COLORS.ink;
+      UI.text(ctx, lx, ry + 2.5, c.label, { size: 'sm', color: col, shadow: true, maxWidth: L.listX + rowW - hintW - 4 - lx });
+    }
+    if (scroll) MK.scroll(ctx, L.listX + L.listW - 3, L.listY, L.rows * CH_ROW, top, L.rows, n);
   }
 
   _drawRoll(ctx) {
@@ -1522,14 +1657,12 @@ export class DialogueScene {
     // Who is rolling, and against what — the maths is the point.
     const who = (r.who && r.who.name) || 'The party';
     const what = r.c.check.skill ? SKILLS[r.c.check.skill].name : (ABILITY_ABBR[r.c.check.ability] || 'Check');
-    UI.text(ctx, cx, cy - 44, `${who} — ${what}`, {
-      size: 'md', color: UI.COLORS.gold, align: 'center', shadow: true, maxWidth: 260,
-    });
-    if (r.t >= ROLL_MIN) {
-      UI.text(ctx, cx, cy + 44, 'Z continue', {
-        size: 'sm', color: UI.COLORS.inkDim, align: 'center', shadow: true,
-      });
-    }
+    const head = `${who} — ${what}`;
+    const tw = Math.min(268, MK.measure(head, 'title'));
+    MK.plate(ctx, cx - tw / 2 - 7, cy - 51, tw + 14, 13);
+    MK.title(ctx, cx - tw / 2, cy - 48.5, head, { maxWidth: 268 });
+    if (r.c.check.dc) MK.text(ctx, cx, cy - 34, `against DC ${r.c.check.dc}`, { color: '#bfae8a', align: 'center' });
+    if (r.t >= ROLL_MIN) this._drawKeys(ctx, cx + 22, cy + 42, [['Z', 'Continue']]);
   }
 }
 

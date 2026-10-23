@@ -3,11 +3,14 @@
 // control to the title screen.
 
 import { Game } from './engine.js';
+import { localStanding, npcDisposition } from './rules/reputation.js';
 import { Input } from './core/input.js';
 import { Audio } from './core/audio.js';
 import { Save } from './core/save.js';
 import { bus, EV } from './core/events.js';
 import { FX } from './render/fx.js';
+import { Stage } from './render/stage.js';
+import { Layout } from './ui/layout.js';
 import { Party } from './world/party.js';
 import { newGameState, loadState, saveState, stateSummary, recordKill, progressQuests, advanceTime } from './state.js';
 import { VERSION } from './constants.js';
@@ -20,7 +23,11 @@ import { registerTiles } from './render/tiles.js';
 
 // Rules glue.
 import { restShort, restLong, serializeChar, deserializeChar, createCharacter, recalc } from './rules/character.js';
-import { grantXp } from './rules/progression.js';
+import { grantXp, pendingLevelsFor } from './rules/progression.js';
+import { installDirector } from './rules/worlddirector.js';
+import { installWorldTalk } from './ui/worldtalk.js';
+import { installSites } from './world/sites.js';
+import { installNoticeBoard } from './ui/noticeboard.js';
 
 // Scenes.
 import { TitleScene } from './ui/title.js';
@@ -105,17 +112,32 @@ function wireGlue() {
   });
   bus.on(EV.ITEM_GAIN, ({ id }) => { if (Game.state) progressQuests(Game.state, 'collect', id, 1); });
   bus.on(EV.MAP_ENTER, ({ mapId }) => { if (Game.state) progressQuests(Game.state, 'reach', mapId, 1); });
+
+  // The world director: the calendar, its troubles, the endless work, and the
+  // hands it has in conversation (topics), on the map (sites) and on the board.
+  installDirector(() => Game.state, { grantXp: awardPartyXp });
+  installWorldTalk();
+  installSites();
+  installNoticeBoard();
 }
 
-/** Award XP to the party and push the level-up flow if anyone advanced. */
+/** Award XP now; show earned choices once the current interaction has closed. */
 export function awardPartyXp(amount) {
   const levelled = [];
   for (const m of Party.members) {
     const res = grantXp(m, amount);
     if (res && res.leveled) levelled.push(m);
   }
-  if (levelled.length) Game.push(new LevelUpScene(levelled));
   return levelled;
+}
+
+/** Dialogue, combat and loading may all leave earned advancement pending. */
+export function resumePendingAdvancement() {
+  if (!Game.state || Game.transitioning || Game.top?.id !== 'overworld') return false;
+  const levelled = Party.members.filter((m) => pendingLevelsFor(m) > 0);
+  if (!levelled.length) return false;
+  Game.push(new LevelUpScene(levelled));
+  return true;
 }
 
 /** Start a fresh campaign: character creation, then Phandalin. */
@@ -161,6 +183,7 @@ export function autosave() { return writeSave(0); }
 let clockAcc = 0;
 bus.on('tick', (dt) => {
   if (!Game.state) return;
+  resumePendingAdvancement();
   Game.state.playtime += dt;
   clockAcc += dt;
   if (clockAcc >= 1) { advanceTime(Game.state, 4 * clockAcc); clockAcc = 0; }
@@ -189,9 +212,12 @@ export async function boot(hooks = {}) {
 
   // Feed dt to the bus so state can tick without importing the engine.
   const origTick = Game._update.bind(Game);
-  Game._update = (dt) => { origTick(dt); bus.emit('tick', dt); };
+  Game._update = (dt, elapsed = dt) => { origTick(dt, elapsed); bus.emit('tick', dt); };
 
   if (hooks.done) hooks.done();
+
+  // Which tune a place opens with is seeded by the map and the day (core/audio.js, context rotation).
+  Audio.setPlaceSource(() => ({ map: Game.state && Game.state.mapId, day: Game.state && Game.state.day }));
 
   // Browsers require a user gesture before audio may start.
   const gate = hooks.gate;
@@ -209,7 +235,7 @@ export async function boot(hooks = {}) {
 
   // Handy console access while developing.
   installCheatKeys();
-  window.SC = { Game, Party, Save, Audio, Input, FX, bus, EV, newGame, continueGame, writeSave,
+  window.SC = { Game, Party, Save, Audio, Input, FX, Stage, Layout, bus, EV, newGame, continueGame, writeSave,
                 awardPartyXp, createCharacter, VERSION, cheat, Cheats };
   window.render_game_to_text = () => {
     const scene = Game.scenes.find(s => s.id === 'overworld');
@@ -217,9 +243,15 @@ export async function boot(hooks = {}) {
     return JSON.stringify({
       coordinates: 'tile origin top-left; x right, y down',
       mode: active?.id, map: scene?.map?.id,
+      academy: active?.id === 'academy-training' ? active.snapshot() : null,
+      creator: active?.id === 'charcreate' ? { page: active.rowKey(), name: active.draft.name, species: active.draft.speciesId, class: active.draft.classId, preview: active.previewMode, facing: active.previewDir, walking: active.previewWalk, options: active.rows.map(r => ({label:r.label, selected:r.selected, checked:r.checked, value:r.value, disabled:r.disabled})), issue:active.issue(active.step), firstIncomplete:active.firstIncomplete() } : null,
+      journey: Game._trans?.journey || null,
+      monsters: (scene?.entities?.list || []).filter(e=>e.kind==='monster'&&!e.hidden).map(e=>({id:e.monsterId,name:e.name,x:e.x,y:e.y,boss:e.boss})),
+      standing: scene?.map ? localStanding(Game.state, scene.map) : null,
+      trade: active?.id === 'shop' ? { terms: active.terms, refused: active.refused, tab: active.tab, rows: active.rows.map(r => ({ id: r.id, price: r.price, disabled: r.disabled })) } : null,
       combat: active?.enc ? { phase: active.phase, round: active.enc.round, current: active.enc.current?.name, budget: active._budget(), actions: active._currentRows().map(r => ({ id: r.id, name: r.name, enabled: r.enabled })) } : null,
-      player: scene?.player ? { x: scene.player.x, y: scene.player.y, dir: scene.player.dir, moving: scene.player.moving } : null,
-      npcs: (scene?.entities?.list || []).filter(e => e.kind === 'npc' && !e.hidden && !e.removed).map(e => ({ id: e.npcId, x: e.x, y: e.y, sprite: e.sprite })),
+      player: scene?.player ? { x: scene.player.x, y: scene.player.y, dir: scene.player.dir, moving: scene.player.moving, heldLight: scene.player.heldLightNow() } : null,
+      npcs: (scene?.entities?.list || []).filter(e => e.kind === 'npc' && !e.hidden && !e.removed).map(e => ({ id: e.npcId, x: e.x, y: e.y, sprite: e.sprite, heldLight: e.heldLightNow(), disposition: e.tag === 'animal' ? 'neutral' : npcDisposition(Game.state, e, scene.map), fleeing: e.fleeT > 0, returningHome: !!e.returningHome, activity: e.data?.streetLife ? e.activity : null, interaction: e.social ? { phase:e.social.phase, partner:(e===e.social.host?e.social.partner:e.social.host).npcId } : null })),
     });
   };
   window.advanceTime = (ms) => {

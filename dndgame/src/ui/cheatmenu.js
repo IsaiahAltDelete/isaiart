@@ -19,6 +19,7 @@
 //     label that actually appears in it.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Game } from '../engine.js';

@@ -435,7 +435,8 @@ export function monsterActionOption(act, cost = 'action') {
     ai: act.ai || { role: roleForAction(act), weight: 1 },
 
     // --- option shape, for combat.js and the UI -----------------------------
-    cost,
+    // Legendary actions spend numeric points, not the ordinary action economy.
+    cost: cost==='legendary' ? Math.max(1,num(act.cost,1)) : cost,
     icon: kind === 'attack' ? 'sword' : kind === 'heal' ? 'heart' : kind === 'save' ? 'spell' : 'star',
     desc: act.desc || '',
     targeting: {
@@ -855,6 +856,70 @@ export function encounterXp(list) {
 }
 
 /**
+ * What one creature will actually cost once it spawns. On the surface a stat block
+ * more than two CR below the party is scaled up (see buildEncounterMonsters), so
+ * the budget is spent against the veteran, not the printed baseline. `lookup`
+ * resolves ids the bestiary does not carry (an encounter's own creatures).
+ */
+export function unitCost(id, level, depth = 0, lookup = null) {
+  const block = getMonster(id) || (typeof lookup === 'function' ? lookup(id) : null);
+  const cr = num(block?.cr, 0);
+  if (depth === 0 && level - cr > 2) return xpForCR(effectiveCR(cr, level));
+  return block && !getMonster(id) ? num(block.xp, xpForCR(cr)) : xpOf(id);
+}
+
+/**
+ * Roll a situation's foes — [[id, min, max], ...] — and fit them to the party.
+ *
+ * The encounter director names WHO is on the road; this decides HOW MANY, by the
+ * same 2024 XP budget rollEncounter spends. The most expensive stack is trimmed
+ * first and never below its minimum; a roll well under budget gets one more of its
+ * cheapest member. The first entry with a minimum of 1 is the one that is always
+ * there (the captain, the chief), so a trim never removes the leader.
+ *
+ * o: { level, size, difficulty='medium', seed | rng, depth=0, lookup }
+ * -> { monsters:[{id,count,min,max}], xp, budget, difficulty }
+ */
+export function rollFoes(foes, o = {}) {
+  const level = Math.max(1, Math.floor(num(o.level, 1)));
+  const size = clamp(Math.floor(num(o.size, 4)), 1, 8);
+  const depth = Math.max(0, Math.floor(num(o.depth, 0)));
+  const difficulty = lower(o.difficulty || 'medium');
+  const r = o.rng || makeRNG(o.seed != null ? o.seed : hashStr(`foes:${level}:${size}`));
+  const lookup = o.lookup || null;
+  const known = (id) => !!(getMonster(id) || (lookup && lookup(id)));
+  const budget = encounterBudget(level, size, difficulty);
+  const cost = (id) => unitCost(id, level, depth, lookup);
+  const total = (list) => list.reduce((t, e) => t + cost(e.id) * e.count, 0);
+
+  const out = [];
+  for (const row of arr(foes)) {
+    const [id, min, max] = Array.isArray(row) ? row : [row?.id, row?.min, row?.max];
+    if (!id || !known(id)) continue;
+    const lo = Math.max(0, Math.floor(num(min, 1)));
+    const hi = Math.max(lo, Math.floor(num(max, lo)));
+    const count = r.int(lo, hi);
+    if (count > 0) out.push({ id, count, min: lo, max: hi });
+  }
+
+  let guard = 0;
+  while (out.length && total(out) > budget && guard++ < 40) {
+    const trimmable = out.filter((e) => e.count > Math.max(1, e.min)).sort((a, b) => cost(b.id) - cost(a.id));
+    if (trimmable.length) { trimmable[0].count -= 1; continue; }
+    // Everything sits at its minimum: drop the cheapest optional stack, if any.
+    const optional = out.filter((e) => e.min === 0).sort((a, b) => cost(a.id) - cost(b.id));
+    if (!optional.length) break;
+    out.splice(out.indexOf(optional[0]), 1);
+  }
+  if (out.length && total(out) < budget * 0.5) {
+    const cheap = out.filter((e) => e.count < e.max).sort((a, b) => cost(a.id) - cost(b.id))[0];
+    if (cheap && total(out) + cost(cheap.id) <= budget) cheap.count += 1;
+  }
+  const monsters = out.filter((e) => e.count > 0);
+  return { monsters, xp: total(monsters), budget, difficulty };
+}
+
+/**
  * Build an encounter for a biome and a party.
  *
  * Returns { monsters:[{id,count}], boss, xp, budget, difficulty, faction }.
@@ -893,14 +958,7 @@ export function rollEncounter(o = {}) {
   const loCR = level <= 3 ? 0 : Math.max(0, Math.floor(level / 4));
   const wantCR = Math.max(0.125, level * 0.55);
 
-  // What a creature will actually cost once it spawns. On the surface a stat block
-  // more than two CR below the party is scaled up (see buildEncounterMonsters), so
-  // the budget is spent against the veteran, not the printed baseline.
-  const costOf = (id) => {
-    const cr = num(getMonster(id)?.cr, 0);
-    if (depth === 0 && level - cr > 2) return xpForCR(effectiveCR(cr, level));
-    return xpOf(id);
-  };
+  const costOf = (id) => unitCost(id, level, depth);
   const totalCost = (list) => arr(list).reduce((t, e) => t + costOf(e.id) * Math.max(1, num(e.count, 1)), 0);
 
   // Time and weather bias. Undead and darkvision hunters own the night; in fog and
@@ -923,10 +981,13 @@ export function rollEncounter(o = {}) {
     return g && arr(g.members).length;
   });
   try {
+    // A scripted fight names its group outright (the Cragmaws by the dead horses):
+    // that group, every time.
+    if (o.group && validGroups([o.group]).length) { groupId = String(o.group); out.fromTable = true; }
     // A map may name its own table (Cragmaw scouts on the Triboar Trail, ghouls
     // in the Fields of the Dead). Two fights in three come from it.
     const table = validGroups(o.table);
-    if (table.length && r.chance(0.65)) {
+    if (!groupId && table.length && r.chance(0.65)) {
       groupId = r.pickWeighted(table, (id) => crWeight(MONSTER_GROUPS[id].cr ?? wantCR, wantCR) + 0.05);
       out.fromTable = true;
     }
@@ -1122,16 +1183,21 @@ export function buildEncounterMonsters(spec, o = {}) {
   const r = o.rng || makeRNG(o.seed != null ? o.seed : hashStr(`build:${level}:${depth}:${spec?.xp || 0}`));
   const out = [];
   for (const entry of arr(spec?.monsters)) {
-    const baseCR = num(getMonster(entry.id)?.cr, 0);
+    // An encounter may field a creature of its own (o.lookup); the stat block
+    // object goes through the same scaler as a catalogue id would.
+    const own = !getMonster(entry.id) && typeof o.lookup === 'function' ? o.lookup(entry.id) : null;
+    const source = own || entry.id;
+    const baseCR = num((own || getMonster(entry.id))?.cr, 0);
     for (let i = 0; i < Math.max(1, num(entry.count, 1)); i++) {
       const isBoss = !!entry.boss || entry.id === spec?.boss;
       // Deeper floors sprinkle elites; every fifth floor's headliner is a boss.
-      const eliteChance = depth > 0 ? clamp(0.05 + depth * 0.02, 0, 0.35) : clamp(0.04 + level / 100, 0, 0.25);
+      const eliteChance = o.noElites ? 0
+        : depth > 0 ? clamp(0.05 + depth * 0.02, 0, 0.35) : clamp(0.04 + level / 100, 0, 0.25);
       const elite = !isBoss && (entry.elite === true || r.chance(eliteChance));
       const outgrown = depth === 0 && !isBoss && (level - baseCR) > 2;
       const scaled = (depth > 0 || elite || isBoss || outgrown || o.forceScale)
-        ? scaleMonster(entry.id, level, { elite, boss: isBoss, depth, rng: r })
-        : makeMonster(entry.id, { rng: r, level });
+        ? scaleMonster(source, level, { elite, boss: isBoss, depth, rng: r })
+        : makeMonster(source, { rng: r, level });
       scaled.side = 'foe';
       out.push(scaled);
     }

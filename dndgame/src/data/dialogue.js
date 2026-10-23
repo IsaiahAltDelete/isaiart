@@ -35,6 +35,8 @@
 // docs/SETTING.md §5. Nothing is coined.
 
 import { SOUTH_DIALOGUE } from './dialogue_south.js';
+import { LEGEND_DIALOGUE } from './legends.js';
+import { BLACKSTAFF_DIALOGUE } from './blackstaff.js';
 
 // ---------------------------------------------------------------------------
 // deepFreeze — recursive Object.freeze for the exported catalogue (HARD RULE 8).
@@ -61,6 +63,11 @@ export const DIALOGUE = deepFreeze({
   toblen: {
     start: 'start',
     nodes: {
+      northernTraveler: {
+        speaker:'Toblen Stonehill',
+        text:"A carter came in talking about a white-haired drow fixing a pack beside the northbound trail in Neverwinter Wood, just south of the stream bridge. Drizzt, he reckoned.\n\nToblen folds a towel over his arm.\n\nPip asked whether he'd fought a dragon. The carter said he'd lent him a buckle. Pip found this an unsatisfactory use of a famous adventurer.",
+        goto:'hub',
+      },
       start: {
         speaker: 'Toblen Stonehill',
         text: "Room and board, friend? Or just the ale?\\p Sorry — sorry, I say it at the door now, I have said it so often the words come out before I look at who is standing there.\n\nToblen Stonehill. My name is on the sign and the sign is the best thing about the place. Trilena does the cooking, I do the worrying, and between the two of us the Stonehill stands up.",
@@ -79,6 +86,7 @@ export const DIALOGUE = deepFreeze({
             goto: 'rested',
           },
           { text: 'What is the news?', goto: 'news' },
+          { text: 'Any interesting travelers lately?', goto:'northernTraveler' },
           {
             text: 'You keep mentioning a brother.',
             if: { notFlag: 'seen:toblen:brother' },
@@ -3703,6 +3711,11 @@ export const DIALOGUE = deepFreeze({
   durnan: {
     start: 'start',
     nodes: {
+      silverVisitor: {
+        speaker:'Durnan',
+        text:"Alustriel Silverhand. At the table near Volo, sorting letters. Visiting her sister; asking sensible questions about the roads.\n\nHe sets another cup on the counter.\n\nShe pays her tab. That puts her ahead of several people with shorter titles.",
+        goto:'hub',
+      },
       start: {
         speaker: 'Durnan',
         text: "Two coppers the ale. One gold to go down the well. No refunds on either.\n\nHe is enormous, entirely grey, and drying a tankard with the patience of geology. Behind him, in the middle of the taproom floor, is a stone-rimmed well with a winch over it, and the rope goes a very long way down.\n\nDurnan. Sit anywhere that is not somebody.",
@@ -3712,6 +3725,7 @@ export const DIALOGUE = deepFreeze({
         speaker: 'Durnan',
         text: "Well?",
         choices: [
+          { text:'Who is the silver-haired traveler?',goto:'silverVisitor' },
           { text: 'Ale and a bed.', do: { shop: 'yawning-portal' }, goto: 'hub' },
           {
             text: 'A room for the night. [gold]8 gp[/]',
@@ -3785,6 +3799,28 @@ export const DIALOGUE = deepFreeze({
   volo: {
     start: 'start',
     nodes: {
+      legends: {
+        speaker:'Volothamp Geddarm',
+        text:"Famous acquaintances? Several. Correspondents? Innumerable. People who have corrected my books in the margins? We need not dwell on numbers.",
+        choices:[
+          {text:"Drizzt and the Companions of the Hall?",goto:'hall'},
+          {text:'Elminster?',goto:'oldMage'},
+          {text:'The Silverhands and the Blackstaff?',goto:'silverhands'},
+          {text:'Back to your book.',goto:'hub'},
+        ],
+      },
+      hall: {
+        speaker:'Volothamp Geddarm',
+        text:"Drizzt, Catti-brie, Bruenor, Wulfgar, Regis. A splendid company, with an infuriating habit of surviving long enough to dispute the account.\n\nHe lowers his voice.\n\nA carter placed Drizzt on the trail through Neverwinter Wood, south of the stream crossing. I have not verified it myself. Forests are dreadfully unaccommodating to a writing desk.",goto:'legends',
+      },
+      oldMage: {
+        speaker:'Volothamp Geddarm',
+        text:"The Sage of Shadowdale is visiting Candlekeep. Outside the gate, last I heard, with a parcel for one of the Avowed.\n\nVolo covers a heavily marked page with his sleeve.\n\nIf he asks whether I received his corrections, say that the matter is receiving the attention it deserves. That is both true and admirably difficult to measure.",goto:'legends',
+      },
+      silverhands: {
+        speaker:'Volothamp Geddarm',
+        text:"Laeral governs Waterdeep. Her sister Alustriel is visiting; you may have noticed the letters and the unusually patient expression. Vajra Safahr, our Blackstaff, has enough work keeping the city's magic in order without my assistance.\n\nHe straightens his collar.\n\nShe has said so. In writing. Her tower is in the Castle Ward: take the west opening from this ward's upper cross-street, then approach the silver mark on the black stone.",goto:'legends',
+      },
       start: {
         speaker: 'Volothamp Geddarm',
         text: "Stop! \\pStop exactly there, do not move, the light is doing something to your — no, it has gone.\n\nHe is up from the table before you have decided whether to be alarmed.\n\nVolothamp Geddarm. Volo, to my friends, my readers and, regrettably, my creditors. You are adventurers. You have the boots. Nobody who is not an adventurer has boots like that on purpose.",
@@ -3801,6 +3837,7 @@ export const DIALOGUE = deepFreeze({
             goto: 'notes',
           },
           { text: 'What are you actually writing?', goto: 'guide' },
+          { text:'Who have you met worth writing about?',goto:'legends' },
           { text: 'Have you ever been to Phandalin?', goto: 'phandalin' },
           {
             text: 'Twenty gold. No less. [Persuasion 14]',
@@ -4084,6 +4121,8 @@ export const DIALOGUE = deepFreeze({
   // =========================================================================
 
   ...SOUTH_DIALOGUE,
+  ...LEGEND_DIALOGUE,
+  ...BLACKSTAFF_DIALOGUE,
 
 });
 

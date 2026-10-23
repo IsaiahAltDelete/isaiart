@@ -4253,6 +4253,11 @@ export const SOUTH_DIALOGUE = {
   jaheira: {
     start: 'start',
     nodes: {
+      oldFriends: {
+        speaker:'Jaheira',
+        text:"Minsc sent a note. Three lines about helping someone, two about lunch, and a paw-print presented as Boo's considered opinion.\n\nShe puts it under the papers she intends to keep.\n\nThe hamster's spelling remains the better of the two. They do good where they find it. Often loudly. You could learn the first part without copying the second.",
+        goto:'hub',
+      },
       start: {
         speaker: 'Jaheira',
         text: "Sit down before somebody notices you standing. There. Now we may talk.\n\nThe back room of the Blushing Mermaid holds a table, a map of the south under a wine jug, and a half-elf woman who has been running Harper business out of this chair since before the Fist held the gates, and who looks up at you with the expression of a druid pricing a storm.\n\nJaheira. Yes, that one. No, we are not doing the part where you list what you have heard; half of it is wrong and the other half I was younger.",
@@ -4263,6 +4268,7 @@ export const SOUTH_DIALOGUE = {
         text: "Speak. I have letters to burn and a city to keep from noticing itself being kept.",
         choices: [
           { text: 'What are the Harpers doing in Baldur\'s Gate?', goto: 'harpers' },
+          {text:'Do you still hear from your old companions?',goto:'oldFriends'},
           { text: 'What work does the harp have for us?', goto: 'board' },
           { text: 'The Elfsong has stopped singing.', if: { quest: 'the-elfsong-silent' }, goto: 'elfsong' },
           { text: 'Come south with us, Harper.', goto: 'join' },

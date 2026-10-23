@@ -4269,9 +4269,9 @@ BOSS_LIST.push(
       phase(65, "\"You are stubborn. I respect that. It will not save you.\" It takes to the air and fights from above.", { passive: 'airborne' }),
       phase(30, "The dragon stops talking. Whatever charm it had is gone; there is only the green and the gas.", { passive: 'reckless' }),
     ],
-    intro: "A voice like oiled silk comes out of the ruined tower. \"Ah — visitors. Have you come to serve, or to be eaten? Choose quickly; I have very little patience and a great deal of appetite.\"",
+    intro: "Green wings unfold above the broken tower. \"Visitors. Have you come to serve, or to be eaten?\"",
     defeat: "Venomfang crashes through the tower's remaining floor and does not get up. Thundertree's ash settles slowly over green scales.",
-    ai: { archetype: 'boss', aggression: 0.85, selfPreserve: 0.5, preferredRange: 30 },
+    ai: { archetype: 'boss', aggression: 0.85, selfPreserve: 1, preferredRange: 30 },
     loot: {
       gold: '6d10*20',
       table: [['gem-emerald', 1.0], ['gem-jade', 1.0], ['scroll-4', 1.0], ['potion-superior-healing', 0.8], ['dragonguard', 0.2], ['dragon-cult-token', 0.5], ['ring-of-resistance-poison', 0.2]],

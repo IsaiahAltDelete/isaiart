@@ -98,8 +98,12 @@ export function progressQuests(st, kind, target, amount = 1) {
   const finished = [];
   for (const q of st.quests.active) {
     let changed = false;
+    // A generated quest marked `ordered` (data/quests.js) only advances its
+    // lowest unfinished phase, so "report back" cannot tick before the work.
+    const floor = q.def && q.def.ordered ? currentPhase(q) : null;
     for (const step of q.steps) {
       if (step.done) continue;
+      if (floor != null && (step.phase || 0) > floor) continue;
       if (step.kind !== kind) continue;
       if (step.target && step.target !== target) continue;
       step.progress = Math.min(step.count || 1, (step.progress || 0) + amount);
@@ -113,6 +117,13 @@ export function progressQuests(st, kind, target, amount = 1) {
     }
   }
   return finished;
+}
+
+/** The lowest phase that still has an unfinished step (ordered quests only). */
+export function currentPhase(q) {
+  let lo = null;
+  for (const s of (q && q.steps) || []) if (!s.done && (lo == null || (s.phase || 0) < lo)) lo = s.phase || 0;
+  return lo;
 }
 
 export function completeQuest(st, id) {

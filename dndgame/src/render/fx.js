@@ -327,6 +327,10 @@ let wKind = 'none', wIntensity = 0, wCount = 0, wBlend = 0, wNext = null;
 let wWind = 0, wWindTarget = 0, wFogA = 0, wFogB = 0, fogCanvas = null;
 let wGust = 0;                    // seconds left in the current gust swell
 
+// Effect systems plugged in with FX.addSystem (render/vfx.js): they tick, draw,
+// block and clear with FX, so every scene that already calls FX.draw shows them.
+const SYSTEMS = [];
+
 // Camera captured by the last FX.draw(), so screen-space weather can parallax.
 let camX = 0, camY = 0, lastCamX = 0, lastCamY = 0;
 let clock = 0;
@@ -398,6 +402,16 @@ export const FX = {
   speed: 1,
   COLORS,
   maxParticles: MAX_PARTICLES,
+
+  /**
+   * Plug in an effect system: { update(dt), draw(ctx, camX, camY), drawScreen(ctx),
+   * busy(), clear(all), active(part), counts() }, every member optional. `dt` is
+   * already scaled by FX.speed and clamped like FX's own.
+   */
+  addSystem(sys) {
+    if (sys && !SYSTEMS.includes(sys)) SYSTEMS.push(sys);
+    return sys;
+  },
 
   // =========================================================================
   // Spawners
@@ -800,6 +814,7 @@ export const FX = {
     for (let i = 0; i < novas.length; i++) if (novas[i].blocks && !novas[i].done) return true;
     for (let i = 0; i < slashes.length; i++) if (slashes[i].blocks && !slashes[i].done) return true;
     for (let i = 0; i < floaters.length; i++) if (floaters[i].blocks && !floaters[i].done) return true;
+    for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].busy && SYSTEMS[i].busy()) return true;
     return false;
   },
 
@@ -822,6 +837,7 @@ export const FX = {
     flashFx = null;
     for (let i = 0; i < MAX_SPLASH; i++) SPLASH[i].on = false;
     boltFlash = 0; boltStage = 0;
+    for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].clear) SYSTEMS[i].clear(all);
     if (all) {
       tintFx = null; vignetteFx = null;
       wKind = 'none'; wIntensity = 0; wCount = 0; wBlend = 0; wNext = null;
@@ -838,11 +854,13 @@ export const FX = {
   counts() {
     let p = 0;
     for (let i = 0; i < MAX_PARTICLES; i++) if (PARTICLES[i].alive) p++;
-    return {
+    const out = {
       particles: p, floaters: floaters.length, projectiles: projectiles.length,
       beams: beams.length, rings: rings.length, auras: auras.length,
       weather: wCount, busy: FX.busy(),
     };
+    for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].counts) Object.assign(out, SYSTEMS[i].counts());
+    return out;
   },
 
   /** Width in px of `text` in the built-in 5x7 face at `scale`. */
@@ -853,11 +871,40 @@ export const FX = {
   // =========================================================================
 
   update(dt) { updateAll(dt); },
-  draw(ctx, cx = 0, cy = 0) { drawWorld(ctx, cx, cy); },
+  /**
+   * World effects at camera (cx, cy). `{ floaters: false }` leaves the damage
+   * numbers out, for a scene that lifts them onto the 'world-ui' layer with
+   * drawFloaters() so the night grade and the weather never dim them.
+   */
+  draw(ctx, cx = 0, cy = 0, opts) { drawWorld(ctx, cx, cy, opts); },
+  drawFloaters(ctx, cx = 0, cy = 0) { camX = cx || 0; camY = cy || 0; drawFloaters(ctx); },
   /** Weather + grading + vignette. Engine draws this UNDER the UI scenes. */
   drawAmbient(ctx) { drawAmbient(ctx); },
+  /** drawAmbient's three parts, which the stage gives three layers. */
+  drawWeather(ctx) { if (FX.enabled) drawWeather(ctx); },
+  drawTint(ctx) { drawTint(ctx); },
+  drawVignette(ctx) { drawVignette(ctx); },
+  /**
+   * Would the matching draw paint anything this frame ('weather' | 'tint' |
+   * 'vignette' | 'screen')? The engine skips a layer nobody would draw into,
+   * which saves a clear and a composite on every quiet frame.
+   */
+  active(part) {
+    if (part === 'weather') return FX.enabled && wBlend > 0.01 && wKind !== 'none';
+    if (part === 'tint') return !!tintFx;
+    if (part === 'vignette') return !!vignetteFx;
+    if (part === 'screen') {
+      if (flashFx) return true;
+      for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].active && SYSTEMS[i].active('screen')) return true;
+      return false;
+    }
+    return true;
+  },
   /** The screen flash only. Engine draws this OVER everything. */
-  drawScreen(ctx) { drawFlash(ctx); },
+  drawScreen(ctx) {
+    drawFlash(ctx);
+    for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].drawScreen) SYSTEMS[i].drawScreen(ctx);
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -1035,6 +1082,7 @@ function updateAll(dtRaw) {
   if (vignetteFx && !vignetteFx.persistent) { vignetteFx.age += dt; if (vignetteFx.age >= vignetteFx.dur) vignetteFx = null; }
 
   updateWeather(dt);
+  for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].update) SYSTEMS[i].update(dt);
 }
 
 // ---------------------------------------------------------------------------
@@ -1056,10 +1104,11 @@ function jitterChain(c) {
 // DRAW — world layer (called by scenes with the camera origin)
 // ---------------------------------------------------------------------------
 
-function drawWorld(ctx, cx, cy) {
+function drawWorld(ctx, cx, cy, opts) {
   camX = cx || 0; camY = cy || 0;
   lastCamX = camX; lastCamY = camY;
-  if (!FX.enabled) { drawFloaters(ctx); return; }
+  const floats = !(opts && opts.floaters === false);
+  if (!FX.enabled) { if (floats) drawFloaters(ctx); return; }
 
   ctx.save();
   ctx.lineCap = 'round';
@@ -1075,8 +1124,9 @@ function drawWorld(ctx, cx, cy) {
   drawProjectiles(ctx);
   ctx.globalAlpha = 1;
   ctx.restore();
+  for (let i = 0; i < SYSTEMS.length; i++) if (SYSTEMS[i].draw) SYSTEMS[i].draw(ctx, camX, camY);
 
-  drawFloaters(ctx);
+  if (floats) drawFloaters(ctx);
 }
 
 function drawParticles(ctx) {
@@ -1468,7 +1518,16 @@ function drawFloaters(ctx) {
  */
 function drawAmbient(ctx) {
   if (FX.enabled) drawWeather(ctx);
+  drawTint(ctx);
+  drawVignette(ctx);
+}
 
+/**
+ * FX.tint's colour grade. On the stage this goes into the 'grade' layer, which
+ * is composited with multiply, so the default 'multiply' tint stacks with the
+ * overworld's own day/night grade exactly as it did on a shared canvas.
+ */
+function drawTint(ctx) {
   if (tintFx) {
     let a = tintFx.alpha;
     if (!tintFx.persistent) {
@@ -1484,7 +1543,9 @@ function drawAmbient(ctx) {
       ctx.restore();
     }
   }
+}
 
+function drawVignette(ctx) {
   if (vignetteFx) {
     let a = vignetteFx.amount;
     if (!vignetteFx.persistent) {
@@ -1510,7 +1571,6 @@ function drawAmbient(ctx) {
       ctx.restore();
     }
   }
-
 }
 
 /**

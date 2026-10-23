@@ -36,7 +36,7 @@ import {
 
 import {
   resolveAttack, resolveSave, abilityCheck, applyDamage, healTarget, grantTempHp,
-  distanceFt, lineOfSight, areaTiles, unitsInArea, opportunityCheck, rollInitiative,
+  distanceFt, footprintTiles, footprintSize, lineOfSight, areaTiles, unitsInArea, opportunityCheck, rollInitiative,
   isHostile, isAlly, tileOf, unitAt, resetTurnUses, grappleAction, shoveAction,
   reachFt, applyEffect, TILE_FLAGS, saveDCFor,
 } from './actions.js';
@@ -298,7 +298,12 @@ export class Encounter {
     }
     this._register();
 
-    this._deploy();
+    if(!this._deploy()){
+      this.state='blocked';
+      this.setupError='There is not enough open space for these combatants.';
+      this._push(this.setupError,'info');
+      return this;
+    }
     this._rollInitiative();
 
     // What the enemy side looked like when the fight opened, for morale: how many
@@ -377,33 +382,37 @@ export class Encounter {
     const place = (unit, spots, fallback) => {
       // An existing .pos survives if it is still a legal square (a battle continued
       // from a previous scene, or a summon that already has a spot).
-      if (unit.pos && free(unit.pos.x, unit.pos.y)) { claim(unit.pos.x, unit.pos.y); return; }
+      const fits = p => footprintTiles(unit,p).every(c=>free(c.x,c.y));
+      const reserve = p => footprintTiles(unit,p).forEach(c=>claim(c.x,c.y));
+      if (unit.pos && fits(unit.pos)) { reserve(unit.pos); return true; }
       let spot = null;
-      while (spots.length && !spot) { const s = spots.shift(); if (s && free(s.x, s.y)) spot = s; }
-      while (!spot && fallback.length) { const s = fallback.shift(); if (s && free(s.x, s.y)) spot = s; }
-      if (!spot) spot = this._nearestFree(Math.floor(this.w / 2), midY, taken);
+      while (spots.length && !spot) { const s = spots.shift(); if (s && fits(s)) spot = s; }
+      while (!spot && fallback.length) { const s = fallback.shift(); if (s && fits(s)) spot = s; }
+      if (!spot) spot = this._nearestFree(Math.floor(this.w / 2), midY, taken, unit);
+      if (!spot) return false;
       unit.pos = { x: spot.x, y: spot.y };
-      claim(spot.x, spot.y);
+      reserve(spot);
+      return true;
     };
 
-    for (const u of parties) place(u, partySpots, fallbackParty);
-    for (const u of foes) place(u, foeSpots, fallbackFoe);
+    for (const u of parties) if(!place(u, partySpots, fallbackParty))return false;
+    for (const u of foes) if(!place(u, foeSpots, fallbackFoe))return false;
+    return true;
   }
 
   /** Spiral out from a point until a legal, unclaimed square turns up. */
-  _nearestFree(cx, cy, taken = new Set()) {
+  _nearestFree(cx, cy, taken = new Set(), unit = null) {
     for (let r = 0; r < Math.max(this.w, this.h); r++) {
       for (let y = cy - r; y <= cy + r; y++) {
         for (let x = cx - r; x <= cx + r; x++) {
           if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r) continue;
-          if (!this._inBounds(x, y) || this._isSolid(x, y)) continue;
-          if (taken.has(kxy(x, y))) continue;
-          if (unitAt(this, x, y)) continue;
+          if (!footprintTiles(unit,{x,y}).every(p=>this._inBounds(p.x,p.y)&&!this._isSolid(p.x,p.y)
+            &&!taken.has(kxy(p.x,p.y))&&(!unitAt(this,p.x,p.y)||unitAt(this,p.x,p.y)===unit))) continue;
           return { x, y };
         }
       }
     }
-    return { x: clamp(cx, 1, this.w - 2), y: clamp(cy, 1, this.h - 2) };
+    return null;
   }
 
   /**
@@ -419,7 +428,8 @@ export class Encounter {
     const surprisedSide = this.ambushBy === 'party' ? 'foe' : (this.ambushBy === 'foe' ? 'party' : null);
     for (const u of this.units) {
       if (!u) continue;
-      const surprised = !!surprisedSide && u.side === surprisedSide && !hasFeat(u, 'alert');
+      const surpriseImmune=arr(mechOf(u).condImmune).includes('surprised')||arr(u.condImmune).includes('surprised');
+      const surprised = !!surprisedSide && u.side === surprisedSide && !hasFeat(u, 'alert') && !surpriseImmune;
       if (surprised) this._surprised.add(u.uid);
 
       let rec = safe(() => rollInitiative(this, u), null)
@@ -904,15 +914,17 @@ export class Encounter {
     for (const id of arr(sp.cantrips)) ids.add(id);
     for (const id of arr(sp.prepared)) ids.add(id);
     if (!ids.size) for (const id of safe(() => knownSpells(unit), []) || []) ids.add(id);
+    // Wielded cantrips supplement an existing prepared list as well.
+    for(const id of safe(() => knownSpells(unit), []) || [])if(getSpell(id)?.level===0)ids.add(id);
     if (!ids.size) return;
 
     const dc = safe(() => spellDC(unit), 10);
-    const atk = safe(() => spellAtk(unit), 0);
     const clvl = Math.max(1, num(unit.level, safe(() => casterLevel(unit), 1)));
 
     for (const id of ids) {
       const spell = getSpell(id);
       if (!spell) continue;
+      const atk = safe(() => spellAtk(unit,id), 0);
 
       const ct = lower(spell.castTime || 'action');
       const cost = ct === 'bonus' ? 'bonus' : ct === 'reaction' ? 'reaction' : 'action';
@@ -1264,11 +1276,14 @@ export class Encounter {
     if (['point', 'area', 'sphere', 'cone', 'line', 'cube', 'cylinder', 'wall', 'move'].includes(kind) || o.kind === 'move') {
       const p = tileOf(unit);
       const reach = Math.max(1, Math.round(range / FEET_PER_TILE));
-      for (let y = p.y - reach; y <= p.y + reach; y++) {
-        for (let x = p.x - reach; x <= p.x + reach; x++) {
+      const size=footprintSize(unit);
+      const teleport=arr(o.spellId && getSpell(o.spellId)?.effects).some(e=>e.kind==='teleport');
+      for (let y = p.y - reach; y < p.y + size + reach; y++) {
+        for (let x = p.x - reach; x < p.x + size + reach; x++) {
           if (!this._inBounds(x, y) || this._isSolid(x, y)) continue;
-          if (Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) > reach) continue;
-          if (t.needsLoS !== false && !lineOfSight(this, p, { x, y })) continue;
+          if (distanceFt(unit,{x,y}) > range) continue;
+          if (teleport && !this._squareFor(unit,x,y).stop) continue;
+          if (t.needsLoS !== false && !lineOfSight(this, unit, { x, y })) continue;
           tiles.push({ x, y });
         }
       }
@@ -1751,7 +1766,7 @@ export class Encounter {
     const originShape = ['cone', 'line', 'wall', 'beam', 'self'].includes(lower(tSpec.kind));
     if (!originShape && lower(spell.range) !== 'self') {
       const reach = rangeFeet(spell);
-      const aimPt = tgt.point || (tgt.unit ? tileOf(tgt.unit) : null);
+      const aimPt = tgt.unit || tgt.point;
       if (aimPt && reach < 9999) {
         const d = distanceFt(unit, aimPt);
         if (d > reach) {
@@ -1761,6 +1776,11 @@ export class Encounter {
       }
     }
 
+    const hop=arr(spell.effects).find(e=>e.kind==='teleport' && num(e.distance)>0 && num(e.distance)<9999);
+    if(hop && (!tgt.point || distanceFt(unit,tgt.point)>hop.distance || !this._squareFor(unit,tgt.point.x,tgt.point.y).stop)) {
+      this._push('There is not enough room to arrive there.','miss',unit);
+      return {ok:false,results,error:'invalid-destination'};
+    }
     const ct = lower(spell.castTime || 'action');
     const cost = ct === 'bonus' ? 'bonus' : ct === 'reaction' ? 'reaction' : 'action';
     if (!this._spend(unit, b, cost)) return { ok: false, results, error: 'no-economy' };
@@ -1847,7 +1867,7 @@ export class Encounter {
       else {
         const res = this._attack(unit, victim, {
           spell,
-          atkBonus: safe(() => spellAtk(unit), 0),
+          atkBonus: safe(() => spellAtk(unit,spellId), 0),
           damage: dmgDice ? { dice: dmgDice, type: spell.damage?.type || 'force', mod: 0 } : null,
           ranged: spell.attack === 'ranged',
           range: [rangeFeet(spell), rangeFeet(spell)],
@@ -1951,7 +1971,8 @@ export class Encounter {
       m.kind = 'monster';
       m.summonedBy = summoner.uid;
       m.name = m.name || 'Summoned creature';
-      const spot = this._nearestFree(tileOf(summoner).x, tileOf(summoner).y);
+      const spot = this._nearestFree(tileOf(summoner).x, tileOf(summoner).y, new Set(), m);
+      if(!spot){this._push('There is no space for another summoned creature.','info',summoner);break;}
       m.pos = { x: spot.x, y: spot.y };
       this.units.push(m);
       this._byUid.set(m.uid, m);
@@ -1976,14 +1997,12 @@ export class Encounter {
   _teleport(unit, point, distance = 30) {
     const from = { ...tileOf(unit) };
     if (!point) return { ok: false, from, to: from };
-    const maxTiles = Math.max(1, Math.round(distance / FEET_PER_TILE));
-    let dest = { x: point.x, y: point.y };
-    if (Math.max(Math.abs(dest.x - from.x), Math.abs(dest.y - from.y)) > maxTiles
-      || this._isSolid(dest.x, dest.y) || unitAt(this, dest.x, dest.y)) {
-      dest = this._nearestFree(dest.x, dest.y);
-    }
+    const dest = { x: point.x, y: point.y };
+    const travelled=distanceFt(unit,dest);
+    if (travelled > distance
+      || !this._squareFor(unit,dest.x,dest.y).stop) return {ok:false,from,to:from};
     unit.pos = { x: dest.x, y: dest.y };
-    this._push(`${unit.name} vanishes and reappears ${Math.round(Math.max(Math.abs(dest.x - from.x), Math.abs(dest.y - from.y)) * FEET_PER_TILE)} ft away.`, 'spell', unit);
+    this._push(`${unit.name} vanishes and reappears ${travelled} ft away.`, 'spell', unit);
     bus.emit(COMBAT_EV.MOVE, { enc: this, unit, from, to: dest, teleport: true });
     return { ok: true, from, to: dest };
   }
@@ -2625,6 +2644,16 @@ export class Encounter {
    * space is blocked outright unless you are two sizes larger than it.
    */
   _squareFor(unit, x, y) {
+    let through = null;
+    for(const p of footprintTiles(unit,{x,y})) {
+      const square = this._singleSquareFor(unit,p.x,p.y);
+      if(!square.pass)return square;
+      if(!square.stop)through=square.through;
+    }
+    return {pass:true,stop:!through,through};
+  }
+
+  _singleSquareFor(unit, x, y) {
     if (!this._inBounds(x, y) || this._isSolid(x, y)) return { pass: false, stop: false };
     const occ = unitAt(this, x, y);
     if (!occ || occ === unit) return { pass: true, stop: true };
@@ -2687,9 +2716,9 @@ export class Encounter {
           const sq = this._squareFor(unit, nx, ny);
           if (!sq.pass) continue;
           // No squeezing diagonally between two blocked corners.
-          if (dx && dy && (this._isSolid(cur.x + dx, cur.y) && this._isSolid(cur.x, cur.y + dy))) continue;
+          if (dx && dy && (!this._squareFor(unit,cur.x+dx,cur.y).pass && !this._squareFor(unit,cur.x,cur.y+dy).pass)) continue;
 
-          const difficult = !ignoreDifficult && this._isDifficult(nx, ny);
+          const difficult = !ignoreDifficult && footprintTiles(unit,{x:nx,y:ny}).some(p=>this._isDifficult(p.x,p.y));
           const step = FEET_PER_TILE * (difficult ? 2 : 1) * proneMult;
           const cost = cur.cost + step;
           if (cost > limit) continue;
@@ -2713,7 +2742,8 @@ export class Encounter {
     for (const [k, node] of best) {
       if (k === startKey) continue;
       if (node.stop === false) continue;                 // an ally is standing there
-      if (unitAt(this, node.x, node.y)) continue;
+      const occupant=unitAt(this,node.x,node.y);
+      if (occupant && occupant!==unit) continue;
       out.set(k, { x: node.x, y: node.y, cost: node.cost, path: node.path, difficult: !!node.difficult });
     }
     return out;
@@ -2750,6 +2780,7 @@ export class Encounter {
     out.to = start;
     if (!steps.length) return out;
     if (steps[0].x === start.x && steps[0].y === start.y) steps.shift();
+    if(steps.length&&!this._squareFor(unit,steps.at(-1).x,steps.at(-1).y).stop){out.stopped='occupied-destination';return out;}
 
     const proneMult = cm.prone ? 2 : 1;
     const ignoreDifficult = !!cm.ignoreDifficult;
@@ -2762,7 +2793,9 @@ export class Encounter {
       const sq = this._squareFor(unit, step.x, step.y);
       if (!sq.pass) { out.stopped = sq.blocker ? 'blocked-by-creature' : 'blocked'; break; }
 
-      const difficult = !ignoreDifficult && this._isDifficult(step.x, step.y);
+      if(dx&&dy&&!this._squareFor(unit,step.x,cur.y).pass&&!this._squareFor(unit,cur.x,step.y).pass){out.stopped='blocked';break;}
+
+      const difficult = !ignoreDifficult && footprintTiles(unit,step).some(p=>this._isDifficult(p.x,p.y));
       const cost = FEET_PER_TILE * (difficult ? 2 : 1) * proneMult;
       if (cost > budget.movement) { out.stopped = 'out-of-movement'; break; }
 
@@ -2807,7 +2840,7 @@ export class Encounter {
       if (this._readiedApproach(unit, prev, out)) { out.stopped = 'dropped'; this._sweepDeaths(); break; }
 
       // Damaging terrain (lava, a caltrop field).
-      if (this.map && typeof this.map.flagAt === 'function' && (num(this.map.flagAt(cur.x, cur.y)) & TILE_FLAGS.DAMAGE)) {
+      if (this.map && typeof this.map.flagAt === 'function' && footprintTiles(unit,cur).some(p=>num(this.map.flagAt(p.x,p.y))&TILE_FLAGS.DAMAGE)) {
         const dmg = rollExpr('1d10', this.rng);
         applyDamage(this, unit, dmg.total, 'fire', { source: null, label: 'burning ground' });
         this._push(`${unit.name} crosses scorching ground: 1d10 [${dmg.rolls.join(',')}] = ${dmg.total} fire damage.`, 'damage', unit);
@@ -3523,12 +3556,14 @@ export class Encounter {
   /** Squares this creature currently threatens, for the UI's threat overlay. */
   threatTiles(unit) {
     const out = [];
-    if (!unit || isDead(unit) || unit.hp <= 0) return out;
+    if (!unit || isDead(unit) || unit.hp <= 0 || unit._fled) return out;
     const p = tileOf(unit);
     const reach = Math.max(1, Math.round(reachFt(unit) / FEET_PER_TILE));
-    for (let y = p.y - reach; y <= p.y + reach; y++) {
-      for (let x = p.x - reach; x <= p.x + reach; x++) {
-        if ((x === p.x && y === p.y) || !this._inBounds(x, y) || this._isSolid(x, y)) continue;
+    const size=footprintSize(unit);
+    for (let y = p.y - reach; y < p.y + size + reach; y++) {
+      for (let x = p.x - reach; x < p.x + size + reach; x++) {
+        const distance=distanceFt(unit,{x,y});
+        if (!distance || distance>reachFt(unit) || !this._inBounds(x, y) || this._isSolid(x, y)) continue;
         out.push({ x, y });
       }
     }

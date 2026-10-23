@@ -25,6 +25,7 @@
 // Layout is 400x240 logical pixels. All text goes through UI.* — never ctx.fillText.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Game } from '../engine.js';
@@ -36,7 +37,7 @@ import { ABILITIES, ABILITY_NAMES, ABILITY_ABBR, mod as abMod } from '../rules/a
 
 import {
   pendingChoicesFor, applyLevel, profForLevel, className, subclassName,
-  levelForXp, activeClassId, classLevelOf, classEntry, hitDieSize,
+  levelForXp, pendingLevelsFor, activeClassId, classLevelOf, classEntry, hitDieSize,
   mythicChoicesFor, applyMythic, mythicLevel, mythicTierInfo, pendingMythic,
   MANEUVERS, METAMAGIC, INVOCATIONS, featuresAtLevel,
 } from '../rules/progression.js';
@@ -1292,7 +1293,7 @@ class AdvanceScene {
 
     const tabY = 31;
     const tabW = Math.floor((VIEW_W - 12) / 2);
-    UI.tabs(ctx, 6, tabY, VIEW_W - 12, [
+    MK.tabs(ctx, 6, tabY, VIEW_W - 12, [
       { label: 'Ability Scores', icon: 'star' },
       { label: 'Feats', icon: 'book' },
     ], this.asiTab, { h: 13 });
@@ -1661,15 +1662,7 @@ export class LevelUpScene extends AdvanceScene {
 
   /** Levels still owed to this character. */
   _unitsLeft(ch) {
-    if (!ch) return 0;
-    const flagged = num(ch?.flags?.pendingLevels, 0);
-    const byXp = safe(() => {
-      const { levelForXp, } = { levelForXp: null };
-      return 0;
-    }, 0);
-    // `pendingLevels` is the authority; fall back to the level table if it is absent.
-    if (flagged > 0) return flagged;
-    return byXp;
+    return pendingLevelsFor(ch);
   }
 
   _buildPreview() {

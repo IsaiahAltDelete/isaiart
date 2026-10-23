@@ -1543,7 +1543,8 @@ const SOUTH_QUESTS = [
 // 3f — THE CATALOGUE
 // ---------------------------------------------------------------------------
 
-const ALL_QUESTS = [].concat(MAIN_CHAIN, PHANDALIN_QUESTS, TOWNSFOLK_QUESTS, ROAD_QUESTS, SOUTH_QUESTS);
+import { ACADEMY_QUESTS } from './academy.js';
+const ALL_QUESTS = [].concat(MAIN_CHAIN, PHANDALIN_QUESTS, TOWNSFOLK_QUESTS, ROAD_QUESTS, SOUTH_QUESTS, ACADEMY_QUESTS);
 
 /** Every hand-written quest in the game, keyed by id. */
 export const QUESTS = deepFreeze(Object.fromEntries(ALL_QUESTS.map((q) => [q.id, q])));
@@ -2203,10 +2204,23 @@ function crBandFor(level, shift) {
   return [lo, hi];
 }
 
+/**
+ * Locations no warp leads to. Most are real procedural sites that the world
+ * director opens as landmarks once they are found; the rest (the Dessarin,
+ * Goldenfields, Mount Hotenow...) have no map at all yet. A contract sent to one
+ * of them could never be finished, so the stateless board never picks them.
+ */
+const UNREACHABLE = Object.freeze(new Set(['cragmaw-hideout', 'cragmaw-castle', 'thundertree', 'wyvern-tor',
+  'old-owl-well', 'sword-mountains', 'kryptgarden-forest', 'high-road', 'mere-of-dead-men', 'leilon',
+  'dessarin-valley', 'goldenfields', 'ardeep-forest', 'starmetal-hills', 'icespire-peak', 'mount-hotenow',
+  'the-underdark', 'phandalin-foothills', 'neverwinter', 'waterdeep', 'daggerford', 'baldurs-gate', 'bg-outer-city',
+  'beregost', 'chionthar', 'ulgoths-beard', 'the-way-inn', 'candlekeep-coast']));
+
 /** Locations whose level band contains `level`; widened until something matches. */
 function locationsFor(level, biomes) {
-  const inBand = QUEST_LOCATIONS.filter((L) => level >= L.band[0] && level <= L.band[1]);
-  const pool = inBand.length ? inBand : QUEST_LOCATIONS.slice();
+  const open = QUEST_LOCATIONS.filter((L) => !UNREACHABLE.has(L.id));
+  const inBand = open.filter((L) => level >= L.band[0] && level <= L.band[1]);
+  const pool = inBand.length ? inBand : open.slice();
   if (biomes && biomes.length) {
     const narrowed = pool.filter((L) => biomes.includes(L.biome));
     if (narrowed.length) return narrowed;
@@ -2287,23 +2301,348 @@ function pickRewardItems(r, boardDef, level) {
 
 let CONTRACT_SEQ = 0;
 
+// ---------------------------------------------------------------------------
+// 7a. OBJECTIVES THE ENGINE CAN HEAR
+//
+// A generated quest only ends if every step on it is one some part of the game
+// reports: reach (MAP_ENTER), kill (EV.DEATH), collect (ITEM_GAIN), flag
+// (FLAG_SET), and `report` / `deliver`, which rules/worlddirector.js progresses
+// when the party speaks to that person. Nothing emits 'clear', 'escort' or
+// 'talk'-at-the-end reliably, so no generated quest uses them.
+//
+// Every generated def carries `ordered: true` and a `phase` on each step;
+// state.js progressQuests then advances only the lowest unfinished phase, so a
+// report cannot be ticked off before the work it reports on, while the kills
+// inside one fight may land in any order.
+// ---------------------------------------------------------------------------
+
+/** How much each kind of job is worth, against a standard contract. */
+const KIND_WEIGHT = Object.freeze({
+  clear: 1.2, cull: 1.0, hunt: 1.5, bounty: 1.2, retrieve: 1.0, escort: 1.1,
+  deliver: 0.6, rescue: 1.2, investigate: 0.9, negotiate: 0.9,
+});
+export const QUEST_KINDS = Object.freeze(Object.keys(KIND_WEIGHT));
+
+/** Board template kinds -> the objective shape that realises them. */
+const KIND_OF_TEMPLATE = Object.freeze({ kill: 'cull', clear: 'clear', collect: 'retrieve', escort: 'cull', recon: 'investigate', boss: 'hunt' });
+
+const report = (target, text) => ({ kind: 'report', target, count: 1, text: text || '', map: null });
+
+function phased(step, phase, extra) {
+  const s = normStep(step);
+  s.phase = phase;
+  if (extra) Object.assign(s, extra);
+  return s;
+}
+
+function crOf(id) { return (MONSTERS[id] && MONSTERS[id].cr) || 0; }
+
+function xpOf(id) { return (MONSTERS[id] && MONSTERS[id].xp) || 10; }
+
 /**
- * Build an endless, scaled faction contract.
+ * Cut a pack down to what the party can be asked to face: at most `maxFoes`
+ * bodies and (when given) `budget` XP, the 2024 DMG encounter budget. The
+ * hangers-on go first, weakest first; then the rank and file down to one; the
+ * chief last of all. `keep` (a hunted beast, a wanted outlaw) is never cut.
+ */
+function trimPack(pack, maxFoes, budget, keep) {
+  const total = () => pack.reduce((a, e) => a + e.count, 0);
+  const xp = () => pack.reduce((a, e) => a + xpOf(e.id) * e.count, 0);
+  for (let guard = 0; guard < 64 && total() > 1 && (total() > maxFoes || (budget && xp() > budget)); guard++) {
+    const { foe, chief } = foeAndChief(pack);
+    const extras = pack.filter((e) => e !== foe && e !== chief && e.id !== keep).sort((a, b) => crOf(a.id) - crOf(b.id));
+    let cut = extras[0] || null;
+    if (!cut && foe && foe.id !== keep && foe.count > 1) cut = foe;
+    if (!cut && chief && chief.id !== keep && foe) cut = chief;
+    if (!cut && foe && foe.id !== keep && chief) cut = foe;
+    if (!cut) break;
+    cut.count--;
+    if (cut.count <= 0) pack.splice(pack.indexOf(cut), 1);
+  }
+  return pack;
+}
+
+/** A pack rolled from a MONSTER_GROUPS entry: [{ id, count }]. */
+function packFromGroup(r, groupId) {
+  const g = MONSTER_GROUPS && MONSTER_GROUPS[groupId];
+  if (!g) return [];
+  const out = [];
+  for (const m of g.members || []) {
+    const [id, lo, hi] = m;
+    if (!MONSTERS[id] || NOT_QUARRY.has(id)) continue;
+    const n = r.int(lo | 0, Math.max(lo | 0, hi | 0));
+    if (n > 0) out.push({ id, count: n });
+  }
+  if (!out.length) {
+    const m = (g.members || []).find((e) => MONSTERS[e[0]]);
+    if (m) out.push({ id: m[0], count: Math.max(1, m[1] | 0) });
+  }
+  return out;
+}
+
+/** The rank and file (most numerous) and the chief (hardest, if harder). */
+function foeAndChief(pack) {
+  if (!pack.length) return { foe: null, chief: null };
+  const foe = pack.reduce((b, e) => ((e.count > b.count || (e.count === b.count && crOf(e.id) < crOf(b.id))) ? e : b));
+  let chief = null;
+  for (const e of pack) if (e !== foe && crOf(e.id) > crOf(foe.id) && (!chief || crOf(e.id) > crOf(chief.id))) chief = e;
+  return { foe, chief };
+}
+
+function monName(id) { return (MONSTERS[id] && MONSTERS[id].name) || titleCase(id); }
+
+const DEFAULT_TITLES = Object.freeze({
+  clear: ['Clear {place}', 'The {band} {prep}'], cull: ['{foes} {prep}', 'Too Many {foes}'],
+  hunt: ['{named}', 'The Hunt for {named}'], bounty: ['Wanted: {named}'],
+  retrieve: ['The {item}', 'What Was Taken {prep}'], escort: ['Wagons to {to}', 'Escort to {to}'],
+  deliver: ['A Parcel for {receiver}', 'Carried to {to}'], rescue: ['Bring Back {captive}', 'Held {prep}'],
+  investigate: ['What Happened {prep}', 'A Look {prep}'], negotiate: ['A Word with {with}', 'Terms for {with}'],
+});
+
+const NEEDS_FOES = new Set(['clear', 'cull', 'hunt', 'bounty', 'rescue']);
+
+/**
+ * Words for a giver's own trade — the work a person has when no event is
+ * asking. Keyed by objective kind, then faction id or NPC role, then `default`.
+ * Tokens: {giver} {place} {prep} {foes} {band} {item} {to} {receiver} {captive} {named} {with}.
+ */
+function job(title, desc) { return { title, desc }; }
+export const JOB_TEXT = deepFreeze({
+  deliver: {
+    harpers: [job('A Letter for {receiver}', 'A letter, sealed, for {receiver} in {to}. Carry it yourself, give it into their hand and nobody else\'s, and if anyone asks, you are carrying nothing at all.')],
+    'lords-alliance': [job('Dispatches for {to}', 'Alliance dispatches for {receiver} in {to}. The seal is your authority on the road; the lateness, if they are late, will be yours too.')],
+    zhentarim: [job('A Parcel That Stays Shut', 'A parcel for {receiver} in {to}. It is not heavy and it is not to be opened, and the fee is rather more than the weight would suggest.')],
+    priest: [job('Medicines for {to}', 'A physician\'s chest for {receiver} in {to}, where the sick outnumber the beds. It is only bandages and salves. It will not feel like only that to them.')],
+    default: [
+      job('A Parcel for {receiver}', '{giver} has a parcel for {receiver} in {to} and nobody going that way they would trust with it. The pay is fair; the road is the road.'),
+      job('Carried to {to}', 'Something small and valuable needs to be in {to} by the next market. {giver} will pay you to be the one carrying it, and pay {receiver} the rest on arrival.'),
+    ],
+  },
+  escort: {
+    default: [
+      job('Wagons to {to}', '{giver} is sending wagons {prep} and on to {to}, and the drivers want blades riding with them. There has been trouble on that road, and it has a way of knowing when the wagons leave.'),
+      job('Outriders Wanted', 'Outriders wanted for a wagon train {prep}, bound for {to}. Ride with it, see off whatever comes out of the ditches, and hand the wagons to {receiver}.'),
+    ],
+  },
+  retrieve: {
+    zhentarim: [job('The Wrong Hands', 'Something that belongs to the Network is sitting {prep} with {foes} around it. Recover the {item} and bring it back to {giver}, and the Network will remember who was useful.')],
+    priest: [job('What Was Taken from the Shrine', 'The {item} was taken from the shrine and carried {prep}. {giver} wants it back where it belongs, and does not ask what the thieves were planning to do with it.')],
+    'emerald-enclave': [job('What the Wood Needs', 'The {item} grows {prep}, and only there. {giver} needs it, and needs someone who can tell it from the three plants that look like it and will kill you.')],
+    default: [
+      job('The {item}', '{giver} lost the {item} {prep} to the {foes}, and would pay well to have it back. Nobody needs to explain to anyone how it got there.'),
+      job('What Was Taken {prep}', 'The {foes} {prep} have something of {giver}\'s: the {item}. Get it back.'),
+    ],
+  },
+  rescue: {
+    harpers: [job('One of Ours {prep}', 'A friend of the Harpers went {prep} and did not come back. {captive} is alive, as far as anyone knows. Bring them out, quietly if you can.')],
+    default: [
+      job('Bring Back {captive}', '{captive} went {prep} three days ago and never came home. The {foes} out there took them, and {giver} will pay for them brought back breathing.'),
+      job('Held {prep}', 'The {foes} {prep} are holding {captive}. Nobody has offered a ransom and nobody means to pay one. {giver} would rather pay you.'),
+    ],
+  },
+  investigate: {
+    harpers: [job('A Quiet Look {prep}', 'The Harpers want someone unremarkable to go {prep}, look, and come back able to describe it. No banners, no bodies left in the road.')],
+    noble: [job('Questions {prep}', 'Something is wrong {prep}, and {giver} would like to know what before anyone else does.')],
+    default: [job('What Happened {prep}', 'Nobody who has been {prep} lately will say what they saw there. {giver} wants to know, and is prepared to pay for the knowing.')],
+  },
+  negotiate: {
+    zhentarim: [job('A Word with {with}', '{with} has been slow to understand how business is done now. Explain it to them, kindly. The Network prefers kindly. It only prefers it.')],
+    default: [job('Terms for {with}', '{with} is being difficult about a debt, a boundary and a grudge, in that order. {giver} would like it settled with words, by someone the other side will listen to.')],
+  },
+  cull: {
+    'emerald-enclave': [job('Too Many {foes}', 'There are too many {foes} {prep} and the ground cannot carry them. Cull them back to a number the land can feed, and no further.')],
+    default: [job('{foes} {prep}', 'The {foes} {prep} have grown bold enough to take a traveller. {giver} pays by the head.')],
+  },
+  clear: {
+    gauntlet: [job('Purge {place}', 'The Order does not besiege. It goes in. Whatever has made a lair {prep} is to be put down entire.')],
+    'lords-alliance': [job('Open the Road {prep}', 'The {band} {prep} have made the road a toll. {giver} wants them broken, their leader with them, before the caravan masters start pricing it in.')],
+    default: [job('The {band} {prep}', 'The {band} {prep} are a danger to anyone passing. {giver} wants them broken and their leader brought down.')],
+  },
+  hunt: {
+    gauntlet: [job('Judgement: {named}', 'The Order has heard the case against {named} {prep}. What remains is the carrying out of the sentence.')],
+    'emerald-enclave': [job('{named}', '{named} {prep} has grown past what the country can hold, and will not be driven. The Enclave regrets it. It still has to be done.')],
+    default: [job('The Hunt for {named}', '{named} has been taking stock and travellers {prep}. {giver} wants proof it is dead.')],
+  },
+  bounty: {
+    default: [job('Wanted: {named}', '{named} and a gang of {foes} have been robbing travellers {prep}. {giver} pays on proof, and does not ask whether {named} came quietly.')],
+  },
+});
+
+/**
+ * Build a quest the world director asked for. `o` (all optional but `kind`):
+ *   kind       one of QUEST_KINDS
+ *   id, title, desc                     text, already filled by the caller
+ *   giver      { id, name }             who pays; `report` steps go back to them
+ *   faction    board id for the purse, reward items and standing
+ *   place      { map, name, prep, biome, town }   where the work is
+ *   group | pack [[id, n]] | foe        who is in the way (a MONSTER_GROUPS id, an explicit pack, or one creature)
+ *   named      a proper name for a hunted beast or a wanted outlaw
+ *   item       { id, name }             retrieve / deliver
+ *   captive    { name, sprite }         rescue
+ *   clue       { text, skill, dc }      investigate (and gather: a found item)
+ *   to         { map, name, npc, npcName }   escort / deliver destination
+ *   with       { npc?, name, sprite? }  negotiate partner
+ *   size       party size (caps the pack), severity (1-3), tier (TIER_W key)
+ * Anything else on `o` that the director uses later (event, resolves, outcome,
+ * exclusive, followup, reveals, flag, crime, deadline) is carried through as is.
+ */
+function directedQuest(level, r, o) {
+  const kind = KIND_WEIGHT[o.kind] != null ? o.kind : 'cull';
+  const P = o.place || { map: 'triboar-trail', name: 'the Triboar Trail', prep: 'on the Triboar Trail', biome: 'road' };
+  const giver = o.giver && o.giver.id ? o.giver : { id: 'harbin-wester', name: npcName('harbin-wester') };
+  const maxFoes = clamp(Math.round(1 + (o.size || 1) * 1.5 + level / 4), 2, 9);
+  const id = o.id || `dq-${level}-${r.int(100000, 999999)}`;
+
+  // --- who is in the way ----------------------------------------------------
+  let pack = [];
+  if (Array.isArray(o.pack) && o.pack.length) {
+    pack = o.pack.map((e) => (Array.isArray(e) ? { id: e[0], count: Math.max(1, e[1] | 0) } : { id: e.id, count: Math.max(1, e.count | 0) }))
+      .filter((e) => MONSTERS[e.id]);
+  } else if (o.group) pack = packFromGroup(r, o.group);
+  if (o.foe && MONSTERS[o.foe] && !pack.some((e) => e.id === o.foe)) pack.unshift({ id: o.foe, count: 1 });
+  if (!pack.length && (NEEDS_FOES.has(kind) || o.foe)) {
+    const [lo, hi] = crBandFor(level, kind === 'hunt' ? 1.5 : 0);
+    const fid = pickFoe(r, P.biome, lo, hi, o.types);
+    if (fid) pack = [{ id: fid, count: kind === 'hunt' ? 1 : clamp(r.int(3, 5), 2, maxFoes) }];
+  }
+  const keep = (kind === 'hunt' || kind === 'bounty') ? (o.foe || null) : null;
+  trimPack(pack, maxFoes, o.budget || 0, keep);
+  const { foe, chief } = foeAndChief(pack);
+  // A hunt or a bounty is after ONE creature; whatever runs with it is escort.
+  let quarry = null;
+  if (kind === 'hunt' || kind === 'bounty') {
+    quarry = (o.foe && pack.find((e) => e.id === o.foe)) || chief || foe;
+  }
+  const foes = foe ? pluralize(monName(foe.id)) : 'Raiders';
+
+  const vars = {
+    place: P.name, prep: P.prep, foe: foe ? monName(foe.id) : '', foes,
+    pack: (o.group && MONSTER_GROUPS[o.group] && MONSTER_GROUPS[o.group].name) || foes,
+    band: foe ? bandName(MONSTERS[foe.id], r) : 'Raiders',
+    named: o.named || (quarry ? `the ${monName(quarry.id)}` : ''),
+    item: (o.item && o.item.name) || '', captive: (o.captive && o.captive.name) || '',
+    to: (o.to && o.to.name) || '', receiver: (o.to && o.to.npcName) || '', with: (o.with && o.with.name) || '',
+    giver: giver.name,
+  };
+
+  // --- objectives -------------------------------------------------------------
+  const S = [];
+  const at = P.map;
+  if (!P.town && kind !== 'escort' && kind !== 'deliver') S.push(phased(reach(at, `Travel ${P.prep}`), 0));
+  let phase = 1;
+  const killRanks = (label) => {
+    if (foe) S.push(phased(kill(foe.id, foe.count, label || `Break the ${foes} ${P.prep}`, at), phase));
+    if (chief) S.push(phased(kill(chief.id, chief.count, chief.count > 1 ? `Bring down the ${pluralize(monName(chief.id))} leading them` : `Bring down their ${monName(chief.id)}`, at), phase));
+  };
+  switch (kind) {
+    case 'clear': killRanks(); phase++; break;
+    case 'cull': if (foe) S.push(phased(kill(foe.id, foe.count, `Kill ${foe.count} ${foes} ${P.prep}`, at), phase)); phase++; break;
+    case 'hunt':
+    case 'bounty':
+      if (quarry) S.push(phased(kill(quarry.id, 1, kind === 'bounty' ? `Take ${vars.named}, dead or alive` : `Slay ${vars.named}`, at), phase));
+      phase++; break;
+    case 'retrieve':
+      if (!o.gather && foe) { killRanks(`Deal with the ${foes} holding it`); }
+      if (o.item) S.push(phased(collect(o.item.id, 1, o.gather ? `Find the ${o.item.name} ${P.prep}` : `Recover the ${o.item.name}`, at), phase));
+      phase++;
+      if (o.item) S.push(phased({ kind: 'deliver', target: giver.id, count: 1, text: `Bring the ${o.item.name} to ${giver.name}` }, phase, { item: o.item.id }));
+      phase++; break;
+    case 'escort': {
+      const to = o.to || { map: 'phandalin', name: 'Phandalin', npc: giver.id, npcName: giver.name };
+      S.push(phased(reach(at, `Ride out with the wagons ${P.prep}`), 0));
+      if (foe) killRanks(`Beat off the ${foes} that come for the wagons`);
+      phase++;
+      S.push(phased(reach(to.map, `See the wagons safely into ${to.name}`), phase)); phase++;
+      S.push(phased(report(to.npc, `Hand the wagons over to ${to.npcName}`), phase)); phase++;
+      break;
+    }
+    case 'deliver': {
+      const to = o.to || { map: 'phandalin', name: 'Phandalin', npc: 'elmar-barthen', npcName: npcName('elmar-barthen') };
+      S.push(phased(reach(to.map, `Carry it to ${to.name}`), 0));
+      S.push(phased({ kind: 'deliver', target: to.npc, count: 1, text: `Deliver the ${(o.item && o.item.name) || 'parcel'} to ${to.npcName}` }, 1, o.item ? { item: o.item.id } : null));
+      phase = 2; break;
+    }
+    case 'rescue':
+      if (foe) killRanks(`Deal with the ${vars.pack} holding ${vars.captive || 'them'}`);
+      phase++;
+      S.push(phased(flagStep(`dq:${id}:freed`, `Free ${vars.captive || 'the prisoners'}`), phase)); phase++;
+      break;
+    case 'investigate':
+      S.push(phased(flagStep(`dq:${id}:clue`, `Search ${P.prep} for what happened`), phase)); phase++;
+      if (o.confront && foe) { S.push(phased(kill(foe.id, 1, `Confront the ${monName(foe.id)}`, at), phase)); phase++; }
+      break;
+    case 'negotiate':
+      S.push(phased(flagStep(`dq:${id}:agreed`, `Bring ${vars.with || 'them'} to terms`), phase)); phase++;
+      break;
+    default: break;
+  }
+  if (kind !== 'escort' && kind !== 'deliver' && kind !== 'retrieve') S.push(phased(report(giver.id, `Return to ${giver.name}`), phase));
+
+  // --- purse ------------------------------------------------------------------
+  const bd = (o.faction && FACTION_CONTRACTS[o.faction]) || null;
+  const w = (o.tier && TIER_W[o.tier] != null ? TIER_W[o.tier] : KIND_WEIGHT[kind]) * (1 + 0.15 * Math.max(0, (o.severity || 1) - 1));
+  const xp = Math.max(20, Math.round(xpFor(level, w) * (bd ? bd.xpMult : 1) / 10) * 10);
+  const gold = Math.max(5, Math.round(goldFor(level, w) * (bd ? bd.goldMult : 0.9) * (o.goldMult || 1) / 5) * 5);
+  const rep = [];
+  if (bd) {
+    rep.push({ id: bd.id, amount: Math.max(1, Math.round(((bd.rep.perContract || 3) + Math.floor(level / 5) * (bd.rep.perTier || 1)) * Math.min(1.5, w))) });
+    for (const k of Object.keys(bd.rivals || {})) rep.push({ id: k, amount: bd.rivals[k] });
+  }
+  const items = itemList(o.rewardItems || (bd && w >= 0.8 ? pickRewardItems(r, bd, level).slice(0, w >= 1.2 ? 2 : 1) : []));
+
+  const t0 = fill(o.title || r.pick(DEFAULT_TITLES[kind]) || '{place}', vars) || P.name;
+  // '{named}' may open on 'the', and 'The {item}' must not read 'The A Merchant's Ledger'.
+  const title = (t0.charAt(0).toUpperCase() + t0.slice(1)).replace(/\b(The|A|An) (?:A|An|The) /, '$1 ');
+  const d0 = fill(o.desc || '', vars) || `${giver.name} has work ${P.prep}.`;
+  const desc = (d0.charAt(0).toUpperCase() + d0.slice(1)).replace(/\b([Tt]he|[Aa]n?) (?:A|An|The) (?=[A-Z])/g, '$1 ');
+
+  return {
+    id, title, giver: giver.id, type: kind, minLevel: level, desc,
+    summary: `${bd ? bd.short : giver.name}: ${title}`,
+    steps: S,
+    rewards: { xp, gold, items, rep },
+    next: null, unlocks: [], repeatable: false, faction: bd ? bd.id : (o.faction || null),
+    chain: null, after: [], requires: [], forbid: [], sets: [],
+    map: at, turnIn: giver.id,
+    generated: true, ordered: true, director: true, kind,
+    template: o.template || `director-${kind}`, location: at, biome: P.biome || null,
+    foe: quarry ? quarry.id : (foe ? foe.id : null), board: bd ? bd.name : null, rank: bd ? rankFor(bd, level) : '',
+    site: {
+      map: at, town: !!P.town, name: P.name, prep: P.prep,
+      pack: pack.length && kind !== 'deliver' && kind !== 'negotiate' && !(kind === 'retrieve' && o.gather) ? pack : null,
+      lead: quarry ? vars.named : (chief ? monName(chief.id) : (foe ? monName(foe.id) : null)),
+      boss: kind === 'hunt' || !!o.boss,
+      captive: o.captive || null, clue: o.clue || null, gather: !!o.gather,
+      item: o.item || null, with: o.with || null, confront: !!o.confront,
+      to: o.to || null,
+    },
+    // carried for the director; harmless to anyone else
+    event: o.event || null, resolves: !!o.resolves, outcome: o.outcome || null, exclusive: o.exclusive || null,
+    followup: o.followup || null, reveals: o.reveals || null, flag: o.flag || null, crime: !!o.crime,
+    deadline: o.deadline || null, start: o.start || null, giverName: giver.name,
+  };
+}
+
+/**
+ * Build an endless, scaled quest.
  *
- *   generateQuest(partyLevel, rngi) -> quest
+ *   generateQuest(partyLevel, rngi)         -> a faction contract off one of the five boards
+ *   generateQuest(partyLevel, rngi, opts)   -> the quest the world director asked for (see directedQuest)
  *
  * `rngi` may be an RNG from core/rng.js, a numeric or string seed, or omitted
  * (the global stream is used). The returned quest is a fresh, unfrozen object
  * carrying `generated: true`, which is what state.js looks for when it decides
  * to store the definition inside the save file.
  */
-export function generateQuest(partyLevel = 1, rngi) {
+export function generateQuest(partyLevel = 1, rngi, opts) {
   const r = toRNG(rngi);
   const level = clamp(Math.round(Number(partyLevel) || 1), 1, 30);
 
   try {
+    if (opts && opts.kind) return directedQuest(level, r, opts);
+
     // --- who is hiring ----------------------------------------------------
-    const fid = r.pick(FACTION_IDS) || 'lords-alliance';
+    const fid = (opts && opts.faction && FACTION_CONTRACTS[opts.faction]) ? opts.faction : (r.pick(FACTION_IDS) || 'lords-alliance');
     const bd = FACTION_CONTRACTS[fid] || FACTION_CONTRACTS['lords-alliance'];
     const t = r.pick(bd.templates) || bd.templates[0];
 
@@ -2312,119 +2651,46 @@ export function generateQuest(partyLevel = 1, rngi) {
     const L = r.pick(locationsFor(level, biomePool)) || QUEST_LOCATIONS[0];
 
     // --- what -------------------------------------------------------------
+    const kind = KIND_OF_TEMPLATE[t.kind] || 'cull';
     const [crLo, crHi] = crBandFor(level, t.crShift);
     const foeId = pickFoe(r, L.biome, crLo, crHi, t.types);
-    const foe = MONSTERS[foeId] || null;
-    const foeName = foe ? foe.name : 'Raider';
-    const pack = t.kind === 'clear' ? pickPack(r, L.biome, level) : null;
-
-    const vars = {
-      foe: foeName,
-      foes: pluralize(foeName),
-      band: bandName(foe, r),
-      place: L.name,
-      prep: L.prep,
-      pack: pack ? pack.name : pluralize(foeName),
-      item: '',
-    };
-
-    // --- objectives -------------------------------------------------------
-    const baseCount = r.int(t.count[0], t.count[1] || t.count[0]);
-    const count = clamp(Math.round(baseCount * (1 + level / 40)), 1, 20);
-    const steps = [];
-    let haulId = null;
-
-    if (t.kind === 'collect') {
-      haulId = r.pick(HAUL_ITEMS) || null;
-      let haulName = 'the goods';
-      if (haulId) { try { haulName = itemName(haulId); } catch (e) { haulName = 'the goods'; } }
-      vars.item = haulName;
-      steps.push(reach(L.map, `Travel ${L.prep}`));
-      if (haulId) steps.push(collect(haulId, count, `Recover ${count} ${pluralize(haulName)} ${L.prep}`, L.map));
-      steps.push(kill(foeId, Math.max(2, Math.round(count / 2)), `Get past the ${vars.foes} holding them`, L.map));
-      if (bd.giver) steps.push(deliver(bd.giver, `Deliver the haul to ${npcName(bd.giver)}`));
-    } else if (t.kind === 'clear') {
-      steps.push(reach(L.map, `Travel ${L.prep}`));
-      steps.push(kill(foeId, count, `Break the ${vars.foes} ${L.prep}`, L.map));
-      steps.push(clear(L.map, `Clear ${L.name} out entire`));
-    } else if (t.kind === 'escort') {
-      steps.push(reach(L.map, `Take the road ${L.prep}`));
-      steps.push(kill(foeId, count, `Beat off the ${vars.foes} on the road`, L.map));
-      if (bd.giver) steps.push(deliver(bd.giver, `Report the run to ${npcName(bd.giver)}`));
-    } else if (t.kind === 'recon') {
-      steps.push(reach(L.map, `Travel ${L.prep} and see it for yourself`));
-      steps.push(kill(foeId, Math.max(1, Math.round(count / 2)), `Deal with the ${vars.foes} in the way`, L.map));
-      if (bd.giver) steps.push(talk(bd.giver, `Report to ${npcName(bd.giver)}`));
-    } else if (t.kind === 'boss') {
-      steps.push(reach(L.map, `Travel ${L.prep}`));
-      steps.push(kill(foeId, 1, `Bring down the ${foeName} ${L.prep}`, L.map));
-      if (bd.giver) steps.push(deliver(bd.giver, `Bring the proof to ${npcName(bd.giver)}`));
-    } else {
-      steps.push(reach(L.map, `Travel ${L.prep}`));
-      steps.push(kill(foeId, count, `Kill ${count} ${vars.foes} ${L.prep}`, L.map));
+    const count = clamp(Math.round(r.int(t.count[0], t.count[1] || t.count[0]) * (1 + level / 40)), 1, 8);
+    let item = null;
+    if (kind === 'retrieve') {
+      const haulId = r.pick(HAUL_ITEMS) || null;
+      if (haulId) { let nm = 'the goods'; try { nm = itemName(haulId); } catch (e) { /* keep */ } item = { id: haulId, name: nm }; }
     }
-
-    // --- purse ------------------------------------------------------------
-    const w = t.kind === 'boss' ? 1.6 : 1;
-    const xp = Math.max(20, Math.round(xpFor(level, w) * (t.xpMult || 1) * (bd.xpMult || 1) / 10) * 10);
-    const gold = Math.max(5, Math.round(goldFor(level, w) * (t.goldMult || 1) * (bd.goldMult || 1) / 5) * 5);
-    const repAmount = Math.max(1, Math.round(((bd.rep.perContract || 3) + Math.floor(level / 5) * (bd.rep.perTier || 1)) * (t.repMult || 1)));
-    const rep = [{ id: fid, amount: repAmount }];
-    for (const k of Object.keys(bd.rivals || {})) rep.push({ id: k, amount: bd.rivals[k] });
-
-    const title = fill(r.pick(t.titles) || '{foes} {prep}', vars);
-    const desc = fill(t.desc, vars);
-
+    const vars = { foe: monName(foeId), foes: pluralize(monName(foeId)), band: bandName(MONSTERS[foeId], r), place: L.name, prep: L.prep, item: item ? item.name : '' };
     CONTRACT_SEQ = (CONTRACT_SEQ + 1) % 100000;
-    const id = `contract-${fid}-${t.id}-${r.int(1000, 9999)}${CONTRACT_SEQ}`;
-
-    return {
-      id,
-      title: title || `${vars.foes} ${L.prep}`,
-      giver: bd.giver || null,
-      type: t.type || 'kill',
-      minLevel: level,
-      desc: desc || `${bd.name} pays for work done ${L.prep}.`,
-      summary: `${bd.short}: ${title}`,
-      steps: steps.map(normStep).filter(Boolean),
-      rewards: { xp, gold, items: itemList(pickRewardItems(r, bd, level)), rep },
-      next: null,
-      unlocks: [],
-      repeatable: true,
-      faction: fid,
-      chain: null,
-      after: [],
-      requires: [],
-      forbid: [],
-      sets: [],
-      map: L.map,
-      turnIn: bd.giver || null,
-      // --- procedural extras -------------------------------------------------
-      generated: true,
-      template: t.id,
-      location: L.id,
-      biome: L.biome,
-      foe: foeId,
-      pack: pack ? pack.id : null,
-      board: bd.name,
-      rank: rankFor(bd, level),
-    };
+    return directedQuest(level, r, {
+      kind, faction: fid, template: t.id,
+      id: `contract-${fid}-${t.id}-${r.int(1000, 9999)}${CONTRACT_SEQ}`,
+      giver: { id: bd.giver, name: npcName(bd.giver) },
+      place: { map: L.map, name: L.name, prep: L.prep, biome: L.biome },
+      pack: [[foeId, kind === 'hunt' ? 1 : count]], foe: kind === 'hunt' ? foeId : null,
+      named: kind === 'hunt' ? `the ${vars.foe} ${L.prep}` : null,
+      item, goldMult: (t.goldMult || 1),
+      title: fill(r.pick(t.titles) || '{foes} {prep}', vars), desc: fill(t.desc, vars),
+      clue: kind === 'investigate' ? { text: `You walk ${L.prep} and see it plainly: where the tracks go, how many, and how recently.`, skill: 'survival', dc: 12 } : null,
+    });
   } catch (e) {
     // Absolute fallback: a plain bounty that cannot fail to build.
     const gold = goldFor(level, 1);
     return {
       id: `contract-fallback-${level}-${(CONTRACT_SEQ = (CONTRACT_SEQ + 1) % 100000)}`,
       title: 'Wolves on the Triboar Trail',
-      giver: 'harbin-wester', type: 'kill', minLevel: level,
+      giver: 'harbin-wester', type: 'cull', minLevel: level,
       desc: 'A standing bounty off the board at the Townmaster\'s Hall. The coin is real; the reading is on you.',
       summary: 'Clear the wolves off the Triboar Trail.',
-      steps: [normStep(kill('wolf', 6, 'Kill six wolves on the Triboar Trail', 'triboar-trail'))],
+      steps: [phased(reach('triboar-trail', 'Travel to the Triboar Trail'), 0), phased(kill('wolf', 4, 'Kill four wolves on the Triboar Trail', 'triboar-trail'), 1),
+        phased(report('harbin-wester', 'Return to Harbin Wester'), 2)],
       rewards: { xp: xpFor(level, 1), gold, items: [], rep: [{ id: 'lords-alliance', amount: 2 }] },
       next: null, unlocks: [], repeatable: true, faction: 'lords-alliance',
       chain: null, after: [], requires: [], forbid: [], sets: [],
-      map: 'triboar-trail', turnIn: 'harbin-wester', generated: true,
+      map: 'triboar-trail', turnIn: 'harbin-wester', generated: true, ordered: true, director: true, kind: 'cull',
       template: null, location: 'triboar-trail', biome: 'road', foe: 'wolf',
-      pack: null, board: "The Lords' Alliance", rank: '',
+      board: "The Lords' Alliance", rank: '', giverName: 'Harbin Wester',
+      site: { map: 'triboar-trail', pack: [{ id: 'wolf', count: 4 }], lead: 'Wolf', boss: false },
     };
   }
 }

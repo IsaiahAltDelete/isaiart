@@ -1557,6 +1557,7 @@ export const LOOT_TABLES = deepFreeze({
     id: 'cr-low', name: 'Bandit Spoils', crMin: 1, crMax: 2,
     gold: '4d6+4',
     items: [
+      ["coast-cutlass",0.025], ["second-wind-draught",0.025],
       ['potion-healing', 0.20], ['antitoxin', 0.08], ['shortsword', 0.10],
       ['leather-armor', 0.08], ['shield', 0.08], ['crossbow-bolt', 0.15],
       ['gem-malachite', 0.08], ['gem-quartz', 0.08], ['thieves-tools', 0.06],
@@ -1568,6 +1569,7 @@ export const LOOT_TABLES = deepFreeze({
     id: 'cr-mid-low', name: 'Warband Cache', crMin: 3, crMax: 4,
     gold: '2d20+20',
     items: [
+      ["dockside-lash",0.025], ["longbow-of-warning",0.025], ["clearhead-tonic",0.025],
       ['potion-healing', 0.25], ['potion-greater-healing', 0.10],
       ['chain-shirt', 0.08], ['scale-mail', 0.06], ['longsword', 0.08],
       ['gem-moonstone', 0.10], ['gem-onyx', 0.08], ['scroll-2', 0.08],
@@ -1580,6 +1582,7 @@ export const LOOT_TABLES = deepFreeze({
     id: 'cr-mid', name: 'Lair Hoard', crMin: 5, crMax: 7,
     gold: '6d20+40',
     items: [
+      ["everburn-blade",0.025], ["vicious-longsword",0.025], ["lamplighters-mace",0.025], ["gold-wyrmling-staff",0.025],
       ['potion-greater-healing', 0.22], ['potion-resistance', 0.08],
       ['scroll-3', 0.10], ['scroll-fireball', 0.05],
       ['gem-pearl', 0.10], ['gem-jade', 0.08], ['gem-amber', 0.08],
@@ -1594,6 +1597,7 @@ export const LOOT_TABLES = deepFreeze({
     id: 'cr-high-low', name: 'Chieftain\'s Vault', crMin: 8, crMax: 10,
     gold: '4d100+100',
     items: [
+      ["stormglass-longbow",0.025], ["moonreef-trident",0.025], ["phalar-aluve",0.025], ["defender-flail",0.025],
       ['potion-superior-healing', 0.18], ['potion-heroism', 0.08],
       ['scroll-4', 0.10], ['scroll-5', 0.05],
       ['gem-emerald', 0.08], ['gem-black-pearl', 0.06], ['gem-ruby', 0.05],
@@ -1608,6 +1612,7 @@ export const LOOT_TABLES = deepFreeze({
     id: 'cr-high', name: 'Dragon Hoard', crMin: 11, crMax: 13,
     gold: '6d100+200',
     items: [
+      ["flame-tongue-rapier",0.025], ["knife-undermountain-king",0.025],
       ['potion-superior-healing', 0.20], ['potion-flying', 0.06],
       ['scroll-5', 0.10], ['scroll-6', 0.06],
       ['gem-diamond', 0.06], ['gem-ruby', 0.08], ['gem-emerald', 0.08],
@@ -1622,6 +1627,7 @@ export const LOOT_TABLES = deepFreeze({
     id: 'cr-elite', name: 'Archmage\'s Reserve', crMin: 14, crMax: 16,
     gold: '10d100+400',
     items: [
+      ["frost-brand-greatsword",0.025],
       ['potion-supreme-healing', 0.18], ['potion-giant-strength-fire', 0.05],
       ['scroll-7', 0.08], ['scroll-8', 0.04],
       ['gem-diamond', 0.10], ['diamond-dust', 0.10],

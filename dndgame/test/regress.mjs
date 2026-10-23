@@ -131,9 +131,13 @@ const px = await page.evaluate(async () => {
   const m = await import('/dndgame/src/ui/menus.js');
   SC.Game.push(new m.InventoryScene());
   await new Promise(r => setTimeout(r, 500));
-  // sample the top strip of the inventory panel for stray white weather motes
-  const c = document.getElementById('game').getContext('2d');
-  const d = c.getImageData(30, 30, 340, 60).data;
+  // sample the top strip of the inventory panel for stray white weather motes.
+  // The region is in logical px; the display's backing store is 2x that (the
+  // stage composites 400x240 layers onto 800x480), so scale it to match.
+  const cv = document.getElementById('game');
+  const c = cv.getContext('2d');
+  const k = cv.width / 400;
+  const d = c.getImageData(30 * k, 30 * k, 340 * k, 60 * k).data;
   let bright = 0;
   for (let i = 0; i < d.length; i += 4) if (d[i] > 225 && d[i+1] > 235 && d[i+2] > 245) bright++;
   SC.Game.pop();
@@ -152,6 +156,65 @@ const ow = await page.evaluate(() => {
 });
 check('overworld: walkable edges are rimmed', ow.rimmed > 100, `${ow.rimmed}/${ow.total} tiles`);
 check('overworld: exits resolve a destination name', !!ow.named, ow.named);
+
+// --- carried lights across time and map changes -----------------------------
+const lamps = await page.evaluate(async () => {
+  const { Lighting } = await import('/dndgame/src/render/lighting.js');
+  const { NPCEntity, Entity } = await import('/dndgame/src/world/entity.js');
+  const s = SC.Game.top;
+  const guard = new NPCEntity({ id: 'lamp-test', role: 'guard', x: 2, y: 2 });
+  const lamp = new Entity({ x: 3, y: 2, heldLight: 'torch' });
+  const room = Object.assign(Object.create(s.map), { indoor: true });
+  const cave = Object.assign(Object.create(s.map), { indoor: true, biome: 'cave' });
+  const lit = (map, minutes, entities) => {
+    Lighting.update({ map, minutes, cam: { x: 0, y: 0 }, entities });
+    return Lighting.env.active.filter(x =>
+      x.def === Lighting.kinds.handLantern || x.def === Lighting.kinds.torchHeld).length;
+  };
+  const out = {};
+  try {
+    out.noon = lit(s.map, 720, [guard]) === 0 && !guard.heldLightNow();
+    out.night = lit(s.map, 1380, [guard]) === 1 && guard.heldLightNow() === 'lantern';
+    out.indoor = lit(room, 1380, [guard]) === 0 && !guard.heldLightNow();
+    out.outdoor = lit(s.map, 1380, [guard]) === 1;
+    out.dawn = lit(s.map, 720, [guard]) === 0 && !guard.heldLightNow();
+    out.explicit = lit(cave, 720, [lamp]) === 1;
+    lamp.hidden = true;
+    out.hidden = lit(cave, 720, [lamp]) === 0;
+    lamp.hidden = false; lamp.removed = true;
+    out.removed = lit(cave, 720, [lamp]) === 0;
+    lamp.removed = false; lamp.px = 10000;
+    out.offscreen = lit(cave, 720, [lamp]) === 0;
+
+    // Check the real overworld selects a visible hand item, with magic taking
+    // priority, and that the lead's light is not also counted as an NPC lamp.
+    const time = SC.Game.state.time, carry = s._carry, spell = s.spellLight;
+    const cam = { x: s.player.px - 200, y: s.player.py - 120 };
+    try {
+      SC.Game.state.time = 1380; s.spellLight = null;
+      s._carry = { t: s.t, light: 'carried' }; s._lightFrame(cam);
+      out.torch = s.player.heldLight === 'torch'
+        && Lighting.env.active.filter(x => x.def === Lighting.kinds.carried).length === 1
+        && !Lighting.env.active.some(x => x.def === Lighting.kinds.torchHeld
+          && x.x === s._lightParty.x && x.y === s._lightParty.y);
+      s._carry.light = 'lanternHeld'; s._lightFrame(cam);
+      out.lantern = s.player.heldLight === 'lantern';
+      s.spellLight = { radius: 32 }; s._lightFrame(cam);
+      out.magic = s.player.heldLight === null && s._lightParty.light === 'spell';
+      s.spellLight = null; SC.Game.state.time = 720; s._lightFrame(cam);
+      out.stowed = s.player.heldLight === null;
+    } finally {
+      SC.Game.state.time = time; s._carry = carry; s.spellLight = spell;
+    }
+  } finally { s._lightFrame({ x: s.player.px - 200, y: s.player.py - 120 }); }
+  return out;
+});
+check('lighting: guards light and stow lanterns on the first frame',
+  lamps.noon && lamps.night && lamps.indoor && lamps.outdoor && lamps.dawn, JSON.stringify(lamps));
+check('lighting: carried entity lights work underground and skip invisible entities',
+  lamps.explicit && lamps.hidden && lamps.removed && lamps.offscreen);
+check('lighting: party hand items follow torch, lantern, spell and daylight',
+  lamps.torch && lamps.lantern && lamps.magic && lamps.stowed);
 
 // --- casting outside combat ------------------------------------------------
 const cast = await page.evaluate(() => import('/dndgame/src/rules/fieldcast.js').then(fc => {
@@ -230,7 +293,9 @@ const bar = await page.evaluate(async () => {
   // bar actually lays out — one contextual verb, SLOT_COUNT quick slots and
   // however many menu buttons the model supplies — rather than a fixed total,
   // which went stale the moment the belt dropped from two verbs to one.
-  const c = document.getElementById('game').getContext('2d');
+  // Drawn into the HUD's own stage layer, the way the engine draws it, so the
+  // hit rects are the ones a real frame would build.
+  const c = SC.Stage.ctx('hud');
   const model = ow._hotbarModel();
   ow.hotbar.draw(c, model);
   const HB = await import('/dndgame/src/ui/hotbar.js');
@@ -252,6 +317,32 @@ check('hotbar: attacking a child is refused, in words',
 check('hotbar: every button is clickable',
   bar.hitRects === 1 + bar.slotCount + bar.menuCount && bar.deadRects === 0,
   `${bar.hitRects} rects = 1 verb + ${bar.slotCount} slots + ${bar.menuCount} menus, ${bar.deadRects} zero-area`);
+
+// --- the HUD's layouts -------------------------------------------------------
+// Every preset must keep every shown widget on screen and clear of the others
+// (the toasts and the place banner come and go, so only the standing panels
+// are compared), and hiding a widget must take its hit area with it.
+const hud = await page.evaluate(async () => {
+  const { Layout } = SC;
+  const ids = ['hud.party', 'hud.clock', 'hud.quest', 'hud.log', 'hud.minimap', 'hud.toolbar'];
+  const out = { bad: [] };
+  const was = SC.Save.settings.hudPreset || 'default';
+  for (const p of Layout.presets) {
+    Layout.applyPreset(p, 'overworld');
+    const rs = ids.map((id) => ({ id, ...Layout.rect(id) })).filter((r) => r.visible);
+    for (const r of rs) if (r.x < 0 || r.y < 0 || r.x + r.w > 400 || r.y + r.h > 240) out.bad.push(`${p}: ${r.id} off screen`);
+    for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
+      const a = rs[i], b = rs[j];
+      if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) out.bad.push(`${p}: ${a.id} overlaps ${b.id}`);
+    }
+  }
+  Layout.applyPreset('minimal', 'overworld');
+  out.minimalHides = !Layout.visible('hud.minimap') && !Layout.visible('hud.quest') && Layout.visible('hud.toolbar');
+  Layout.applyPreset(was, 'overworld');
+  return out;
+});
+check('hud: every preset keeps the panels on screen and apart', !hud.bad.length, hud.bad.join('; '));
+check('hud: minimal hides the map and quest, keeps the belt', hud.minimalHides);
 
 // --- portrait captions -----------------------------------------------------
 // The caption under a dialogue bust read `role`, an internal enum whose default

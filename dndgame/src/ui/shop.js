@@ -15,6 +15,7 @@
 // green and red deltas are exactly the numbers combat will use.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Game } from '../engine.js';
@@ -37,6 +38,8 @@ import { Party } from '../world/party.js';
 import { advanceTime } from '../state.js';
 import { priceMultiplierIn, shopsRefuse } from '../rules/crime.js';
 import { charmDiscount } from '../rules/fieldworld.js';
+import { localStanding, socialGreeting, rememberNPC } from '../rules/reputation.js';
+import { noteDeed } from '../rules/deeds.js';
 
 // ===========================================================================
 // 0. SAFETY
@@ -75,6 +78,7 @@ function def(id) { return safe(() => resolveItem(id), null) || safe(() => ITEMS[
 function nameOf(id) { return safe(() => def(id).name, null) || String(id || '').replace(/-/g, ' '); }
 function iconFor(d) {
   if (!d) return 'bag';
+  if(d.kind==='weapon')return 'weapon:'+d.id;
   if (d.icon) return d.icon;
   switch (d.kind) {
     case 'weapon': return 'sword';
@@ -306,7 +310,7 @@ function normalizeStock(shop) {
   const push = (id, qty, minLv, price) => {
     if (!id || seen.has(id) || !def(id)) return;
     seen.add(id);
-    out.push({ id, qty: qty == null ? Infinity : Math.max(0, qty | 0), minPartyLevel: minLv || 0, price: price });
+    out.push({ id, qty: qty == null || qty === Infinity ? Infinity : Math.max(0, qty | 0), minPartyLevel: minLv || 0, price: price });
   };
   for (const raw of arr(shop.stock || shop.items || shop.inventory)) {
     if (typeof raw === 'string') push(raw, Infinity, 0, null);
@@ -336,6 +340,24 @@ function normalizeStock(shop) {
   return out;
 }
 
+let unlimitedResaleCaps = null;
+function unlimitedResaleCap(id) {
+  if (!unlimitedResaleCaps) {
+    unlimitedResaleCaps = new Map();
+    // Finite stock can support trade routes. Unlimited stock must not mint
+    // endless gold at another merchant, even with respect and charm stacked.
+    for (const shop of Object.values(SHOP_TABLES)) {
+      for (const s of normalizeStock(shop)) {
+        if (Number.isFinite(s.qty)) continue;
+        const base = s.price ?? num(def(s.id)?.cost, 1) * num(shop.markup, 1);
+        const floor = Math.max(1, Math.round(base * 0.9 * 0.9));
+        unlimitedResaleCaps.set(s.id, Math.min(unlimitedResaleCaps.get(s.id) ?? Infinity, floor));
+      }
+    }
+  }
+  return unlimitedResaleCaps.get(id) ?? Infinity;
+}
+
 function normalizeServices(shop) {
   const out = [];
   for (const raw of arr(shop.services)) {
@@ -361,6 +383,11 @@ function mechLine(m) {
   if (m.speedBonus) bits.push(`Speed ${signed(m.speedBonus)}`);
   if (m.saveBonus) bits.push(`Saves ${signed(m.saveBonus)}`);
   if (m.initiativeBonus) bits.push(`Init ${signed(m.initiativeBonus)}`);
+  if (m.meleeAtkBonus) bits.push(`Melee hit ${signed(m.meleeAtkBonus)}`);
+  if (m.critRange) bits.push(`Critical ${m.critRange}-20`);
+  for(const c of arr(m.condImmune))bits.push(`Cannot be ${c}`);
+  for(const [skill,value]of Object.entries(m.skillBonus||{}))bits.push(`${titleCase(skill)} ${signed(value)}`);
+  for(const g of arr(m.cantrip))if(g?.spellId)bits.push(`${titleCase(g.spellId.replace(/-/g,' '))}${g.ability?' ('+g.ability.toUpperCase()+')':''}`);
   if (m.darkvision) bits.push(`Darkvision ${m.darkvision}`);
   for (const r of arr(m.resist)) bits.push(`resist ${r}`);
   for (const s of arr(m.skillProf)) bits.push(String(s).replace(/-/g, ' '));
@@ -371,9 +398,10 @@ function magicLine(d) {
   const mg = d && d.magic;
   if (!isObj(mg)) return '';
   const bits = [];
-  if (mg.atk) bits.push(`${signed(mg.atk)} to hit`);
-  if (mg.dmg) bits.push(`${signed(mg.dmg)} damage`);
+  if(mg.atk&&mg.atk===mg.dmg)bits.push(`${signed(mg.atk)} hit/dmg`);
+  else {if (mg.atk) bits.push(`${signed(mg.atk)} hit`);if (mg.dmg) bits.push(`${signed(mg.dmg)} dmg`);}
   if (mg.bonusDice) bits.push(`+${mg.bonusDice} ${mg.bonusType || ''}`.trim());
+  if (mg.critBonus) bits.push(`Critical: +${mg.critBonus} damage`);
   return bits.join(' · ');
 }
 
@@ -392,8 +420,6 @@ function statLines(d) {
   const out = [];
   if (d.kind === 'weapon') {
     out.push(safe(() => weaponLine(d), '') || `${d.die || ''} ${d.dtype || ''}`.trim());
-    const props = arr(d.props).map((p) => String(p).replace(/-/g, ' ')).join(', ');
-    if (props) out.push(props);
   } else if (d.kind === 'armor' || d.kind === 'shield') {
     out.push(safe(() => armorLine(d), '') || `AC ${d.ac || '?'}`);
   }
@@ -403,6 +429,10 @@ function statLines(d) {
   if (u) out.push(u);
   const mm = mechLine(d.mech);
   if (mm) out.push(mm);
+  if(d.kind==='weapon'){
+    const props=arr(d.props).map(p=>String(p).replace(/-/g,' ')).join(', ');
+    if(props)out.push(props);
+  }
   if (d.charges != null) out.push(`${d.charges} charges`);
   return out.filter(Boolean);
 }
@@ -515,12 +545,13 @@ export class ShopScene {
     const map = safe(() => (Game.scenes.find((sc) => sc && sc.id === 'overworld') || {}).map, null)
       || (st ? { id: st.mapId } : null);
     this.outlawMult = safe(() => priceMultiplierIn(st, map), 1) || 1;
+    this.tradeMap = map;
+    this.standing = localStanding(st, map);
     this.refused = safe(() => shopsRefuse(st, map), false);
     // A shopkeeper under Charm Person counts the party as friends, and friends
     // get a tenth off. rules/fieldworld.js owns the flag and its expiry.
     this.charmMult = safe(() => charmDiscount(st, this.shop.npc), 1) || 1;
-    const mult = this.outlawMult * this.charmMult;
-    if (mult !== 1) this.shop = { ...this.shop, markup: this.shop.markup * mult };
+    this.tradeMult = this.outlawMult * this.charmMult * this.standing.buy;
 
     this._shopState();                       // runs the restock check
     this._cmp.clear();
@@ -531,7 +562,8 @@ export class ShopScene {
     else if (this.outlawMult > 1) this._say('"Your coin spends. It just spends harder."', true, 6);
     else if (this.charmMult < 1) this._say('"For you? Call it a tenth off. I like your face."', false, 6);
     else if (this._restocked) this._say('Fresh stock came up the High Road.', false);
-    else if (!this.msg) this._say(this.shop.greeting, false, 6);
+    else if (!this.msg) this._say(socialGreeting(st, { ...(NPCS()[this.shop.npc] || this.keeperNpc || {}), npcId: this.shop.npc }, map) || this.shop.greeting, false, 6);
+    this.terms = this._tradeTerms();
   }
 
   exit() { /* the overworld restores its own music when it takes over again */ }
@@ -616,7 +648,7 @@ export class ShopScene {
       if (s.minPartyLevel > lvl) continue;      // gear the frontier will not sell you yet
       const d = def(s.id);
       if (!d) continue;
-      const price = Math.max(1, Math.round(s.price != null ? s.price : num(d.cost, 1) * this.shop.markup));
+      const price = this._purchasePrice(s, d);
       const limited = Number.isFinite(s.qty);
       const remaining = limited ? Math.max(0, s.qty - num(sold[s.id], 0)) : Infinity;
       out.push({
@@ -639,14 +671,42 @@ export class ShopScene {
       const prem = this.shop.premium;
       const premium = !!(prem && arr(prem.kinds).includes(d.kind));
       if (premium) mult = num(prem.mult, 0.9);
-      const price = quest ? 0 : Math.max(1, Math.floor(num(d.cost, 0) * mult) || safe(() => sellPrice(e.id, mult), 1));
+      mult *= this.standing?.sell || 1;
+      let price = quest ? 0 : Math.max(1, Math.floor(num(d.cost, 0) * mult) || safe(() => sellPrice(e.id, mult), 1));
+      const uncapped = price;
+      if (!quest) price = Math.min(price, unlimitedResaleCap(e.id));
+      // Even an explicitly priced sale item cannot be flipped at this counter.
+      const shelf = this._stock().find(s => s.id === e.id);
+      if (shelf && !quest) price = Math.min(price, this._purchasePrice(shelf, d));
       out.push({
-        kind: 'sell', id: e.id, def: d, entry: e, price, premium,
+        kind: 'sell', id: e.id, def: d, entry: e, price, premium, marketCapped: price < uncapped,
         owned: e.qty || 1, remaining: e.qty || 1, limited: true,
         disabled: quest, reason: quest ? 'not for sale' : '',
       });
     }
     return out;
+  }
+
+  _purchasePrice(stock, item) {
+    const base = stock.price != null ? stock.price : num(item.cost, 1) * this.shop.markup;
+    return Math.max(1, Math.round(base * (this.tradeMult || 1)));
+  }
+
+  _tradeTerms() {
+    const s = this.standing;
+    const pct = n => `${n > 1 ? '+' : ''}${Math.round((n - 1) * 100)}%`;
+    const bits = [`Goods ${pct(this.tradeMult || 1)}, offers ${pct(s.sell)}`];
+    if (this.outlawMult > 1 || this.charmMult < 1) {
+      if (this.outlawMult > 1) bits.push(`bounty ${pct(this.outlawMult)}`);
+      if (this.charmMult < 1) bits.push('charm -10%');
+    } else bits.push(`${s.reason || 'local standing'} (${s.value > 0 ? '+' : ''}${s.value})`);
+    return bits.join(' / ');
+  }
+
+  _recordTrade(id, direction) {
+    const st = S();
+    rememberNPC(st, this.shop.npc, 'customer');
+    noteDeed(st, { kind: 'trade', npcId: this.shop.npc, mapId: this.tradeMap?.id || st?.mapId, itemId: id, tags: [direction] });
   }
 
   _serviceRows() {
@@ -844,6 +904,7 @@ export class ShopScene {
     }
     const st = S();
     if (st) st.stats.goldSpent = num(st.stats.goldSpent, 0) + total;
+    this._recordTrade(row.id, 'buy');
     sfx('coin');
     this._cmp.clear();
     this._say(`${nameOf(row.id)}${qty > 1 ? ` ×${qty}` : ''} — ${goldText(total)}`, false);
@@ -876,6 +937,10 @@ export class ShopScene {
       Party.addGold(total);
       const st = S();
       if (st) st.stats.goldEarned = num(st.stats.goldEarned, 0) + total;
+      // A sold item fills depleted shelf space; it cannot overstock the shop.
+      const sold = this._shopState();
+      if (sold[row.id] > 0) sold[row.id] = Math.max(0, sold[row.id] - qty);
+      this._recordTrade(row.id, 'sell');
       sfx('coin');
       this._cmp.clear();
       this.qty = 1;
@@ -1098,7 +1163,7 @@ export class ShopScene {
     ctx.fillStyle = UI.COLORS.bgDeep;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     this._drawHeader(ctx);
-    UI.tabs(ctx, 2, TAB_Y, 396, TABS, this.tab, { h: 13 });
+    MK.tabs(ctx, 2, TAB_Y, 396, TABS, this.tab, { h: 13 });
     this._drawList(ctx);
     this._drawDetail(ctx);
     this._drawFooter(ctx);
@@ -1126,7 +1191,7 @@ export class ShopScene {
     UI.text(ctx, bx + bs + 5, HEAD_Y + 4, this.shop.name, {
       size: 'md', color: UI.COLORS.gold, shadow: true, maxWidth: 200,
     });
-    UI.text(ctx, bx + bs + 5, HEAD_Y + 14, this.shop.keeper, {
+    UI.text(ctx, bx + bs + 5, HEAD_Y + 14, `${this.shop.keeper} / ${this.standing?.rank || 'Unknown'}`, {
       size: 'sm', color: UI.COLORS.inkDim, shadow: true, maxWidth: 200,
     });
 
@@ -1300,7 +1365,7 @@ export class ShopScene {
     const infoLines = D_INFO_LINES - (extra ? 1 : 0);
     let line = 0;
     for (const s of stats) {
-      if (line >= infoLines - 1) break;
+      if (line >= infoLines) break;
       UI.text(ctx, ix, infoTop + line * 9, s, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: iw });
       line++;
     }
@@ -1457,6 +1522,10 @@ export class ShopScene {
       UI.text(ctx, ix + iw, y + 15, `${total - Party.gold} gp short`, {
         size: 'sm', color: UI.COLORS.red, align: 'right', shadow: true, maxWidth: iw - 4,
       });
+    } else if (row.marketCapped) {
+      UI.text(ctx, ix + iw, y + 15, 'Offer capped at market price', {
+        size: 'sm', color: UI.COLORS.inkDim, align: 'right', shadow: true, maxWidth: iw - 4,
+      });
     } else if (row.premium) {
       UI.text(ctx, ix + iw, y + 15, 'Exchange premium', {
         size: 'sm', color: UI.COLORS.goldBright, align: 'right', shadow: true, maxWidth: iw - 4,
@@ -1466,10 +1535,10 @@ export class ShopScene {
 
   _drawFooter(ctx) {
     UI.panel(ctx, 2, FOOT_Y, 396, FOOT_H, { style: 'dark', shadow: 0.25 });
-    const text = this.msg || this.shop.greeting;
+    const text = this.msg || (this.tab === 2 ? 'Fixed service fees. Standing changes goods and offers only.' : this.terms) || this.shop.greeting;
     UI.text(ctx, 8, FOOT_Y + 4, text, {
       size: 'sm', color: this.msg ? (this.msgBad ? UI.COLORS.red : UI.COLORS.goldBright) : UI.COLORS.inkDim,
-      shadow: true, maxWidth: 250,
+      shadow: true, maxWidth: 388,
     });
     // Key names must match core/input.js: prev=Q next=R party=Tab.
     const hint = this.tab === 2

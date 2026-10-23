@@ -28,25 +28,27 @@ import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Save } from '../core/save.js';
 import { CHEATS } from '../core/cheatflags.js';
-import { trackForBiome } from '../core/music.js';
+import { musicForMap, battleCue } from '../core/music.js';
 
 /**
- * Which loop belongs to a map right now. A map may name its own track; otherwise
- * the biome decides, and open country swaps to the night theme after dark.
+ * Which music context belongs to a map right now (core/music.js musicForMap):
+ * the map's own, else its biome's, and the night's tunes outdoors after dark.
  */
 function mapTrack(map, st) {
-  if (!map) return 'field';
-  const night = !map.indoor && !map.safe && st && (st.time < 300 || st.time >= 1200);
-  if (map.music) {
-    // Only the generic outdoor loop yields to nightfall; a named theme stands.
-    if (night && map.music === 'field') return 'night';
-    return map.music;
-  }
-  return trackForBiome(map.biome, { night, indoor: map.indoor });
+  return musicForMap(map, { night: !!(st && (st.time < 300 || st.time >= 1200)) });
 }
 import { bus, EV, toast } from '../core/events.js';
 import { rng, makeRNG } from '../core/rng.js';
 import { FX } from '../render/fx.js';
+import { VFX } from '../render/vfx.js';
+import { Stage } from '../render/stage.js';
+import { Lighting, sunAt, isUnderground, invalidateLights } from '../render/lighting.js';
+import { journeyInfo } from '../render/journey.js';
+import { drawInteriorFloor, drawInteriorGoods } from '../render/interior-life.js';
+import { drawGroundSurface, drawGroundDetails } from '../render/ground-design.js';
+import { drawDungeonScenery } from '../render/dungeon-scenery.js';
+import { drawStreetGoods, drawStreetSpeech, updateStreetSocial } from './city-life.js';
+import { Atmosphere } from '../render/atmosphere.js';
 import { drawTile, tileGroup, tileKey as tileKeyOf, tileLayer, tileFlags, tileHash, isAnimated, T } from '../render/tiles.js';
 // THE TWO CONTRACTED EXPORTS, IMPORTED THE ONLY WAY THAT CANNOT BREAK THE GAME.
 // `tileSubgroup` (a finer material key than `group`) and `isleTileFor` (the
@@ -58,15 +60,25 @@ import { drawTile, tileGroup, tileKey as tileKeyOf, tileLayer, tileFlags, tileHa
 // that is always safe. This file therefore works identically whether the other
 // half of the contract is on disk or not; it only does more when it is.
 import * as TILESET from '../render/tiles.js';
+import { isTreeTile, visibleTrees } from '../render/trees.js';
+import { monsterArtFor } from '../render/spritedata_monsters.js';
 import { hasSprite, spriteSize } from '../render/sprites.js';
 import { UI } from '../ui/kit.js';
+import { Layout } from '../ui/layout.js';
 import { HUD } from '../ui/hud.js';
 import { Hotbar, SLOT_COUNT } from '../ui/hotbar.js';
+import { frame as hudFrame, cap as hudCap } from '../ui/hudparts.js';
 import { TileMap, TF, isStepTrigger } from './tilemap.js';
 import { Entity, EntityList, ChestEntity, makeEntity, spawnFromTriggers } from './entity.js';
 import { Party } from './party.js';
 import { buildBattleMap } from './battlemap.js';
-import { rollEncounter, makeMonster, ambushContest } from '../rules/scaling.js';
+import { rollEncounter, makeMonster, ambushContest, buildEncounterMonsters } from '../rules/scaling.js';
+// The encounter director decides who is on the road and why; wayfarers.js puts
+// them on the map; the standoff is where you meet them.
+import * as Director from '../rules/encounters.js';
+import { placeGroup, placeGroupNear, placeAshes, isRoad, isCover } from './wayfarers.js';
+import { StandoffScene } from '../ui/standoff.js';
+import { RoadNotice } from '../ui/roadnotice.js';
 import {
   expireFieldBuffs, fieldBuffsToRounds, fieldCastable, fieldCast, fieldTargeting, minutesFor,
   fieldNeedsChoice,
@@ -83,7 +95,7 @@ import {
   reachChest, identifyAll, identifyOne, fieldMech, terrainEncounterFactor,
 } from '../rules/fieldworld.js';
 import {
-  advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests, failQuest,
+  advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests, failQuest, setFlag,
 } from '../state.js';
 import { spawnableOnMap, getNPC } from '../data/npcs.js';
 import { getMonster } from '../data/monsters.js';
@@ -99,6 +111,7 @@ import {
 } from '../rules/character.js';
 import { conditionMech } from '../rules/conditions.js';
 import { rollExpr } from '../core/dice.js';
+import { companionMoment } from '../data/companion-moments.js';
 
 // ---------------------------------------------------------------------------
 // 0. TUNING
@@ -157,6 +170,10 @@ function pull(key, path) {
 /** maps.js is special: travelTo waits on it exactly once, then never again. */
 let mapsSettled = false;
 const mapsReady = pull('maps', './maps.js').then((m) => { mapsSettled = true; return m; });
+
+// The road's own errands (a Harper's letter carried, a child walked home) finish
+// when their last step does; rules/encounters.js owns them, and this wires them.
+Director.hookQuests(() => Game.state, () => Party);
 
 pull('mapgen', './mapgen.js');
 pull('dialogue', '../ui/dialogue.js');
@@ -297,7 +314,21 @@ function buildMap(id, opts = {}) {
 }
 
 /** Load (or recall) a map, fully wired: triggers indexed, entities live, cast in place. */
+export function rememberedMapOptions(st, id, opts = {}) {
+  const remembered = st?.mapLoadOptions?.[id] || {};
+  const resolved = { ...remembered, ...opts };
+  if (st) {
+    st.mapLoadOptions ||= {};
+    st.mapLoadOptions[id] = {};
+    for (const key of ['depth', 'theme', 'biome', 'seed']) {
+      if (resolved[key] != null) st.mapLoadOptions[id][key] = resolved[key];
+    }
+  }
+  return resolved;
+}
+
 function loadMapById(id, opts = {}) {
+  opts = rememberedMapOptions(state(), id, opts);
   const key = opts.depth != null ? `${id}@${opts.depth}` : id;
   if (mapCache.has(key) && !opts.fresh) return mapCache.get(key);
 
@@ -404,7 +435,11 @@ function findScene() {
   return null;
 }
 
-function resolveSpawn(map, x, y) {
+export function resolveSpawn(map, x, y, arrival) {
+  if (x == null && y == null && arrival) {
+    const stair = arrival === 'exit' ? map.exit : map.entry;
+    if (stair) { x = stair.x; y = stair.y; }
+  }
   let tx = Number.isFinite(x) ? x | 0 : null;
   let ty = Number.isFinite(y) ? y | 0 : null;
   if (tx == null || ty == null || !map.inBounds(tx, ty)) {
@@ -450,7 +485,7 @@ function _travel(mapId, x, y, dir, opts = {}) {
   const map = loadMapById(id, opts);
   if (!map) { toast('That road goes nowhere yet.'); return null; }
 
-  const spot = resolveSpawn(map, x, y);
+  const spot = resolveSpawn(map, x, y, opts.arrival);
   const facing = dir || (st && st.dir) || 'down';
   const scene = findScene();
 
@@ -507,92 +542,10 @@ function autosave() {
 // 4. DAY / NIGHT AND LIGHT
 // ---------------------------------------------------------------------------
 
-/** Colour-grade keyframes across the 1440-minute day. `a` is multiply strength. */
-const TINT_KEYS = [
-  { t: 0, c: [0.36, 0.42, 0.74], a: 0.60 },   // deep night, moonlit blue
-  { t: 285, c: [0.42, 0.44, 0.74], a: 0.55 },
-  { t: 360, c: [0.98, 0.72, 0.52], a: 0.36 }, // dawn, warm gold on the mud
-  { t: 450, c: [1.00, 0.93, 0.82], a: 0.12 },
-  { t: 720, c: [1.00, 1.00, 1.00], a: 0.00 }, // noon, no grade at all
-  { t: 1000, c: [1.00, 0.92, 0.76], a: 0.10 },
-  { t: 1090, c: [1.00, 0.60, 0.33], a: 0.36 }, // dusk, long orange light
-  { t: 1210, c: [0.48, 0.44, 0.76], a: 0.50 },
-  { t: 1440, c: [0.36, 0.42, 0.74], a: 0.60 },
-];
-
-function dayTint(minutes) {
-  const m = ((minutes % 1440) + 1440) % 1440;
-  let a = TINT_KEYS[0], b = TINT_KEYS[TINT_KEYS.length - 1];
-  for (let i = 0; i < TINT_KEYS.length - 1; i++) {
-    if (m >= TINT_KEYS[i].t && m <= TINT_KEYS[i + 1].t) { a = TINT_KEYS[i]; b = TINT_KEYS[i + 1]; break; }
-  }
-  const span = Math.max(1, b.t - a.t);
-  const k = clamp((m - a.t) / span, 0, 1);
-  return {
-    r: Math.round(255 * (a.c[0] + (b.c[0] - a.c[0]) * k)),
-    g: Math.round(255 * (a.c[1] + (b.c[1] - a.c[1]) * k)),
-    b: Math.round(255 * (a.c[2] + (b.c[2] - a.c[2]) * k)),
-    a: a.a + (b.a - a.a) * k,
-  };
-}
-
-/**
- * How hard the sun is throwing shadows, 0..1, without allocating anything —
- * `dayTint` builds an object and the draw loop must not.
- *
- * This is the one knob that stops the depth passes double-darkening at night.
- * The day/night grade in `_drawGrade` is a full-screen multiply laid over the
- * finished world, so a contact shadow painted at midday strength would be
- * crushed twice: once by its own black, once by the blue of midnight. Scaling
- * every shadow by the sun means noon gets a crisp shadow, dusk a long soft one
- * and midnight only the ambient occlusion that a wall owes you regardless of
- * where the sun is.
- */
-function sunStrength(minutes) {
-  const m = ((minutes % 1440) + 1440) % 1440;
-  if (m >= 450 && m <= 1000) return 1;                       // full day
-  if (m > 1000 && m < 1150) return clamp(1 - (m - 1000) / 150, 0, 1);   // into dusk
-  if (m > 300 && m < 450) return clamp((m - 300) / 150, 0, 1);          // out of dawn
-  return 0;                                                  // night: ambient only
-}
-
-/** Tiles that throw light, and how much. */
-const GLOW_TILES = {
-  TORCH: { r: 30, c: [255, 176, 80], flick: 1 },
-  BRAZIER: { r: 34, c: [255, 150, 60], flick: 1 },
-  CANDLE: { r: 16, c: [255, 216, 140], flick: 0.6 },
-  CHANDELIER: { r: 32, c: [255, 206, 130], flick: 0.4 },
-  HEARTH: { r: 34, c: [255, 140, 60], flick: 1 },
-  FORGE: { r: 32, c: [255, 106, 44], flick: 1 },
-  COOKING_POT: { r: 20, c: [255, 150, 70], flick: 0.8 },
-  LAVA: { r: 24, c: [255, 90, 44], flick: 0.7 },
-  CRYSTAL: { r: 22, c: [128, 216, 255], flick: 0.25 },
-  PORTAL: { r: 28, c: [176, 122, 224], flick: 0.5 },
-  WINDOW_LIT: { r: 22, c: [255, 214, 138], flick: 0.2 },
-  WINDOW: { r: 18, c: [255, 206, 130], flick: 0.15, nightOnly: true },
-  SHRINE: { r: 22, c: [255, 232, 168], flick: 0.2 },
-};
-
-/** Scan a map once for light sources; the result rides on the map. */
-function glowsFor(map) {
-  if (map._glows) return map._glows;
-  const byId = new Map();
-  for (const [name, def] of Object.entries(GLOW_TILES)) {
-    const id = T[name];
-    if (id != null) byId.set(id, def);
-  }
-  const out = [];
-  for (let y = 0; y < map.h; y++) {
-    for (let x = 0; x < map.w; x++) {
-      const i = y * map.w + x;
-      const def = byId.get(map.deco[i]) || byId.get(map.over[i]) || byId.get(map.ground[i]);
-      if (!def) continue;
-      out.push({ x, y, def, phase: ((x * 7 + y * 13) % 32) / 32 });
-    }
-  }
-  map._glows = out;
-  return out;
-}
+// The sky's grade, the light pools and the air all live in render/lighting.js
+// and render/atmosphere.js now; `_drawLight` below feeds them this scene's map,
+// clock, weather and party. What stays here is the depth work that reads the
+// sun's strength (`Lighting.env.sun`) to know how hard to cast.
 
 // ---------------------------------------------------------------------------
 // 4a. DEPTH — CONTACT SHADOWS, WALL-BASE OCCLUSION, ROOF OVERHANGS
@@ -641,8 +594,13 @@ const SHADOW_PENUMBRA = 0.14;
 const M_N = 1, M_E = 2, M_S = 4, M_W = 8;
 const M_NE = 16, M_SE = 32, M_SW = 64, M_NW = 128;
 
+/** Cloud shadows are painted into the light map before the lamps (render/lighting.js). */
+const GRADE_HOOKS = Object.freeze({ shade: (g, cam) => Atmosphere.shadeGrade(g, cam) });
+
 /** Passed to EntityList.draw so sprites skip their own built-in shadow. */
 const NO_SPRITE_SHADOW = Object.freeze({ shadow: false });
+// FX.draw without the damage numbers, which draw() lifts onto 'world-ui'.
+const NO_FLOATERS = Object.freeze({ floaters: false });
 
 // ---------------------------------------------------------------------------
 // 4b. THE VERGE — ground autotiling at draw time
@@ -775,6 +733,29 @@ const NO_SPRITE_SHADOW = Object.freeze({ shadow: false });
 // A word of zero still means "nothing to do", which is most of the map. The draw
 // loop reads that word and walks a pre-built plan: no allocation, no autotile
 // query, no string built per frame.
+
+/**
+ * Is the blocked cell at (x, y) a ROUND thing inside its square — a tree, bush
+ * or boulder standing on open ground (render/tiles.js `tileFreeStanding`), or a
+ * lone pond or bog hole drawn as a pool in the grass (the island rule, section
+ * 4b)? Those paint their own edge; the occlusion rim and the sun's cast shadow
+ * are drawn in 16px squares and would box each one in a dark frame.
+ */
+function roundSolid(map) {
+  initFringe();                                  // subOf / isleOfId are resolved there
+  const free = typeof TILESET.tileFreeStanding === 'function' ? TILESET.tileFreeStanding : null;
+  const w = map.w, h = map.h, g = map.ground;
+  const turf = (x, y) => x >= 0 && y >= 0 && x < w && y < h && subOf(g[y * w + x]) === 'grass';
+  const pool = (x, y) => {
+    const id = g[y * w + x];
+    return !!(isleOfId && isleOfId(id, 'grass')) && turf(x, y - 1) && turf(x + 1, y) && turf(x, y + 1) && turf(x - 1, y);
+  };
+  return (x, y) => {
+    const i = y * w + x;
+    if (tileFlags(g[i]) & TF.WATER) return pool(x, y);
+    return !!free && !!map.deco && free(map.deco[i]) && (tileFlags(g[i]) & TF.SOLID) === 0;
+  };
+}
 
 /** Cardinal bits, in the order autotileEdges packs them. */
 const FR_SIDES = ['N', 'E', 'S', 'W'];
@@ -1309,7 +1290,7 @@ export class OverworldScene {
     this.t = 0;
     this.map = null;
     this.entities = null;
-    this.hud = new HUD();
+    this.hud = new HUD({ scene: this });
 
     this._startMapId = mapId || null;
     this._startSpawn = spawn || null;
@@ -1336,12 +1317,16 @@ export class OverworldScene {
     this.stepsToEncounter = 12;
     this.encounterGrace = 2;
     this.pendingBattleFrom = null;
+    this.notice = new RoadNotice();   // what the road says: signs, quiet beats, arrivals
 
     // Presentation.
     this.popup = null;      // { title, lines, t, life }
     this.banner = null;     // { text, sub, t }
     this._weatherKind = null;
     this.spellLight = null;       // Light / Dancing Lights, cast from the spellbook
+    // The rain, snow and fog here are render/atmosphere.js's, drawn in draw();
+    // the engine skips FX's own weather painting for a scene that says so.
+    this.ownsWeather = true;
     this.spellMarkers = [];       // fieldworld.addMarker: Locate Object's pins
     this.hotbar = new Hotbar();   // the bottom strip: every verb, visible, clickable
     this._slots = [];             // quick-slot model, rebuilt a couple of times a second
@@ -1385,6 +1370,9 @@ export class OverworldScene {
 
   exit(next) {
     if (this.map) this._syncDiscovered();
+    // Menus leave this scene in the stack; loading/replacing it does not.
+    // Retired leaders must not remain as solid ghosts on cached maps.
+    if (this.map && !Game.scenes.includes(this)) this._detachParty(this.map);
   }
 
   /** Called by travelTo once the destination map is built. */
@@ -1402,7 +1390,7 @@ export class OverworldScene {
     // loadMapById put the written cast on the map; this puts the wilds on it.
     // Here rather than there because it needs the party's level and the clock,
     // and because a cached map must not be re-seeded (the guard is on the map).
-    safe(() => this._spawnRoamers(map));
+    safe(() => this._populateWilds(map, x, y));
 
     this._syncPartySprites();
     this._attachParty(map, x, y, dir);
@@ -1435,6 +1423,9 @@ export class OverworldScene {
     const name = map.name || titleCase(String(map.id || '').replace(/-/g, ' '));
     this.banner = { text: name, sub: map.indoor ? null : this._regionSub(map), t: 0 };
     map._glows = null;     // rescan lights for the new map
+    invalidateLights(map);
+    safe(() => Atmosphere.invalidate(map));
+    this._airSnap = true;  // arrive in the weather already falling, not fading in
   }
 
   _regionSub(map) {
@@ -1518,6 +1509,7 @@ export class OverworldScene {
 
     this._updateTimers(dt);
     this._updateEntities(dt);
+    this._updateGroups(dt);
 
     // A finished step is where the world reacts: triggers, encounters, sounds.
     const busy = this._settleStep();
@@ -1533,6 +1525,7 @@ export class OverworldScene {
 
   _updateTimers(dt) {
     if (this.encounterGrace > 0) this.encounterGrace -= dt;
+    this.notice.update(dt);
     if (this._bumpSfxT > 0) this._bumpSfxT -= dt;
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 3.2) this.banner = null; }
     if (this.popup) {
@@ -1547,6 +1540,7 @@ export class OverworldScene {
 
   _updateEntities(dt) {
     if (!this.entities) return;
+    updateStreetSocial(this.map,dt);
     this.entities.update(dt, {
       player: { x: this.player.x, y: this.player.y },
       dir: this.player.dir,
@@ -1583,6 +1577,14 @@ export class OverworldScene {
       const after = arrOf(this.spellMarkers).length;
       if (after < before) toast('The sending fades.');
       this.hud.markers = this.spellMarkers || null;
+
+      // Dusk and dawn change what open country and the streets play. Only a
+      // CHANGE is sent, so music another scene asked for is never fought over.
+      const want = mapTrack(this.map, st);
+      if (this._musicWant !== want) {
+        if (this._musicWant != null) safe(() => Audio.music(want));
+        this._musicWant = want;
+      }
     }
   }
 
@@ -1883,8 +1885,16 @@ export class OverworldScene {
     // 1. anything you can walk onto: warp pads, unlocked doors.
     if (this._runStepTriggers(x, y)) return true;
 
-    // 2. the wilds.
-    if (this._tickEncounter(x, y)) return true;
+    // 2. the wilds: the director paces the open country; anywhere else (a
+    // dungeon's encounter zones) keeps its own count.
+    if (this._directorMap()) { if (this._directorStep(x, y)) return true; }
+    else if (this._tickEncounter(x, y)) return true;
+
+    if (!this.popup && !Game.transitioning) {
+      const kind = this._companionPending || 'road';
+      const lines = companionMoment(st, Party.members, kind);
+      if (lines) { this.popup = { title: 'Among companions', lines, t: 0, life: 9 }; this._companionPending = null; }
+    }
 
     return !!(this.popup || Game.transitioning);
   }
@@ -2114,13 +2124,282 @@ export class OverworldScene {
     safe(() => FX.ring(px, py, 10, '#cfe8a8', 0.35));
     safe(() => Audio.sfx('encounter'));
 
-    // Being jumped from behind is not a coin toss any more: the pack's Stealth
-    // against the party's passive Perception, and the party can win it.
-    const ambush = this._ambushFor(roll.monsters, { biome, night, weather, seed });
-    return this._pushBattle(roll.monsters, {
-      seed, biome, depth, ambush, boss: !!roll.boss,
-      difficulty: roll.difficulty, table, night, weather, roll,
+    // Being jumped from behind is not a coin toss: the pack's Stealth against the
+    // party's passive Perception, and the party can win it. Either way the card
+    // says who they are before anything else happens.
+    return this._doTriggerBattle({
+      monsters: roll.monsters, groupId: roll.groupId || table || null, seed, biome, depth,
+      boss: !!roll.boss, roll, lurking: true,
     });
+  }
+
+  // --- the encounter director ----------------------------------------------
+  //
+  // On open country the director runs everything: who is on the map when you
+  // arrive (_populateWilds), what the road does as you walk (_directorStep), the
+  // standoff when you meet someone (_openStandoff), and what follows from it.
+  // The grass counter below it is kept for dungeons' encounter zones, and the
+  // old roaming packs only for wild maps the catalogue has no one for.
+
+  /** Does the director run this map? Open country with something living in it. */
+  _directorMap(map = this.map) {
+    if (!map || map.indoor || map.safe || isTownMap(map, map.id)) return false;
+    if (!map.encounterRate && !map.encounterTable) return false;
+    return !CHEATS.noEncounters;
+  }
+
+  /** The facts the director decides from, as of this step. */
+  _directorCtx(extra = {}) {
+    const st = state();
+    const map = this.map;
+    const p = this.player;
+    const onRoad = !!(map && p && isRoad(map, p.x, p.y));
+    return Director.contextFor(st, map, Party, {
+      pacing: safe(() => Save.settings.encounterPacing, 'normal'),
+      ambush: safe(() => Save.settings.wildEncounters, 'normal'),
+      roaming: safe(() => Save.settings.roamingMonsters, true) !== false && !CHEATS.noCombat,
+      weather: this._weatherNow(),
+      onRoad,
+      cover: !onRoad && !!(map && p && isCover(map, p.x, p.y)),
+      town: !!(map && isTownMap(map, map.id)),
+      events: safe(() => Director.eventsFor(st, map && map.id), []),
+      // Everything that makes the party hard to find thins the road's dangers:
+      // Pass Without Trace, Guards and Wards, a region already swept clean.
+      tensionScale: this._partyStealthFactor() * this._clearedFactor()
+        * (safe(() => terrainEncounterFactor(st, map && map.id), 1) ?? 1),
+      ...extra,
+    });
+  }
+
+  /**
+   * Put the director's cast on a map. Open country gets its planned groups and the
+   * ashes of broken camps; a dungeon floor keeps its own denizens and may gain one
+   * group of people (the Guild's collectors, another company out of the Portal).
+   */
+  _populateWilds(map, x, y) {
+    const st = state();
+    if (!st) return;
+    if (this._directorMap(map)) {
+      const plan = this._placeCast(map, this._directorCtx({ onRoad: false, cover: false }), x, y);
+      // Nobody in the catalogue belongs here: the map's own table, whose packs
+      // still open on a card that says who they are.
+      if (!plan || !plan.groups.length) this._spawnRoamers(map);
+      return;
+    }
+    this._spawnRoamers(map);
+    if (map.indoor && !map.safe && map.encounterTable && !CHEATS.noEncounters) {
+      const depth = (st.depth && st.depth[map.id]) || 0;
+      this._placeCast(map, this._directorCtx({ deeps: true, planKey: `${map.id}@${depth}`, onRoad: false, cover: false }), x, y);
+    }
+  }
+
+  /** Plan (or reuse) a map's cast and stand it on the map. Returns the plan. */
+  _placeCast(map, ctx, x, y) {
+    const st = state();
+    const insts = Director.planMap(st, ctx);
+    const plan = Director.encounterState(st).plans[ctx.mapId] || null;
+    const made = plan ? plan.made : null;
+    // A cached map still holds the cast it had; only a new plan replaces it.
+    if (map._wilds && map._wilds.made === made && map._wilds.key === ctx.mapId) return plan;
+    if (map._wilds) this._clearWilds(map);
+    map._wilds = { made, key: ctx.mapId, groups: [], props: [] };
+    const avoid = { x: x != null ? x : (map.spawn ? map.spawn.x : 0), y: y != null ? y : (map.spawn ? map.spawn.y : 0) };
+    for (const inst of insts) this._placeGroup(map, inst, avoid);
+    for (const rec of Director.ashesOn(st, ctx.mapId)) {
+      map._wilds.props.push(...arrOf(safe(() => placeAshes(map, rec, { avoid }), [])));
+    }
+    return plan;
+  }
+
+  _clearWilds(map) {
+    const W = map && map._wilds;
+    if (!W) return;
+    for (const g of W.groups) safe(() => g.despawn());
+    for (const p of W.props) safe(() => (p.remove ? p.remove() : map.removeEntity(p)));
+    map._wilds = null;
+  }
+
+  _placeGroup(map, inst, avoid, near = null) {
+    if (!map._wilds) map._wilds = { made: null, groups: [], props: [] };
+    const opts = { avoid, player: () => this.player, onGone: (g) => this._groupGone(map, g) };
+    const g = safe(() => (near ? placeGroupNear(inst, map, near, opts) : placeGroup(inst, map, opts)), null);
+    if (g) map._wilds.groups.push(g);
+    return g;
+  }
+
+  /** A group walked off the edge of the map, or was beaten: out of the plan. */
+  _groupGone(map, g) {
+    const W = map && map._wilds;
+    if (W) { const i = W.groups.indexOf(g); if (i >= 0) W.groups.splice(i, 1); }
+    const st = state();
+    if (st && g && g.inst && (g.inst.status === 'active' || g.inst.status === 'passed')) {
+      safe(() => Director.settle(st, g.inst, 'gone'));
+    }
+  }
+
+  /** Walk every group on the map one frame on: its route, its eyes, its temper. */
+  _updateGroups(dt) {
+    const W = this.map && this.map._wilds;
+    if (!W || !W.groups.length || !this.player) return;
+    const st = state();
+    const p = { x: this.player.x, y: this.player.y };
+    const onRoad = isRoad(this.map, p.x, p.y);
+    const env = {
+      st, night: this._isNight(), weather: this._weatherNow(), onRoad,
+      cover: !onRoad && isCover(this.map, p.x, p.y),
+      stealth: (inst) => Director.approachRoll(st, inst, this._directorCtx()),
+      floater: (text, color) => safe(() => FX.floater(this.player.px, this.player.py - 26, text, color)),
+      hint: (text, inst, kind) => this.notice.push(text, { kind: kind === 'greet' ? 'arrival' : 'sign' }),
+    };
+    for (const g of W.groups.slice()) safe(() => g.update(dt, p, env));
+  }
+
+  /** One step of travel on a wild map: the tension budget, quiet beats, arrivals, ambushes. */
+  _directorStep(x, y) {
+    const st = state();
+    if (!st || Game.transitioning || this.popup) return false;
+    const ctx = this._directorCtx();
+    const ev = safe(() => Director.travelStep(st, ctx), null);
+    if (!ev) return false;
+    switch (ev.kind) {
+      case 'beat': return this._roadBeat(ev.beat, ctx);
+      case 'arrival': {
+        if (this._placeGroup(this.map, ev.inst, { x, y })) this.notice.push(Director.arrivalLine(ev.inst), { kind: 'arrival' });
+        return false;
+      }
+      case 'telegraph':
+        this.notice.push(ev.text, { kind: 'telegraph' });
+        safe(() => Audio.sfx('cursor', { vol: 0.5 }));
+        return false;
+      case 'spring': return this._springAmbush(ev.inst, ctx);
+      default: return false;
+    }
+  }
+
+  /** A quiet moment on the road; one you can act on opens a small card. */
+  _roadBeat(beat, ctx) {
+    if (!beat) return false;
+    if (!beat.act) { this.notice.push(beat.text, { kind: 'beat' }); return false; }
+    const st = state();
+    const act = beat.act;
+    const skill = act.skill ? titleCase(String(act.skill).replace(/-/g, ' ')) : '';
+    const label = act.label || (act.kind === 'forage' ? 'Stop and search' : act.kind === 'find' ? 'Pick it up' : 'Stop a while');
+    const hint = act.kind === 'forage' ? `${skill} DC ${act.dc}` : act.cost ? `${act.cost} gp` : '';
+    safe(() => Game.push(new StandoffScene(null, {
+      st, ctx,
+      beat: { title: 'By the Roadside', text: beat.text, label, hint, run: () => Director.beatAct(st, beat, ctx) },
+      onDone: () => Input.flush(),
+    })));
+    return true;
+  }
+
+  /**
+   * The telegraphed ambush arrives. The band is suddenly there in the cover
+   * around you, and the party's passive Perception decides who saw whom first.
+   */
+  _springAmbush(inst, ctx) {
+    const st = state();
+    if (!inst || !this.map) return false;
+    const g = this._placeGroup(this.map, inst, { x: this.player.x, y: this.player.y }, { x: this.player.x, y: this.player.y });
+    if (!g) return false;
+    const sp = safe(() => Director.springAmbush(st, inst, ctx), { mode: 'noticed' }) || { mode: 'noticed' };
+    g.noticed = sp.mode !== 'unnoticed';
+    if (sp.mode === 'sprung' && g.leader) {
+      safe(() => FX.burst(g.leader.px, g.leader.py - 6, '#8fd07a', 12, { shape: 'leaf', speed: 34, life: 0.7, spread: Math.PI }));
+      safe(() => Audio.sfx('encounter'));
+    }
+    return this._openStandoff(g, sp.mode);
+  }
+
+  /** Meet a group: turn to face each other and open the standoff card. */
+  _openStandoff(group, mode = 'noticed') {
+    if (!group || group.gone || !group.leader || Game.transitioning) return false;
+    safe(() => group.consumed());
+    const st = state();
+    const ctx = this._directorCtx();
+    const L = group.leader;
+    safe(() => this.player.faceToward(L.x, L.y));
+    for (const m of group.members) if (!m.moving && m.role !== 'cart') safe(() => m.faceToward(this.player.x, this.player.y));
+    safe(() => Game.push(new StandoffScene(group.inst, {
+      st, ctx, mode, entity: L,
+      shopScene: LATE.shop && LATE.shop.ShopScene,
+      onDone: (out) => this._standoffDone(group, out || { kind: 'pass' }),
+    })));
+    return true;
+  }
+
+  /** The standoff is over; the people on the map act on how it ended. */
+  _standoffDone(group, out) {
+    Input.flush();
+    const k = out.kind;
+    if (k === 'fight') { this._fightGroup(group, out); return; }
+    // Slipped past, or backed off, unseen: they never knew. They go on as they
+    // were, and do not look your way again unless you walk right into them.
+    if (out.option === 'sneak' || (out.option === 'leave' && out.mode === 'unnoticed')) {
+      safe(() => group.calmDown());
+      group.unseen = true;
+      group.cooldown = 20;
+      return;
+    }
+    group.noticed = true;
+    // A child you promised to take home walks with you now, not off on her own.
+    if (out.option === 'escort') { safe(() => group.leave()); return; }
+    if (k === 'rout') { safe(() => group.rout()); return; }
+    if (k === 'retreat') {
+      safe(() => group.calmDown());
+      group.cooldown = 12;
+      this._retreat();
+      return;
+    }
+    safe(() => group.settle());
+  }
+
+  /** The standoff became a fight: the band you were looking at is the band you fight. */
+  _fightGroup(group, out) {
+    const st = state();
+    const inst = group.inst;
+    const enemies = safe(() => Director.foesFor(inst, { champion: !!out.champion }), []) || [];
+    if (!enemies.length) { safe(() => group.settle()); return false; }
+    // Who fights beside you: a caravan's guards when you took their side, and
+    // any sellswords riding with you today.
+    const specs = [];
+    for (const [id, n] of arrOf(out.allies)) specs.push({ id, count: n });
+    for (const a of arrOf(safe(() => Director.alliesFor(st), []))) specs.push({ id: a.id, count: a.count });
+    const allies = specs.length
+      ? arrOf(safe(() => buildEncounterMonsters({ monsters: specs }, { level: inst.level, seed: `${inst.seed}:allies`, noElites: true }), []))
+      : [];
+    for (const a of allies) { a.side = 'party'; a.kind = 'monster'; }
+    const ambush = out.surprise === 'party' ? 'party' : out.mode === 'sprung';
+    return this._pushBattle(enemies, {
+      seed: `${inst.seed}:battle:${Director.encounterState(st).seq}`,
+      biome: this.map.biome, ambush, allies,
+      source: { situation: group, out },
+      opener: [inst.name, inst.why].filter(Boolean).join('. '), shown: true,
+    });
+  }
+
+  /** After a situation's fight: deeds, memory, spoils, and what is left standing. */
+  _afterSituationFight(source, res) {
+    const g = source.situation;
+    const out = source.out || {};
+    const st = state();
+    const lines = arrOf(safe(() => Director.afterBattle(st, g.inst, res, this._directorCtx(), {
+      rescue: !!out.rescue, champion: !!out.champion, robbery: !!out.robbery,
+    }), []));
+    const victory = !!(res && res.victory);
+    const fled = !!(res && (res.fled || res.state === 'fled'));
+    if (victory) {
+      this._companionPending = 'victory';
+      // A champion beaten, or a caravan saved: the people you fought FOR are still there.
+      if (out.champion || (out.rescue && g.inst.plea === 'rescue')) safe(() => g.settle());
+      else safe(() => g.defeated());
+    } else if (fled) {
+      safe(() => g.calmDown());
+      g.cooldown = 14;
+    } else {
+      safe(() => g.rout());     // they took what they came for, and went
+    }
+    if (lines.length) this.popup = { title: g.inst.name, lines, t: 0, life: 6 };
   }
 
   // --- visible wandering packs ---------------------------------------------
@@ -2287,8 +2566,11 @@ export class OverworldScene {
       foes,
     }), null);
 
+    // Allies (a caravan's guards, hired sellswords) stand on the party's side as
+    // monster-kind units, which the battle runs itself and never pays XP.
+    const allies = arrOf(opts.allies);
     const enc = safe(() => combat.buildEncounter({
-      party: Party,
+      party: allies.length ? [...Party.members, ...allies] : Party,
       enemies,
       map: arena,
       seed: opts.seed,
@@ -2309,6 +2591,12 @@ export class OverworldScene {
       return false;
     }
 
+    // No fight starts without a line that says who they are and why. A standoff
+    // already said it on its card; the battle log opens with it either way.
+    const opener = opts.opener || (opts.crime ? null
+      : safe(() => Director.openerFor({ groupId: opts.groupId || null, monsters: enemies }), null));
+    if (opener && Array.isArray(enc.log)) enc.log.unshift({ text: opener, kind: 'round', unit: null, round: 0 });
+
     // stats.battles is counted centrally in main.js on EV.COMBAT_START, so every
     // route into a fight — here, a dialogue script, the rest screen, the cheat
     // menu — is counted exactly once. Counting it again here would double it.
@@ -2317,10 +2605,9 @@ export class OverworldScene {
     const prevMusic = mapTrack(this.map, Game.state);
 
     Game.transition('battle', () => {
-      // Dragons and the very largest things get their own theme.
-      const huge = safe(() => (enc.units || []).some((u) => u.side !== 'party'
-        && (u.type === 'dragon' || (u.cr || 0) >= 10)), false);
-      safe(() => Audio.music(huge ? 'dragon' : opts.boss ? 'boss' : 'battle'));
+      // Dragons, bosses and the rest by how dangerous the field is (music.js battleCue).
+      const cue = safe(() => battleCue(enc), null) || { context: 'battle' };
+      safe(() => Audio.music(cue.context, { intensity: cue.intensity }));
       safe(() => Game.push(new cui.BattleScene(enc, {
         fromMapId: this.map.id,
         onEnd: (res) => this._onBattleEnd(res, source, prevMusic),
@@ -2342,7 +2629,18 @@ export class OverworldScene {
       if (victory) safe(() => source.defeat());
       else safe(() => source.scatter && source.scatter(10));
     }
+    if (source && source.situation) this._afterSituationFight(source, res);
     if (victory) {
+      this._companionPending = 'victory';
+      // Driving the dragon away satisfies the tower objective without falsely
+      // adding a kill to the bestiary. Only a won encounter grants the credit.
+      if(this.map.id==='thundertree' && [...(res.defeated||[]),...(res.routed||[])].some(u=>u.monsterId==='venomfang')){
+        const st=state();
+        if(st && !st.flags['venomfang-driven']){
+          if((res.routed||[]).some(u=>u.monsterId==='venomfang'))progressQuests(st,'kill','venomfang',1);
+          setFlag(st,'venomfang-driven',true);
+        }
+      }
       this._markCleared();
       safe(() => advanceTime(state(), 10));
       autosave();
@@ -2505,6 +2803,7 @@ export class OverworldScene {
     if (!force && mapped === this._weatherKind) return;
     this._weatherKind = mapped;
     const inten = mapped === 'fog' ? 0.4 : mapped === 'storm' ? 0.85 : 0.6;
+    this._weatherInt = inten;
     safe(() => FX.weather(mapped, inten));
     // The sound of the sky. Indoors you hear the weather only faintly, which is
     // most of what makes stepping into an inn out of the rain feel like shelter.
@@ -2582,11 +2881,11 @@ export class OverworldScene {
     // --- the E verb, named after whatever is in front of you ---------------
     let action = null;
     if (e) {
-      const verb = e.kind === 'npc' ? 'Talk'
+      const verb = e.verb || (e.kind === 'npc' ? 'Talk'
         : e.kind === 'chest' ? (e.opened ? 'Empty' : 'Open')
           : e.kind === 'door' ? 'Enter'
             : e.kind === 'monster' ? 'Fight'
-              : e.kind === 'sign' ? 'Read' : 'Look';
+              : e.kind === 'sign' ? 'Read' : 'Look');
       action = {
         label: verb,
         enabled: !(e.kind === 'chest' && e.opened),
@@ -2728,6 +3027,7 @@ export class OverworldScene {
         .sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)))[0];
       target = sp.heal ? (hurt || caster) : (Party.members[0] || caster);
     }
+    this._fieldFXPlayed = false;
     const res = safe(() => fieldCast(caster, spellId, {
       target, party: Party, state: state(), world: this.spellHooks(),
     }), null);
@@ -2739,7 +3039,8 @@ export class OverworldScene {
     if (res.minutes) safe(() => advanceTime(state(), res.minutes));
     safe(() => bus.emit(EV.SPELL_CAST, { ch: caster, spellId, field: true }));
     safe(() => Audio.sfx('spell'));
-    safe(() => FX.ring(this.player.px, this.player.py - 8, 12, '#a9c6ff', 0.4));
+    // The spell's own look, unless the verb it ran already showed where it landed.
+    if (!this._fieldFXPlayed) this._fieldFX(spellId);
     this.hotbar.pulse(slotIndex);
     this.hotbar.say(res.lines[0]);
     this._rebuildSlots();
@@ -2797,7 +3098,7 @@ export class OverworldScene {
     if (!allowed.ok) { safe(() => Audio.sfx('error')); this._say(allowed.why); return true; }
 
     const st = state();
-    const witnesses = witnessesNear(this.entities, entity.x, entity.y, 7, entity);
+    const witnesses = witnessesNear(this.entities, entity.x, entity.y, 7, entity, this.map);
     const guards = guardsAmong(witnesses);
     const joining = guards.slice(0, 3);
 
@@ -2829,7 +3130,7 @@ export class OverworldScene {
       w.hostile = true;
       if (joining.indexOf(w) < 0) safe(() => w.flee && w.flee(this.player.x, this.player.y, 14));
     }
-    if (st) reportAssault(st, { map: this.map, npc, entity, witnesses: witnesses.length });
+    if (st) reportAssault(st, { map: this.map, npc, entity, witnesses: witnesses.length, witnessEntities: witnesses });
 
     if (witnesses.length) {
       toast(guards.length ? 'The watch has seen you!' : 'Someone saw that.');
@@ -2916,6 +3217,23 @@ export class OverworldScene {
     return hooks;
   }
 
+  /**
+   * A field spell seen on the map: render/vfx.js plays the spell's own style
+   * (or opts.style), on the hero or at opts.to (a point, caller px). Other
+   * opts pass through to VFX.play (color, radius ...).
+   */
+  _fieldFX(spellId, opts = {}) {
+    this._fieldFXPlayed = true;
+    const sp = spellId ? safe(() => getSpell(spellId), null) : null;
+    const hero = { x: this.player.px, y: this.player.py - 10 };
+    safe(() => VFX.play(opts.style || VFX.styleFor(sp), {
+      from: hero, to: opts.to || hero, spell: sp, radius: 16, ground: 9, ...opts,
+    }));
+  }
+
+  /** The point VFX lands on for tile (tx, ty): a body's height above its foot. */
+  _tileFX(tx, ty) { return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE - 10 }; }
+
   /** Light / Dancing Lights / Daylight: a pool that follows the party. */
   _spellLight(radius, spellId, minutes, mech) {
     const st = state();
@@ -2928,7 +3246,7 @@ export class OverworldScene {
     }, null);
     const res = safe(() => castLightField(this, st, radius, spellId, minutes, m || {}), null);
     if (!res) return { ok: false };
-    safe(() => FX.ring(this.player.px, this.player.py - 8, 14, res.sunlight ? '#fff3c4' : '#ffe9a6', 0.5));
+    this._fieldFX(spellId, { color: res.sunlight ? '#fff3c4' : '#ffe9a6' });
     if (res.sunlight) toast('True sunlight. The dark gives ground.');
     return res;
   }
@@ -2941,7 +3259,7 @@ export class OverworldScene {
       safe(() => Audio.sfx('open'));
       const t = res.target;
       if (t && Number.isFinite(t.x)) {
-        safe(() => FX.ring(t.x * TILE + TILE / 2, t.y * TILE + TILE / 2, 18, '#ffd24a', 0.5));
+        this._fieldFX(null, { style: 'sigil', to: this._tileFX(t.x, t.y), color: '#ffd24a' });
       }
     }
     return res;
@@ -2951,14 +3269,17 @@ export class OverworldScene {
   _spellLock(dcBonus) {
     const res = safe(() => lockNearest(this, dcBonus != null ? dcBonus : 10), null)
       || { ok: false, text: 'There is nothing here to lock.' };
-    if (res.ok) safe(() => FX.ring(this.player.px, this.player.py - 8, 16, '#6aa8e8', 0.5));
+    if (res.ok) {
+      const t = res.target || safe(() => this.player.frontTile(), null);
+      this._fieldFX(null, { style: 'ward', to: t && Number.isFinite(t.x) ? this._tileFX(t.x, t.y) : undefined, color: '#6aa8e8' });
+    }
     return res;
   }
 
   /** Detect Magic / Detect Evil and Good: what is within thirty feet. */
   _spellDetect(what, range) {
     const res = safe(() => detectField(this, what || 'magic', range || 6), null) || { count: 0 };
-    if (res.count) safe(() => FX.ring(this.player.px, this.player.py - 8, 40, '#b07af0', 0.7));
+    if (res.count) this._fieldFX(null, { style: 'sigil', color: '#b07af0', radius: 40 });
     return res;
   }
 
@@ -2981,7 +3302,7 @@ export class OverworldScene {
       : safe(() => revealRadius(this, st, this.player.x, this.player.y, r || 8), 0);
     if (n > 0) {
       this._syncDiscovered();
-      safe(() => FX.ring(this.player.px, this.player.py - 8, 52, '#7fd0f0', 0.8));
+      this._fieldFX(null, { style: 'spellwave', color: '#7fd0f0', radius: 52 });
       toast(all ? 'The whole land lies open to you.' : 'The land around you unfolds.');
     }
     return { ok: n > 0, count: n, text: n ? `${n} new tiles come clear.` : 'You already know this ground.' };
@@ -3009,7 +3330,8 @@ export class OverworldScene {
       || { ok: false, text: 'No one is in front of you.' };
     if (res.ok) {
       safe(() => Audio.sfx(res.resisted ? 'error' : 'buff'));
-      safe(() => FX.ring(this.player.px, this.player.py - 8, 20, '#e07ac0', 0.5));
+      const f = safe(() => this.player.frontTile(), null);
+      this._fieldFX(null, { style: 'charm', to: f ? this._tileFX(f.x, f.y) : undefined, color: '#e07ac0' });
       toast(res.text);
     }
     return res;
@@ -3019,7 +3341,7 @@ export class OverworldScene {
   _spellWard(minutes) {
     const res = safe(() => wardArea(this, state(), minutes != null ? minutes : 480), null)
       || { ok: false, text: 'The ward will not take.' };
-    if (res.ok) { safe(() => FX.ring(this.player.px, this.player.py - 8, 60, '#e3b34a', 0.9)); toast(res.text); }
+    if (res.ok) { this._fieldFX(null, { style: 'sigil', color: '#e3b34a', radius: 60 }); toast(res.text); }
     return res;
   }
 
@@ -3041,7 +3363,7 @@ export class OverworldScene {
       if (safe(() => revealTrap(e), false)) n++;
     }
     if (n) {
-      safe(() => FX.ring(this.player.px, this.player.py - 8, 44, '#d4553f', 0.7));
+      this._fieldFX(null, { style: 'spellwave', color: '#d4553f', radius: 44 });
       toast(n === 1 ? 'A trap shows itself, plain as a drawn line.' : `${n} traps show themselves.`);
     }
     return { ok: n > 0, count: n, text: n ? `${n} trap${n === 1 ? '' : 's'} revealed.` : 'Nothing here is trapped.' };
@@ -3232,6 +3554,7 @@ export class OverworldScene {
       case 'rest': return this._openInn(d);
       case 'warp': return this._doWarp(d);
       case 'battle': return this._doTriggerBattle(d);
+      case 'standoff': return this._openStandoff(d.group, d.mode);
       default: return false;
     }
   }
@@ -3273,6 +3596,7 @@ export class OverworldScene {
   }
 
   _openSign(d) {
+    this._companionPending = 'discovery';
     const pages = d.pages && d.pages.length ? d.pages : [d.text || '…'];
     const mod = LATE.dialogue;
     if (mod && typeof mod.say === 'function') {
@@ -3426,6 +3750,7 @@ export class OverworldScene {
     safe(() => Audio.sfx('item'));
     safe(() => FX.burst(this.player.px, this.player.py - 8, '#e3b34a', 14, { shape: 'spark', speed: 60 }));
     this.popup = { title: 'You found', lines, t: 0, life: 4.5 };
+    this._companionPending = 'discovery';
     return true;
   }
 
@@ -3521,7 +3846,11 @@ export class OverworldScene {
   _doWarp(d) {
     if (!d) return false;
     const st = state();
-    const kind = d.transition || 'fade';
+    if (d.guarded && !st?.flags?.[`encounter:${this.map.id}:${d.guarded.encounterKey}`] && !CHEATS.noCombat) {
+      toast('The stair is guarded. Defeat or drive off its guardian to descend.');
+      return this._doTriggerBattle(d.guarded);
+    }
+    const kind = !d.transition || d.transition === 'fade' ? 'journey' : d.transition;
     const target = d.map || d.mapId || null;
 
     // A dungeon stair carries a depth instead of a map id.
@@ -3530,6 +3859,7 @@ export class OverworldScene {
       opts.depth = Math.max(0, d.depth | 0);
       opts.theme = d.theme || null;
       opts.biome = d.biome || (this.map ? this.map.biome : null);
+      opts.arrival = d.dir === 'up' ? 'exit' : 'entry';
     }
 
     let id = target;
@@ -3537,6 +3867,7 @@ export class OverworldScene {
       if (d.exit) {
         id = (st && st.lastTown) || 'phandalin';
         delete opts.depth;
+        delete opts.arrival;
       } else {
         const base = String((this.map && this.map.id) || 'undermountain').replace(/@\d+$/, '').replace(/-\d+$/, '');
         id = base;
@@ -3544,14 +3875,35 @@ export class OverworldScene {
     }
     if (!id) { this._say('The way is barred.'); return false; }
 
+    // Remember the actual floor we descended from. Older saves can contain an
+    // explicit "site-1" layout with its own seed, fog and cleared encounters;
+    // keep that identity rather than silently regenerating it as "site".
+    if (st && d.stair === 'down' && this.map?.id) {
+      (st.dungeonReturns ||= {})[id] = this.map.id;
+    } else if (st && d.stair === 'up' && !d.exit) {
+      const previous = st.dungeonReturns?.[this.map?.id];
+      if (previous) id = previous;
+      else if (opts.depth === 1 && !st.visited?.[id] && st.visited?.[`${id}-1`]) id = `${id}-1`;
+      const original = st.mapLoadOptions?.[id];
+      if (original) {
+        for (const key of ['depth', 'theme', 'biome', 'seed']) delete opts[key];
+        Object.assign(opts, original);
+      } else if (opts.depth === 1 && !/-1$/.test(id)) {
+        // Surface entry to the base id historically used depth 0 in its seed.
+        delete opts.depth;
+      }
+    }
+
     safe(() => Audio.sfx(d.sfx || 'door'));
     Game.transition(kind, () => {
       _travel(id, d.x, d.y, d.dir || this.player.dir, opts);
-    });
+    }, kind === 'journey' ? { dur: 1.35, journey: journeyInfo(this.map, LATE.maps?.mapMeta?.(id) || { id }, st) } : {});
     return true;
   }
 
   _doTriggerBattle(d) {
+    const clearKey = d.encounterKey ? `encounter:${this.map.id}:${d.encounterKey}` : null;
+    if (clearKey && state()?.flags?.[clearKey]) return false;
     const enemies = [];
     // A roamer carries the encounter it was rolled from (`monsters`); that is
     // the pack the player has been looking at, so it is the pack they fight.
@@ -3576,30 +3928,63 @@ export class OverworldScene {
     const night = this._isNight();
     const weather = this._weatherNow();
 
+    // A trigger names its own group (the Cragmaws waiting by the dead horses);
+    // only a trigger that names none falls back on the map's table.
+    const groupId = d.group || d.groupId || (d.roll && d.roll.groupId) || null;
     if (!enemies.length) {
       const roll = safe(() => rollEncounter({
         biome, level: d.level || Party.levelAvg(),
         size: Math.max(1, Party.members.length), seed, depth: d.depth || 0,
-        difficulty: d.boss ? 'deadly' : undefined,
-        table: d.table || (this.map && this.map.encounterTable) || null,
+        difficulty: d.boss ? 'deadly' : d.difficulty,
+        table: d.table || groupId || (this.map && this.map.encounterTable) || null,
+        group: d.group || null,
         night, weather,
       }), null);
       if (roll && roll.monsters) enemies.push(...roll.monsters);
     }
     if (!enemies.length) return false;
 
-    // A scripted fight keeps whatever surprise the script authored; a pack that
-    // walked into you settles it the same way the tall grass does.
-    const ambush = d.ambush != null && d.ambush !== false
-      ? d.ambush
-      : (d.roamer ? this._ambushFor(enemies, { biome, night, weather, seed }) : false);
-
-    return this._pushBattle(enemies, {
+    const fight = (surprise) => this._pushBattle(enemies, {
       seed, biome, depth: d.depth || 0,
-      ambush, boss: !!d.boss, source: d.entity || null,
-      difficulty: (d.roll && d.roll.difficulty) || undefined,
-      night, weather,
+      ambush: surprise, boss: !!d.boss, source: d.entity || (clearKey ? { defeat: () => setFlag(state(), clearKey, true) } : null),
+      difficulty: (d.roll && d.roll.difficulty) || d.difficulty,
+      night, weather, groupId, opener: inst ? inst.opener : null, shown: !!inst,
     });
+
+    // Every one of these opens on the standoff card, so the party learns who
+    // they are before the dice come out. A pack that walked into you can be
+    // talked to, fed or run from; a fight the map's author placed can be seen
+    // coming and struck first, but not talked out of.
+    const st = state();
+    const ctx = this._directorCtx();
+    const scripted = !d.roamer && !d.lurking;
+    const inst = safe(() => Director.packInstance(st, ctx, { monsters: enemies, groupId, seed, scripted }), null);
+    if (!inst || CHEATS.noCombat) {
+      const ambush = d.ambush != null && d.ambush !== false ? d.ambush
+        : (d.roamer ? this._ambushFor(enemies, { biome, night, weather, seed }) : false);
+      return fight(ambush);
+    }
+    // Who saw whom: a scripted ambush is a real Stealth contest against the
+    // party's passive Perception, and so is a pack blundering into you.
+    let mode = 'noticed';
+    if (d.ambush || d.roamer || d.lurking) {
+      const sp = safe(() => Director.springAmbush(st, inst, ctx), null);
+      mode = sp ? sp.mode : (d.ambush ? 'sprung' : 'noticed');
+      if (d.roamer && mode === 'sprung') mode = 'noticed';     // it walked up in plain view
+    }
+    const entity = d.entity || null;
+    safe(() => Game.push(new StandoffScene(inst, {
+      st, ctx, mode, entity,
+      onDone: (out) => {
+        Input.flush();
+        const k = out && out.kind;
+        if (k === 'fight') { fight(out.surprise === 'party' ? 'party' : mode === 'sprung'); return; }
+        if (k === 'retreat') this._retreat();
+        // Let go: the pack loses interest for a good while.
+        if (entity && typeof entity.scatter === 'function') safe(() => entity.scatter(k === 'retreat' ? 14 : 40));
+      },
+    })));
+    return true;
   }
 
   // --- menus ---------------------------------------------------------------
@@ -3628,11 +4013,19 @@ export class OverworldScene {
   // 6.4 DRAW
   // =========================================================================
 
-  draw(ctx) {
-    ctx.fillStyle = '#07060a';
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  /**
+   * Every pass paints into its own stage layer (render/stage.js), so each can be
+   * shown, hidden, faded or filtered on its own. Each is fetched by name (the
+   * 'deco' ctx the engine hands every world scene is the same one fetched
+   * below), and fetching one also tells the F10 inspector whose draw time
+   * follows. The order of the calls is still the order things stack up.
+   */
+  draw() {
+    const back = Stage.ctx('backdrop');
+    back.fillStyle = '#07060a';
+    back.fillRect(0, 0, VIEW_W, VIEW_H);
 
-    if (!this.map) { this._drawLoading(ctx); return; }
+    if (!this.map) { this._drawLoading(back); return; }
 
     // Round the camera (shake included) once, here, so nothing shimmers.
     const sh = safe(() => FX.shakeOffset(), { x: 0, y: 0 }) || { x: 0, y: 0 };
@@ -3640,49 +4033,78 @@ export class OverworldScene {
     this.camDraw.y = Math.round(this.cam.y + sh.y);
     const cam = this.camDraw;
 
-    // How hard the sun casts right now. Every depth pass is scaled by it so the
-    // world does not double-darken once _drawGrade multiplies midnight over it.
+    // This frame's light, then how hard the sun casts right now. Every depth
+    // pass is scaled by it so the world does not double-darken once the grade
+    // multiplies midnight over it.
+    this._lightFrame(cam);
     this._updateLight();
 
-    this._drawLayer(ctx, 'ground', cam);
+    this._drawLayer(Stage.ctx('ground'), 'ground', cam);
+    drawGroundDetails(Stage.ctx('ground'), this.map, cam, VIEW_W, VIEW_H);
+    this._drawDungeonEdges(Stage.ctx('ground'), cam);
+    drawInteriorFloor(Stage.ctx('ground'), this.map, cam, Game.state?.time);
     // Light failing to reach the foot of every wall, drawn between the floor and
     // the scenery so the walkable ground reads as a carved-out shape rather than
     // a flat texture.
-    this._drawEdges(ctx, cam);
+    const shade = Stage.ctx('ground-shade');
+    this._drawEdges(shade, cam);
     // The shadow a building throws across the street. Drawn on the ground and
     // under the scenery, because that is where it lands — on the pavement.
-    this._drawSunShadows(ctx, cam);
-    this._drawLayer(ctx, 'deco', cam);
+    this._drawSunShadows(shade, cam);
+    // Puddles and the rings the rain makes in them: on the ground, under feet.
+    safe(() => Atmosphere.drawGround(shade, cam, Lighting.env));
+    const deco = Stage.ctx('deco');
+    this._drawLayer(deco, 'deco', cam);
+    drawDungeonScenery(deco,this.map,cam,VIEW_W,VIEW_H);
+    drawInteriorGoods(deco,this.map,cam);
+    drawStreetGoods(deco,this.map,cam);
     // The eave: what the roofs and canopies overhead drop onto the wall face and
     // the ground below them. After deco, so it lands on the wall it belongs to.
-    this._drawOverhangs(ctx, cam);
+    this._drawOverhangs(deco, cam);
     // Ways out of this place, under the party so you can stand on one.
-    this._drawExits(ctx, cam);
+    this._drawExits(deco, cam);
 
     // Every contact shadow in one sweep BEFORE any sprite, so a villager's
-    // shadow can never darken the face of the villager standing in front.
-    const shadowed = safe(() => this._drawEntityShadows(ctx, cam), false);
+    // shadow can never darken the face of the villager standing in front. It
+    // stays on 'deco', over the deco tiles, because a rug or a flower bed is
+    // deco and a villager standing on one still casts a shadow on it.
+    const shadowed = safe(() => this._drawEntityShadows(deco, cam), false);
+    // Spell scorches and rings on the ground go under the feet that stand on them.
+    safe(() => VFX.drawGround(deco, cam.x, cam.y));
 
     // Entities and the party in one feet-Y sort, so villagers pass in front of and
     // behind you correctly.
     if (this.entities) {
-      safe(() => this.entities.draw(ctx, cam, {
+      const actors = Stage.ctx('actors');
+      safe(() => this.entities.draw(actors, cam, {
         viewW: VIEW_W, viewH: VIEW_H, pad: 48,
+        extra: visibleTrees(this.map, {x:cam.x,y:cam.y,w:VIEW_W,h:VIEW_H},
+          this.entities.list.filter(e=>!e.hidden&&!e.removed&&(e.char||e.kind==='npc'||e.kind==='monster')).map(e=>{
+            const art=e.monsterId?monsterArtFor(e.monsterId,e.sprite):null;
+            const dim=art?spriteSize(art.sprite):{w:16,h:24},scale=(e.scale||1)*(art?.scale||1);
+            return {x:e.px,y:e.py,w:dim.w*scale,h:dim.h*scale};
+          })),
         drawOpts: shadowed ? NO_SPRITE_SHADOW : undefined,
       }));
     }
     // The "there is something here" glint, over the sprites but under the
     // grade, so the dark can take it away again.
-    this._drawSparkles(ctx, cam);
-    safe(() => FX.draw(ctx, cam.x, cam.y));
+    const fx = Stage.ctx('fx');
+    this._drawSparkles(fx, cam);
+    safe(() => FX.draw(fx, cam.x, cam.y, NO_FLOATERS));
 
     // Canopies, roof edges and archways you walk behind.
-    this._drawLayer(ctx, 'over', cam);
+    this._drawLayer(Stage.ctx('over'), 'over', cam);
 
-    // Grade first, then the hint: the "you can talk to this" chevron has to stay
-    // readable at midnight, and the HUD above it likewise.
-    this._drawGrade(ctx, cam);
-    this._drawInteractHint(ctx, cam);
+    // Grade first, then the readouts: damage numbers and the "you can talk to
+    // this" chevron have to stay readable at midnight, so they go up on the
+    // world-ui layer above the grade, the weather and the lantern glow.
+    this._drawLight(cam);
+    const ui = Stage.ctx('world-ui');
+    safe(() => FX.drawFloaters(ui, cam.x, cam.y));
+    this._drawInteractHint(ui, cam);
+    this.hud.drawBarks(ui, cam);
+    drawStreetSpeech(ui,this.map,cam,this.player);
 
     this.hud.setPlayerScreen(
       Math.round(this.player.px - cam.x),
@@ -3696,14 +4118,43 @@ export class OverworldScene {
    * rain, snow and the night grade fall on the world and not on the HUD, the
    * location banner or the loot tally.
    */
-  drawUI(ctx) {
+  drawUI() {
     if (!this.map) return;
-    this._drawExitLabel(ctx);
+    // The exit plate is anchored to a place in the world; the rest is the HUD.
+    this._drawExitLabel(Stage.ctx('world-ui'));
+    const ctx = Stage.ctx('hud');
     this.hud.draw(ctx);
     this.hotbar.update(Game.dt || 0);
-    safe(() => this.hotbar.draw(ctx, this._hotbarModel()));
+    const model = safe(() => this._hotbarModel(), null);
+    this._verbNow = model && model.context;      // the interact hint names the same verb
+    ctx.save();
+    ctx.globalAlpha = this.hud.alphaOf('hud.toolbar');
+    if (ctx.globalAlpha > 0.02) safe(() => this.hotbar.draw(ctx, model));
+    ctx.restore();
+    safe(() => this.notice.draw(ctx));
     this._drawBanner(ctx);
     this._drawPopup(ctx);
+    // Toasts read above everything, on 'overlay'. Under a menu they wait,
+    // un-aged, rather than print across the menu's own text.
+    if (Game.top === this) this.hud.drawToasts(Stage.ctx('overlay'));
+  }
+
+  /** A quiet continuous edge separates walkable passages from dungeon masonry. */
+  _drawDungeonEdges(ctx, cam) {
+    const m = this.map;
+    if (!m?.rooms || m.depth == null) return;
+    ctx.save(); ctx.strokeStyle = '#b5a582'; ctx.globalAlpha = 0.3; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let y=Math.max(0,Math.floor(cam.y/TILE));y<Math.min(m.h,Math.ceil((cam.y+VIEW_H)/TILE));y++)
+      for(let x=Math.max(0,Math.floor(cam.x/TILE));x<Math.min(m.w,Math.ceil((cam.x+VIEW_W)/TILE));x++) {
+        if(m.solidAt(x,y)) continue;
+        const px=Math.round(x*TILE-cam.x),py=Math.round(y*TILE-cam.y);
+        if(m.solidAt(x,y-1)){ctx.moveTo(px,py+1);ctx.lineTo(px+TILE,py+1);}
+        if(m.solidAt(x-1,y)){ctx.moveTo(px+1,py);ctx.lineTo(px+1,py+TILE);}
+        if(m.solidAt(x+1,y)){ctx.moveTo(px+TILE-1,py);ctx.lineTo(px+TILE-1,py+TILE);}
+        if(m.solidAt(x,y+1)){ctx.moveTo(px,py+TILE-1);ctx.lineTo(px+TILE,py+TILE-1);}
+      }
+    ctx.stroke();ctx.restore();
   }
 
   /** Only tiles in view plus a one-tile margin, so big maps cost nothing extra. */
@@ -3723,6 +4174,36 @@ export class OverworldScene {
     // every layer of every frame, which is 180 a second for nothing.
     const fringe = layer === 'ground' ? this._fringeMaskSafe() : null;
 
+    // Cache only static, unfringed tiles in this viewport. Water, fire and
+    // material joins keep their existing live path. Two small surfaces on the
+    // scene replace hundreds of draw calls without retaining whole maps.
+    let view = null;
+    if ((layer === 'ground' || layer === 'deco') && typeof document !== 'undefined') {
+      const views = this._tileViews || (this._tileViews = {});
+      view = views[layer];
+      const cols = x1 - x0 + 1, rows = y1 - y0 + 1;
+      const revision = TILESET.tileCacheRevision();
+      if (!view || view.map !== map || view.x !== x0 || view.y !== y0 || view.revision !== revision) {
+        const canvas = view?.canvas || document.createElement('canvas');
+        canvas.width = cols * TILE; canvas.height = rows * TILE;
+        view = views[layer] = { map, x: x0, y: y0, revision, canvas, ids: new Int32Array(cols * rows).fill(-1) };
+      }
+      const c = view.canvas.getContext('2d');
+      c.imageSmoothingEnabled = false;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const i = (y - y0) * cols + x - x0;
+        const inMap = x >= 0 && y >= 0 && x < map.w && y < map.h;
+        const id = inMap ? plane[y * map.w + x] : 0;
+        const fixed = id && !isTreeTile(id) && !isAnimated(id) && !fringe?.[y * map.w + x] ? id : 0;
+        if (view.ids[i] === fixed) continue;
+        view.ids[i] = fixed;
+        const px = (x - x0) * TILE, py = (y - y0) * TILE;
+        c.clearRect(px, py, TILE, TILE);
+        if (fixed && !(layer === 'ground' && drawGroundSurface(c,map,fixed,px,py,x,y))) drawTile(c, fixed, px, py, x, y, t);
+      }
+      ctx.drawImage(view.canvas, x0 * TILE - cam.x, y0 * TILE - cam.y);
+    }
+
     for (let y = y0; y <= y1; y++) {
       if (y < 0 || y >= map.h) continue;
       const row = y * map.w;
@@ -3730,11 +4211,12 @@ export class OverworldScene {
       for (let x = x0; x <= x1; x++) {
         if (x < 0 || x >= map.w) continue;
         const id = plane[row + x];
-        if (!id) continue;
+        if (!id || isTreeTile(id)) continue;
         const px = x * TILE - cam.x;
         const cell = fringe ? fringe[row + x] : 0;
+        if (view && !cell && !isAnimated(id)) continue;
         if (cell) this._drawFringed(ctx, id, cell, px, py, x, y, t);
-        else drawTile(ctx, id, px, py, x, y, t);
+        else if (!(layer === 'ground' && drawGroundSurface(ctx,map,id,px,py,x,y))) drawTile(ctx, id, px, py, x, y, t);
       }
     }
   }
@@ -4030,16 +4512,14 @@ export class OverworldScene {
     const map = this.map;
     let sun = 1;
     if (map) {
-      if (this._darkNow() > 0) sun = 0;              // a cave: torchlight, no sun
+      if (this._darkNow() > 0 || isUnderground(map)) sun = 0;   // a cave: torchlight, no sun
       else if (map.indoor) sun = 0.35;               // window light, soft and flat
-      else {
-        const st = state();
-        sun = (map.dayNight === false || !st) ? 1 : sunStrength(st.time);
-      }
+      else sun = Lighting.env.sun;                   // the hour, and the cloud over it
     }
     this._sun = 0.30 + 0.70 * sun;
     this._ao = 0.78 + 0.22 * sun;
   }
+
 
   /**
    * Bitmask per tile: which NEIGHBOURS of this walkable tile are blocked.
@@ -4052,10 +4532,11 @@ export class OverworldScene {
     if (map._edgeMask && map._edgeMask.length === map.w * map.h) return map._edgeMask;
     const w = map.w, h = map.h;
     const mask = new Uint8Array(w * h);
+    const round = roundSolid(map);
     const blocked = (x, y) => {
       if (x < 0 || y < 0 || x >= w || y >= h) return true;      // off-map counts
       const f = map.flagAt(x, y);
-      return (f & TF.SOLID) !== 0 || (f & TF.WATER) !== 0;
+      return (f & (TF.SOLID | TF.WATER)) !== 0 && !round(x, y);
     };
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -4258,8 +4739,12 @@ export class OverworldScene {
       const id = over[y * w + x];
       return !!id && (tileFlags(id) & TF.SOLID) !== 0;
     };
+    // Deep water is SOLID (you cannot wade it) but it has no height: counted as
+    // masonry, it threw a building's shadow onto the shallows, a dark 16px
+    // staircase down every coast. Round things cast their own (roundSolid).
+    const round = roundSolid(map);
     const solidAt = (x, y) => (x >= 0 && y >= 0 && x < w && y < h)
-      && (map.flagAt(x, y) & TF.SOLID) !== 0;
+      && (map.flagAt(x, y) & (TF.SOLID | TF.WATER)) === TF.SOLID && !round(x, y);
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -4477,6 +4962,8 @@ export class OverworldScene {
   /** The readable name of wherever a warp leads. */
   _exitName(tr) {
     const d = (tr && tr.data) || {};
+    if (d.guarded && !state()?.flags?.[`encounter:${this.map.id}:${d.guarded.encounterKey}`]) return 'Guarded stair - guardian ahead';
+    if (d.depth != null && !d.map && !d.mapId) return d.exit ? 'Return to the surface' : `Stairs ${d.dir || 'down'} - floor ${d.depth}`;
     const id = d.map || d.mapId || null;
     if (!id) return null;
     if (this._exitNames && this._exitNames[id]) return this._exitNames[id];
@@ -4562,25 +5049,32 @@ export class OverworldScene {
     // label itself is a readout and goes up with the HUD in drawUI — drawn here
     // it was dimmed by the night grade and walked behind by the party.
     this._exitLabel = (nearest && nearestD <= 5)
-      ? { name: this._exitName(nearest.tr), px: nearest.px, py: nearest.py, d: nearestD }
+      ? { name: this._exitName(nearest.tr), px: nearest.px, py: nearest.py, d: nearestD, dir: this._exitArrowDir(nearest.tr), kind: nearest.tr.data?.kind }
       : null;
   }
 
-  /** The "→ The Triboar Trail" plate. Called from drawUI, above the grading. */
+  /**
+   * The "→ The Triboar Trail" plate over the way out, on 'world-ui' so the
+   * night grade never dims it. Fine text on a HUD plate, the arrow pointing the
+   * way the road leaves; it firms up as you close in.
+   */
   _drawExitLabel(ctx) {
     const e = this._exitLabel;
+    this.hud._exitRect = null;
     if (!e || !e.name) return;
-    const label = '\u2192 ' + e.name;
-    const w = safe(() => UI.measure(label, 'sm'), label.length * 4) + 8;
-    const lx = clamp(Math.round(e.px + TILE / 2 - w / 2), 2, VIEW_W - w - 2);
-    const ly = clamp(e.py - 13, 2, VIEW_H - 14);
-    const a = clamp(1.2 - e.d / 5, 0.25, 1);
+    const arrow = { up: UI.G.up, down: UI.G.down, left: UI.G.left, right: UI.G.right }[e.dir] || UI.G.right;
+    const label = `${arrow} ${e.name}`;
+    const w = safe(() => UI.measure(label, 'fineb', undefined, 2), label.length * 3.5) + 6;
+    const cx = e.px + TILE / 2;            // screen px, worked out in this frame's draw()
+    const lx = clamp(Math.round((cx - w / 2) * 2) / 2, 2, VIEW_W - w - 2);
+    // A well's windlass rises above its threshold; keep its name above the
+    // mechanism instead of covering the shaft the player is about to enter.
+    const ly = clamp(Math.round(e.py - (e.kind === 'well' ? 43 : 11)), 2, VIEW_H - 10);
+    this.hud._exitRect = { x: lx - 1, y: ly - 1, w: w + 2, h: 10 };
     ctx.save();
-    ctx.globalAlpha = a;
-    safe(() => UI.panel(ctx, lx, ly, w, 11, { style: 'dark', shadow: 0.4, studs: false }));
-    safe(() => UI.text(ctx, lx + w / 2, ly + 2, label, {
-      size: 'sm', color: UI.COLORS.goldBright, align: 'center', shadow: true,
-    }));
+    ctx.globalAlpha = clamp(1.2 - e.d / 5, 0.3, 1);
+    safe(() => hudFrame(ctx, lx, ly, w, 8));
+    safe(() => UI.text(ctx, lx + 3, ly + 2.5, label, { size: 'fineb', color: UI.COLORS.goldBright }));
     ctx.restore();
   }
 
@@ -4629,59 +5123,81 @@ export class OverworldScene {
   }
 
   /**
-   * Day/night grading, cave darkness, and the warm pools of light that torches and
-   * lit windows throw once the sun is down. Drawn over the world and under the HUD,
-   * so the interface stays readable at midnight.
+   * Work out this frame's light (render/lighting.js): the sky for this hour and
+   * weather, what burns in view, and what the party carries. Called at the top
+   * of draw() so the depth passes already know how hard the sun is casting.
    */
-  _drawGrade(ctx, cam) {
+  _lightFrame(cam) {
     const map = this.map;
     const st = state();
-    const graded = map.dayNight !== false && !map.indoor && st;
-    const tint = graded ? dayTint(st.time) : null;
-    // Daylight is true sunlight: fieldworld marks the cast `sunlight` and the
-    // cave stops being a cave for as long as it burns.
-    const dark = this._darkNow();
-
-    if (tint && tint.a > 0.005) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = tint.a;
-      ctx.fillStyle = `rgb(${tint.r},${tint.g},${tint.b})`;
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-      ctx.restore();
+    const minutes = st ? st.time : 720;
+    // Refresh what the party is carrying about once a second, not every frame.
+    if (!this._carry || this.t - this._carry.t > 1 || this.t < this._carry.t) {
+      this._carry = { t: this.t, light: safe(() => this._carriedLight(), null) };
     }
-
-    // Overcast. A downpour does not just add drops, it takes the light out of
-    // the day — without this the world stays a bright noon with rain drawn on
-    // top of it, which is the tell that the weather is a screen effect rather
-    // than a sky. Multiplied like the day/night grade, and it fades with the
-    // same blend so a squall arrives and lifts rather than snapping.
-    if (!map.indoor) {
-      const wg = safe(() => FX.weatherGrade(), null);
-      if (wg && wg.alpha > 0.005) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = clamp(wg.alpha, 0, 1);
-        ctx.fillStyle = wg.color;
-        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-        ctx.restore();
+    const under = isUnderground(map) || (map.dark || 0) > 0.2;
+    const night = !map.indoor && map.dayNight !== false && sunAt(minutes) < 0.15;
+    let light = null, radius = 0;
+    const sl = this.spellLight;
+    if (sl && !sl.sunlight) { light = 'spell'; radius = sl.radius; }
+    else if (under || night) {
+      light = this._carry.light;
+      // Nothing burning: in a cave your eyes (or darkvision) give you the room
+      // you stand in; on a night road the moon is enough.
+      if (!light && under) {
+        light = safe(() => Party.members.some((ch) => ch && ch.senses && ch.senses.darkvision > 0), false) ? 'darkvision' : 'eyes';
       }
     }
+    const p = this._lightParty || (this._lightParty = { x: 0, y: 0, light: null, radius: 0 });
+    // A torch or lantern is seen in the lead's hand, and the pool is centred
+    // on its flame; a spell's light or bare eyes sit on the party itself.
+    const held = light === 'carried' ? 'torch' : light === 'lanternHeld' ? 'lantern' : null;
+    this.player.heldLight = held;
+    if (held) this.player.heldLightAt(p);
+    else { p.x = this.player.px; p.y = this.player.py - 6; }
+    p.light = light;
+    p.radius = radius;
+    const snap = !!this._airSnap;
+    this._airSnap = false;
+    safe(() => Lighting.update({
+      map, minutes, day: st ? st.day : 121, t: this.t, dt: Game.dt || 0,
+      weather: map.indoor ? 'none' : FX.weatherKind, weatherInt: this._weatherInt,
+      cam, party: p, entities: this.entities ? arrOf(this.entities.list) : [], leader: this.player,
+      sunlight: !!(sl && sl.sunlight), snapWeather: snap,
+    }));
+    safe(() => Atmosphere.update(Game.dt || 0, Lighting.env, cam, map, { reduced: FX.reducedMotion, snap }));
+  }
 
-    // A map-authored ambient wash (crypts, the Redbrand cellar).
-    if (map.ambient && map.ambient.color) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = clamp(map.ambient.alpha != null ? map.ambient.alpha : 0.3, 0, 1);
-      ctx.fillStyle = map.ambient.color;
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-      ctx.restore();
+  /** The best light anyone in the party is carrying: a lantern beats a torch. */
+  _carriedLight() {
+    if (Party.hasItem('lantern') || Party.hasItem('lantern-hooded')) return 'lanternHeld';
+    if (Party.hasItem('torch')) return 'carried';
+    return null;
+  }
+
+  /**
+   * The grade (sky, darkness and every light pool, multiplied over the world)
+   * and the halos round the flames. Drawn over the world and under the HUD, so
+   * the interface stays readable at midnight.
+   */
+  _drawLight(cam) {
+    // FX has drawn the current frame; its pools now match the visible spell.
+    Lighting.addLights(VFX.lights(), cam);
+    const env = Lighting.env;
+    // Rain, snow, fog and leaves first: they sit under the grade, so the night
+    // darkens them and a lantern's pool lights the drops falling through it.
+    if (Atmosphere.wantsAir()) safe(() => Atmosphere.drawAir(Stage.ctx('weather'), cam, env));
+    const clouds = Atmosphere.state.cloudAmt > 0.02;
+    if (clouds || Lighting.wantsGrade()) {
+      // The grade layer is a canvas of its own (a blend layer) except in the
+      // stage's flat debug mode, where the light map must be multiplied on.
+      safe(() => Lighting.drawGrade(Stage.ctx('grade'), cam, clouds ? GRADE_HOOKS : null, !Stage.flat));
     }
-
-    if (dark > 0) this._drawDarkness(ctx, cam, dark);
-
-    const night = tint ? clamp((tint.a - 0.07) / 0.42, 0, 1) : (map.indoor || dark ? 0.85 : 0);
-    if (night > 0.04) this._drawLights(ctx, cam, night);
+    if (env.lights > 0.02 || Atmosphere.wantsGlow(env)) {
+      const glow = Stage.ctx('glow');
+      safe(() => Lighting.drawGlow(glow, cam));
+      safe(() => Atmosphere.drawGlow(glow, cam, env));
+    }
   }
 
   /**
@@ -4735,53 +5251,16 @@ export class OverworldScene {
     ctx.restore();
   }
 
-  _drawDarkness(ctx, cam, amount) {
-    const cx = Math.round(this.player.px - cam.x);
-    const cy = Math.round(this.player.py - cam.y) - 8;
-    // A cast Light spell is the one thing that genuinely pushes a cave back.
-    const r = 84 + (this.spellLight ? this.spellLight.radius : 0);
-    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, r);
-    g.addColorStop(0, 'rgba(2,3,8,0)');
-    g.addColorStop(0.55, `rgba(2,3,8,${(amount * 0.45).toFixed(3)})`);
-    g.addColorStop(1, `rgba(2,3,8,${clamp(amount, 0, 0.97).toFixed(3)})`);
-    ctx.save();
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    ctx.restore();
-  }
-
-  _drawLights(ctx, cam, night) {
-    const glows = safe(() => glowsFor(this.map), []) || [];
-    if (!glows.length) return;
-    const nightOnly = night > 0.25;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    let drawn = 0;
-    for (const gl of glows) {
-      if (drawn > 26) break;
-      const sx = gl.x * TILE + TILE / 2 - cam.x;
-      const sy = gl.y * TILE + TILE / 2 - cam.y;
-      const rad = gl.def.r;
-      if (sx < -rad || sy < -rad || sx > VIEW_W + rad || sy > VIEW_H + rad) continue;
-      if (gl.def.nightOnly && !nightOnly) continue;
-      drawn++;
-      const flick = gl.def.flick
-        ? 1 + Math.sin((this.t * 6.5) + gl.phase * 12) * 0.07 * gl.def.flick
-        : 1;
-      const a = clamp(0.42 * night * flick, 0, 0.7);
-      const c = gl.def.c;
-      const g = ctx.createRadialGradient(sx, sy, 1, sx, sy, rad * flick);
-      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`);
-      g.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},${(a * 0.35).toFixed(3)})`);
-      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(sx - rad, sy - rad, rad * 2, rad * 2);
-    }
-    ctx.restore();
-  }
-
-  /** A small bouncing chevron over whatever pressing A would talk to. */
+  /**
+   * Over whatever pressing E would act on: a bobbing gilt chevron and a small
+   * plate naming the verb with its key ("[E] Talk"), on 'world-ui'. Holding
+   * Shift over a person turns both red and the verb to Attack: that press
+   * starts a fight, and you should know before you make it. It never turns red
+   * over someone the game will not let you attack. The plate's rect is handed
+   * to the HUD so speech bubbles step round it.
+   */
   _drawInteractHint(ctx, cam) {
+    this.hud._hint = null;
     if (this.player.moving || this.popup || !this.entities) return;
     const f = this.player.frontTile();
     const e = safe(() => this.entities.interactableAt(f.x, f.y), null);
@@ -4790,77 +5269,78 @@ export class OverworldScene {
 
     const wx = (e ? e.px : f.x * TILE + TILE / 2) - cam.x;
     const wy = (e ? e.py - (e.char || e.sprite ? 26 : 18) : f.y * TILE - 4) - cam.y;
-    const bob = Math.round(Math.sin(this.t * 6) * 1.5);
+    const bob = Math.round(Math.sin(this.t * 6) * 1.5 * 2) / 2;
     const x = Math.round(wx), y = Math.round(wy) + bob;
 
-    // Holding Shift over a person turns the "talk" chevron red: that press
-    // starts a fight instead of a conversation, and you should know before you
-    // make it. It never appears over someone the game will not let you attack.
     const armed = !!e && e.kind === 'npc'
       && safe(() => Input.down('run'), false)
       && safe(() => crimeCanAttack(e.npc || getNPC(e.npcId) || e, e).ok, false);
+    const col = armed ? '#e0553f' : '#f2d27a';
 
     ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = '#1a1014';
-    ctx.beginPath();
-    ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y - 4); ctx.lineTo(x, y + 2);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = armed ? '#d4553f' : '#e3b34a';
-    ctx.beginPath();
-    ctx.moveTo(x - 3, y - 4); ctx.lineTo(x + 3, y - 4); ctx.lineTo(x, y + 1);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
-
-    if (armed) {
-      safe(() => UI.text(ctx, x, y - 15, 'ATTACK', {
-        size: 'sm', color: '#e8735c', align: 'center', shadow: true,
-      }));
+    ctx.globalAlpha = 0.95;
+    // The chevron, keyed in ink so it reads on grass, stone and snow alike.
+    for (let i = 0; i < 4; i++) {
+      const half = 3 - i;
+      ctx.fillStyle = '#1a1014';
+      ctx.fillRect(x - half - 0.5, y - 4 + i, half * 2 + 1, 1.5);
     }
+    for (let i = 0; i < 3; i++) {
+      const half = 2.5 - i;
+      ctx.fillStyle = i === 0 ? '#fff4c8' : col;
+      ctx.fillRect(x - half, y - 3.5 + i, half * 2, 1);
+    }
+    // The verb plate above it.
+    const verb = armed ? 'Attack' : ((this._verbNow && this._verbNow.enabled && this._verbNow.label) || (e ? 'Look' : 'Use'));
+    const vw = safe(() => UI.measure(verb, 'fineb', undefined, 2), verb.length * 3.5);
+    const w = vw + 12, h = 9;
+    const px = clamp(Math.round((x - w / 2) * 2) / 2, 2, VIEW_W - w - 2), py = Math.max(1, y - 14);
+    safe(() => hudFrame(ctx, px, py, w, h, { tone: armed ? 'danger' : null }));
+    safe(() => hudCap(ctx, px + 1.5, py + 1.5, 'E', { color: armed ? '#f0a890' : null }));
+    safe(() => UI.text(ctx, px + 8.5, py + 3, verb, { size: 'fineb', color: armed ? '#ffb8a0' : '#f6e7c0' }));
+    ctx.restore();
+    this.hud._hint = { x: px - 1, y: py - 1, w: w + 2, h: y - py + 3 };
   }
 
+  /** The place banner (drawn by the HUD, which owns its look and its widget). */
   _drawBanner(ctx) {
-    const b = this.banner;
-    if (!b) return;
-    const fade = b.t < 0.3 ? b.t / 0.3 : b.t > 2.6 ? clamp((3.2 - b.t) / 0.6, 0, 1) : 1;
-    if (fade <= 0.01) return;
-    const w = Math.min(176, Math.max(96, safe(() => UI.measure(b.text, 'md'), 80) + 28));
-    const x = Math.round(183 - w / 2), y = 3;
-    const h = b.sub ? 28 : 20;
-    ctx.save();
-    ctx.globalAlpha = fade;
-    safe(() => UI.panel(ctx, x, y, w, h, { style: 'dark', alpha: 0.9 }));
-    safe(() => UI.text(ctx, 183, y + 5, UI.fit(b.text, w - 16, 'md'), {
-      size: 'md', color: UI.COLORS.gold, align: 'center', shadow: true,
-    }));
-    if (b.sub) {
-      safe(() => UI.text(ctx, 183, y + 16, UI.fit(b.sub, w - 16, 'sm'), {
-        size: 'sm', color: UI.COLORS.dim, align: 'center',
-      }));
-    }
-    ctx.restore();
+    if (this.banner) this.hud.drawBanner(ctx, this.banner, this.map);
   }
 
+  /**
+   * The "Found" slip: what a chest, a body or a search turned up, centred
+   * above the party. A kit window with its title on a ribbon, the lines in the
+   * fine face, and the key that dismisses it.
+   */
   _drawPopup(ctx) {
     const p = this.popup;
     if (!p) return;
-    const rows = p.lines.length;
-    const w = 150, h = 22 + rows * 10;
-    const x = Math.round((VIEW_W - w) / 2), y = Math.round((VIEW_H - h) / 2) - 20;
+    const lines = (p.lines || []).flatMap(line => {
+      const rows = []; let row = '';
+      for (const word of String(line).split(' ')) {
+        const next = row ? row + ' ' + word : word;
+        if (row && UI.measure(next, 'fine', undefined, 2) > 196) { rows.push(row); row = word; }
+        else row = next;
+      }
+      if (row) rows.push(row);
+      return rows;
+    });
+    const widest = lines.reduce((m, l) => Math.max(m, safe(() => UI.measure(String(l), 'fine', undefined, 2), 0)), 0);
+    const w = clamp(Math.ceil(widest) + 24, 110, 220), h = 24 + lines.length * 6;
+    // Centred on the 'hud.popup' widget (ui/hud.js registers it), so Arrange
+    // mode can move it off whatever the player would rather watch.
+    const at = Layout.rect('hud.popup', { w, h });
+    if (!at.visible) return;
+    const x = at.x, y = at.y;
+    const life = p.life || 4.5;
     const pop = clamp(p.t / 0.14, 0, 1);
     ctx.save();
-    ctx.globalAlpha = p.t > (p.life || 4.5) - 0.4 ? clamp(((p.life || 4.5) - p.t) / 0.4, 0, 1) : 1;
+    ctx.globalAlpha = p.t > life - 0.4 ? clamp((life - p.t) / 0.4, 0, 1) : clamp(p.t / 0.1, 0, 1);
     safe(() => UI.window(ctx, x, y, w, h, p.title || 'Found', { style: 'window' }));
-    for (let i = 0; i < rows; i++) {
-      safe(() => UI.text(ctx, x + 10, y + 9 + i * 10, p.lines[i], {
-        size: 'sm', color: UI.COLORS.ink, maxWidth: w - 20,
-      }));
+    for (let i = 0; i < lines.length; i++) {
+      safe(() => UI.text(ctx, x + 12, y + 12 + i * 6, String(lines[i]), { size: 'fine', color: UI.COLORS.ink, maxWidth: w - 24 }));
     }
-    if (pop >= 1) {
-      safe(() => UI.text(ctx, x + w - 8, y + h - 10, 'A', {
-        size: 'sm', color: UI.COLORS.goldDim, align: 'right',
-      }));
-    }
+    if (pop >= 1) safe(() => hudCap(ctx, x + w - 12, y + h - 9, 'E'));
     ctx.restore();
   }
 

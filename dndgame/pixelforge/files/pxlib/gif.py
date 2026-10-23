@@ -96,7 +96,8 @@ def _quantize(frames, width, height):
 
 
 def write_gif(path, width, height, frames, delay_cs=10, loop=0):
-    """frames: list of flat RGBA buffers, all width*height*4. delay_cs in 1/100 s."""
+    """frames: list of flat RGBA buffers, all width*height*4. delay_cs in 1/100 s,
+    one number for every frame or a list with one per frame."""
     if not frames:
         raise ValueError("no frames to write")
     colors, index_frames, transparent = _quantize(frames, width, height)
@@ -116,8 +117,10 @@ def write_gif(path, width, height, frames, delay_cs=10, loop=0):
     # NETSCAPE2.0 looping extension
     out += b"\x21\xFF\x0BNETSCAPE2.0\x03\x01" + struct.pack("<H", loop) + b"\x00"
 
-    delay = max(1, int(delay_cs))
-    for idx in index_frames:
+    # one delay for every frame, or a list: per-frame timing from @frame dur=
+    delays = list(delay_cs) if isinstance(delay_cs, (list, tuple)) else [delay_cs] * len(frames)
+    for idx, d in zip(index_frames, delays):
+        delay = max(1, int(d))
         out += b"\x21\xF9\x04\x09" + struct.pack("<H", delay) + bytes((transparent, 0))
         out += b"\x2C" + struct.pack("<HHHH", 0, 0, width, height) + b"\x00"
         out += bytes((min_code_size,))

@@ -10,18 +10,25 @@
 //   * 400x240 logical pixels. Draw on integers. Never let text leave its panel.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
+import { GILT } from './ornament.js';
+import { planCanvas } from './hudmap.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Save } from '../core/save.js';
 import { Game } from '../engine.js';
 import { FX } from '../render/fx.js';
+import { Stage } from '../render/stage.js';
+import { journeyInfo } from '../render/journey.js';
+import { Layout } from './layout.js';
+import { TRACKS, TRACK_GROUPS } from '../core/music.js';
 import {
   VIEW_W, VIEW_H, clamp, signed, ordinal, titleCase, playtimeText, plural,
   dateText, EQUIP_SLOTS, SLOT_NAMES, RARITY, PARTY_MAX, crText,
 } from '../constants.js';
 import { bus, EV, toast } from '../core/events.js';
 import { rollExpr, avgExpr } from '../core/dice.js';
-import { drawSprite, hasSprite, spriteFrames } from '../render/sprites.js';
+import { drawSprite, hasSprite, spriteFrames, spriteSize } from '../render/sprites.js';
 import { ABILITIES, ABILITY_NAMES, ABILITY_ABBR, SKILLS, SKILL_IDS } from '../rules/abilities.js';
 import {
   abilityScore, abilityMod, profBonus, skillMod, saveMod, acOf, maxHpOf, speedOf,
@@ -39,6 +46,7 @@ import {
 import { className, subclassName, xpToNext, xpProgress } from '../rules/progression.js';
 import { fieldCastable, fieldCast, fieldTargeting } from '../rules/fieldcast.js';
 import { travelSites } from '../rules/fieldworld.js';
+import { chronicle, chronicleEntries } from '../rules/worlddirector.js';
 import { Party } from '../world/party.js';
 import {
   saveState, loadState, stateSummary, advanceTime, timeInfo, REP_RANKS, repRank,
@@ -55,6 +63,7 @@ import { CheatsScene } from './cheatmenu.js';
 // ===========================================================================
 
 const C = UI.COLORS;
+const RUBRIC_HI = '#d8503a';
 
 function safe(fn, fb) {
   try { const v = fn(); return v === undefined || v === null ? fb : v; } catch (e) { return fb; }
@@ -114,12 +123,19 @@ function kv(ctx, x, y, w, label, value, opts = {}) {
   });
 }
 
-/** A small gold caption with a rule running out to the right of it. */
+/**
+ * A section's rubric in the 9px slot a screen set in sm gives it: spaced fine
+ * capitals in gold with a hairline out to the edge (menukit), sat low in the
+ * slot so it hangs over the rows it names.
+ */
 function sectionHead(ctx, x, y, w, label, color) {
-  txt(ctx, x, y, label, { size: 'sm', color: color || C.goldDim, shadow: true });
-  const lw = UI.measure(label, 'sm');
-  if (w - lw - 5 > 6) UI.divider(ctx, x + lw + 4, y + 3, w - lw - 5, { color: 'rgba(92,74,42,0.85)' });
+  MK.section(ctx, x, y + 1.5, w, label, color ? { color } : {});
   return y + 9;
+}
+/** The same in the fine face: a rubric in spaced capitals, for screens set in fine. */
+function rubric(ctx, x, y, w, label, color) {
+  MK.section(ctx, x, y, w, label, color ? { color } : {});
+  return y + 8;
 }
 
 // --- key prompts -----------------------------------------------------------
@@ -153,21 +169,9 @@ const CONTENT_BOTTOM = 210;
 const MSG_Y = 212;
 const HINT_Y = 224;
 
-/** The dark strip of [KEY] Label prompts along the bottom of every screen. */
-function hintBar(ctx, y, hints) {
-  ctx.save();
-  ctx.fillStyle = 'rgba(8,10,18,0.88)';
-  ctx.fillRect(0, R(y) - 4, VIEW_W, VIEW_H - R(y) + 4);
-  ctx.fillStyle = 'rgba(92,74,42,0.85)';
-  ctx.fillRect(0, R(y) - 4, VIEW_W, 1);
-  ctx.restore();
-  let x = 4;
-  for (const h of hints) {
-    if (!h) continue;
-    if (x > VIEW_W - 24) break;
-    const w = safe(() => UI.keyHint(ctx, x, R(y), h[0], h[1]), 0) || 0;
-    x += w + 7;
-  }
+/** The strip of [KEY] Label prompts along the foot of every screen (menukit). */
+function hintBar(ctx, y, hints, right) {
+  MK.keys(ctx, hints, { y: R(y) + 2, right });
 }
 
 // --- pointer ---------------------------------------------------------------
@@ -266,6 +270,7 @@ function speciesText(ch) {
 
 function itemIcon(d) {
   if (!d) return 'bag';
+  if(d.kind==='weapon')return 'weapon:'+d.id;
   if (d.icon) return d.icon;
   switch (d.kind) {
     case 'weapon': return 'sword';
@@ -349,11 +354,11 @@ function drawMemberCell(ctx, ch, x, y, w, h, opts = {}) {
   if (h >= 22) {
     const hp = Math.max(0, num(ch && ch.hp, 0));
     const max = Math.max(1, maxHpOf(ch));
-    UI.bar(ctx, tx, y + 13, Math.min(tw, 62), 4, hp / max, { color: hpColor(ch) });
-    txt(ctx, tx, y + 19, `${hp}/${max}`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: tw });
-    if (tw > 74) {
-      txtR(ctx, x + w - 3, y + 19, `Lv ${num(ch && ch.level, 1)}`, { size: 'sm', color: C.goldDim, shadow: true });
-    }
+    UI.bar(ctx, tx, y + 12, Math.min(tw, 52), 3, hp / max, { color: hpColor(ch), id: `menu-hp-${ch && ch.uid}` });
+    MK.text(ctx, tx, y + 17, `${hp}/${max} hp`, { color: C.inkDim, maxWidth: tw });
+    MK.text(ctx, x + w - 3, y + 17, `Lv ${num(ch && ch.level, 1)} ${String(safe(() => classText(ch), '')).replace(/ \d+/g, '')}`, {
+      color: C.goldDim, align: 'right', maxWidth: Math.max(10, tw - 30),
+    });
   }
 }
 
@@ -470,8 +475,8 @@ class MenuScene {
 
   drawMessage(ctx, x, y, w) {
     if (!this.msg) return;
-    txt(ctx, x, y, this.msg, {
-      size: 'sm', color: this.msgBad ? C.bad : C.goldBright, shadow: true,
+    MK.text(ctx, x, y + 1, this.msg, {
+      size: 'fineb', color: this.msgBad ? C.bad : C.goldBright, shadow: 'rgba(0,0,0,0.85)',
       maxWidth: w, alpha: clamp(this.msgT / 0.5, 0, 1),
     });
   }
@@ -483,8 +488,8 @@ class MenuScene {
    */
   drawStatusRight(ctx) {
     if (!this.msg) return;
-    txtR(ctx, VIEW_W - 6, HINT_Y + 2, this.msg, {
-      size: 'sm', color: this.msgBad ? C.bad : C.goldBright, shadow: true,
+    MK.text(ctx, VIEW_W - 6, HINT_Y + 7.5, this.msg, {
+      size: 'fineb', color: this.msgBad ? C.bad : C.goldBright, align: 'right',
       maxWidth: 186, alpha: clamp(this.msgT / 0.5, 0, 1),
     });
   }
@@ -706,7 +711,7 @@ export class PauseMenuScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    UI.scrim(ctx, 0.62);
+    MK.veil(ctx, 0.7);
     this._drawStrip(ctx);
 
     const LX = 6, LY = 34, LW = 150, LH = CONTENT_BOTTOM - LY;
@@ -714,30 +719,31 @@ export class PauseMenuScene extends MenuScene {
     this.rects = [];
     // The pitch follows the entry count instead of being pinned at 16. Ten
     // entries fitted; the eleventh (Cheats) put the last row at y=199, straight
-    // through the location/clock line this panel ends with — the row would have
-    // been drawn on top of it and 3px outside the frame. `listH` is the panel
-    // minus its top pad and that footer line, so the list can only ever end
-    // above it, however many entries there are.
+    // through the location/clock line this panel ends with. `listH` is the
+    // panel minus its top pad and that footer line, so the list can only ever
+    // end above it, however many entries there are.
     const listH = LH - 5 - 15;
     const rowH = Math.min(16, Math.floor(listH / Math.max(1, PAUSE_ITEMS.length)));
+    const m = Input.mouse;
     for (let i = 0; i < PAUSE_ITEMS.length; i++) {
       const it = PAUSE_ITEMS[i];
       const ry = LY + 5 + i * rowH;
       const sel = i === this.index;
       this.rects.push({ x: LX + 4, y: ry, w: LW - 8, h: rowH - 2 });
-      if (sel) UI.highlight(ctx, LX + 4, ry, LW - 8, rowH - 2, { alpha: 0.22 });
-      UI.icon(ctx, it.icon, LX + 8, ry + 3, 9, sel ? C.goldBright : C.inkDim);
-      txt(ctx, LX + 21, ry + 4, it.label, {
-        size: sel ? 'md' : 'sm', color: sel ? C.goldBright : C.ink, shadow: true, maxWidth: LW - 46,
+      if (sel) MK.selRow(ctx, LX + 4, ry, LW - 8, rowH - 2, this.t);
+      else if (hit(m, LX + 4, ry, LW - 8, rowH - 2)) MK.hoverRow(ctx, LX + 4, ry, LW - 8, rowH - 2);
+      UI.icon(ctx, it.icon, LX + 9, ry + 3, 9, sel ? C.goldBright : C.inkDim);
+      txt(ctx, LX + 22, ry + 3.5, it.label, {
+        size: sel ? 'md' : 'sm', color: sel ? C.goldBright : (it.id === 'quit' ? C.inkDim : C.ink), shadow: true, maxWidth: LW - 46,
       });
-      if (it.key) txtR(ctx, LX + LW - 8, ry + 4, String(it.key), { size: 'sm', color: C.goldDim, shadow: true });
-      if (sel) UI.cursor(ctx, LX + 1, ry + 4, this.t);
+      if (it.key) MK.keycap(ctx, LX + LW - 16, ry + 3.5, String(it.key), { dim: !sel });
     }
     const st = S();
     if (st) {
       const ti = safe(() => timeInfo(st), null) || {};
-      txtC(ctx, LX + LW / 2, LY + LH - 10, `${prettyMapName(st.mapId)} · ${ti.clock || ''}`, {
-        size: 'sm', color: C.inkDim, shadow: true, maxWidth: LW - 10,
+      MK.rule(ctx, LX + 8, LY + LH - 14, LW - 16, { ornament: false });
+      MK.text(ctx, LX + LW / 2, LY + LH - 10, `${prettyMapName(st.mapId)} · ${ti.clock || ''}`, {
+        color: C.inkDim, align: 'center', maxWidth: LW - 12,
       });
     }
 
@@ -761,19 +767,20 @@ export class PauseMenuScene extends MenuScene {
       const x = 5 + i * cw;
       const ch = members[i] || null;
       if (!ch) {
-        txt(ctx, x + 6, 13, '—', { size: 'sm', color: C.disabled, shadow: true });
+        MK.well(ctx, x + 2, 5, 22, 22, 'rgba(0,0,0,0.3)');
+        MK.text(ctx, x + 28, 13, 'an empty place', { color: C.disabled });
         continue;
       }
       drawMemberCell(ctx, ch, x, 3, cw - 3, 26, { selected: false });
     }
     const bx = 5 + PARTY_MAX * cw;
     UI.icon(ctx, 'coin', bx, 5, 8, C.gold);
-    txt(ctx, bx + 10, 6, String(Math.round(num(Party.gold, 0))), { size: 'sm', color: C.gold, shadow: true, maxWidth: 40 });
+    txt(ctx, bx + 10, 5.5, String(Math.round(num(Party.gold, 0))), { size: 'sm', color: C.gold, shadow: true, maxWidth: 40 });
     const st = S();
     if (st) {
       const ti = safe(() => timeInfo(st), null) || {};
-      txt(ctx, bx, 15, ti.clock || '', { size: 'sm', color: C.ink, shadow: true, maxWidth: 48 });
-      txt(ctx, bx, 23, `Lv ${safe(() => Party.levelAvg(), 1)}`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: 48 });
+      MK.text(ctx, bx, 15.5, ti.clock || '', { color: C.ink, maxWidth: 48 });
+      MK.text(ctx, bx, 21.5, `${titleCase(ti.phase || '')}`, { color: C.inkDim, maxWidth: 48 });
     }
   }
 
@@ -781,22 +788,23 @@ export class PauseMenuScene extends MenuScene {
   _drawInfo(ctx, x, y, w, h) {
     UI.panel(ctx, x, y, w, h, { style: 'window' });
     const it = PAUSE_ITEMS[this.index];
-    const ix = x + 7, iw = w - 14;
-    txt(ctx, ix, y + 6, it.label, { size: 'md', color: C.gold, shadow: true, maxWidth: iw });
-    UI.textWrapped(ctx, ix, y + 18, iw, it.desc, { size: 'sm', color: C.ink, maxLines: 3 });
+    const ix = x + 8, iw = w - 16;
+    UI.icon(ctx, it.icon, ix, y + 6, 9, C.gold);
+    MK.title(ctx, ix + 13, y + 6, it.label, { maxWidth: iw - 14 });
+    MK.para(ctx, ix, y + 19, iw, it.desc, { color: C.ink, maxLines: 4 });
 
-    let ty = sectionHead(ctx, ix, y + 50, iw, 'THE CAMPAIGN');
+    let ty = rubric(ctx, ix, y + 44, iw, 'The Campaign');
     const st = S();
     if (!st) {
-      txt(ctx, ix, ty, 'No campaign is running.', { size: 'sm', color: C.inkDim, shadow: true, maxWidth: iw });
+      MK.text(ctx, ix, ty, 'No campaign is running.', { color: C.inkDim, maxWidth: iw });
       return;
     }
     const ti = safe(() => timeInfo(st), null) || {};
-    const colW = Math.floor((iw - 8) / 2);
+    const colW = Math.floor((iw - 10) / 2);
     const left = [
       ['Location', prettyMapName(st.mapId)],
       ['Date', ti.date || dateText(num(st.day, 1))],
-      ['Time', `${ti.clock || ''} ${titleCase(ti.phase || '')}`],
+      ['Time', `${ti.clock || ''} · ${titleCase(ti.phase || '')}`],
       ['Weather', titleCase(String(st.weather || 'clear'))],
       ['Playtime', playtimeText(num(st.playtime, 0))],
     ];
@@ -808,26 +816,47 @@ export class PauseMenuScene extends MenuScene {
       ['Difficulty', titleCase(String(safe(() => Save.settings.difficulty, 'normal') || 'normal'))],
     ];
     for (let i = 0; i < left.length; i++) {
-      kv(ctx, ix, ty + i * 10, colW, left[i][0], left[i][1]);
-      kv(ctx, ix + colW + 8, ty + i * 10, colW, right[i][0], right[i][1]);
+      MK.kv(ctx, ix, ty + i * 7, colW, left[i][0], left[i][1]);
+      MK.kv(ctx, ix + colW + 10, ty + i * 7, colW, right[i][0], right[i][1]);
     }
-    ty += left.length * 10 + 3;
+    ty += left.length * 7 + 5;
 
-    ty = sectionHead(ctx, ix, ty, iw, 'TRACKED');
+    ty = rubric(ctx, ix, ty, iw, 'Tracked');
     const q = trackedQuest(st);
     if (!q) {
-      txt(ctx, ix, ty, 'Nothing tracked. Open the journal to pick a task.', {
-        size: 'sm', color: C.inkDim, shadow: true, maxWidth: iw,
-      });
+      MK.text(ctx, ix, ty, 'Nothing tracked. Open the journal to pick a task.', { color: C.inkDim, maxWidth: iw });
+      ty += 8;
     } else {
       txt(ctx, ix, ty, q.title || q.id, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: iw });
+      ty += 10;
       const step = arr(q.steps).find((s) => !s.done) || arr(q.steps)[0] || null;
       if (step) {
-        txt(ctx, ix, ty + 9, stepText(step), { size: 'sm', color: C.ink, shadow: true, maxWidth: iw - 30 });
-        txtR(ctx, ix + iw, ty + 9, `${num(step.progress, 0)}/${num(step.count, 1)}`, {
-          size: 'sm', color: step.done ? C.good : C.inkDim, shadow: true,
+        MK.bullet(ctx, ix + 1, ty + 1.5);
+        MK.text(ctx, ix + 5, ty, stepText(step), { color: C.ink, maxWidth: iw - 30 });
+        MK.text(ctx, ix + iw, ty, `${num(step.progress, 0)}/${num(step.count, 1)}`, {
+          color: step.done ? C.good : C.inkDim, align: 'right',
         });
+        ty += 7;
       }
+      const qd = safe(() => questDef(q), null);
+      const blurb = (qd && (qd.summary || qd.desc || qd.description)) || q.summary || '';
+      if (blurb) ty += MK.para(ctx, ix, ty + 1, iw, blurb, { color: C.inkDim, maxLines: 3 }).height + 1;
+    }
+
+    // What the world has been doing: the director's chronicle, newest first.
+    const lately = safe(() => chronicle(st, { limit: 8 }), []) || [];
+    if (!lately.length || ty > y + h - 24) return;
+    ty = rubric(ctx, ix, ty + 4, iw, 'Lately on the Coast');
+    let lastDate = null;
+    for (const c of lately) {
+      if (ty > y + h - 10) break;
+      if (c.date !== lastDate) {
+        MK.text(ctx, ix, ty, c.date, { color: C.goldDim, maxWidth: iw });
+        lastDate = c.date; ty += 6;
+      }
+      MK.bullet(ctx, ix + 1.5, ty + 1.5, c.kind === 'party' ? C.goldBright : RUBRIC_HI);
+      const r = MK.para(ctx, ix + 5, ty, iw - 5, c.text, { color: C.ink, maxLines: Math.max(1, Math.min(2, Math.floor((y + h - 6 - ty) / 5))) });
+      ty += Math.max(5, r.height) + 1.5;
     }
   }
 
@@ -970,7 +999,7 @@ function deltaChip(ctx, x, y, label, before, after) {
   const d = Math.round((after - before) * 10) / 10;
   const col = d > 0 ? C.good : d < 0 ? C.bad : C.inkDim;
   const text = `${label} ${d === 0 ? '—' : signed(d)}`;
-  return safe(() => UI.chip(ctx, x, y, text, { color: col }), 0) || 0;
+  return safe(() => MK.chip(ctx, x, y, text, { color: col }), 0) || 0;
 }
 
 export class PartyScene extends MenuScene {
@@ -1312,11 +1341,11 @@ export class PartyScene extends MenuScene {
     }
     // Attack and save spells the character can actually cast right now.
     const known = spellIdsFor(ch);
-    const atk = num(safe(() => spellAtk(ch), 0), 0);
     const dc = num(safe(() => spellDC(ch), 0), 0);
     for (const id of known) {
       const sp = SPELLS[id];
       if (!sp) continue;
+      const atk = num(safe(() => spellAtk(ch,id), 0), 0);
       if (!sp.attack && !(sp.save && sp.damage)) continue;
       const dice = safe(() => spellDamageDice(sp, sp.level, num(ch.level, 1)), null) || (sp.damage && sp.damage.dice) || '';
       out.push({
@@ -1338,15 +1367,14 @@ export class PartyScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.tabRects = [];
     this.rowRects = [];
 
     const ch = this.ch;
     this._drawMemberTabs(ctx);
     const tabs = SHEET_TABS.map((s) => ({ label: s.label, icon: s.icon }));
-    UI.tabs(ctx, 2, 32, VIEW_W - 4, tabs, this.section, {});
+    MK.tabs(ctx, 2, 32, VIEW_W - 4, tabs, this.section, {});
     const tw = Math.floor((VIEW_W - 4) / SHEET_TABS.length);
     for (let i = 0; i < SHEET_TABS.length; i++) {
       this.tabRects.push({ x: 2 + i * tw, y: 32, w: tw, h: 13, i, kind: 'section' });
@@ -1396,21 +1424,45 @@ export class PartyScene extends MenuScene {
       const x = 2 + i * w;
       const cw = i === n - 1 ? VIEW_W - 2 - x : w;
       const sel = i === this.member;
-      UI.panel(ctx, x, 2, cw - 1, 28, { style: sel ? 'gold' : 'dark', shadow: sel ? 0.4 : 0.15 });
+      UI.panel(ctx, x, 2, cw - 1, 28, { style: sel ? 'window' : 'dark', shadow: sel ? 0.4 : 0.15, studs: false });
       const ch = members[i];
       if (!ch) continue;
-      safe(() => UI.portrait(ctx, ch, x + 3, 4, 24, { shadow: 0.2 }));
-      const tx = x + 30, tw = cw - 34;
-      txt(ctx, tx, 5, ch.name, {
-        size: 'md', color: sel ? '#2a1c07' : C.ink, shadow: sel ? 'rgba(255,230,170,0.3)' : true, maxWidth: tw,
-      });
-      txt(ctx, tx, 14, `Lv ${num(ch.level, 1)} ${classText(ch)}`, {
-        size: 'sm', color: sel ? '#4a3410' : C.inkDim, shadow: !sel, maxWidth: tw,
-      });
+      if (sel) {
+        // the open sheet: lamplight across the card and a gilt rule under it
+        const g = ctx.createLinearGradient(x, 0, x + cw, 0);
+        g.addColorStop(0, 'rgba(255,214,150,0.13)'); g.addColorStop(1, 'rgba(255,214,150,0)');
+        ctx.fillStyle = g; ctx.fillRect(x + 2, 4, cw - 5, 24);
+        ctx.fillStyle = UI.COLORS.goldBright; ctx.fillRect(x + 3, 27.5, cw - 7, 0.5);
+      }
+      const down = safe(() => isDown(ch), false);
+      // a 20px interior on the 2x layer is the painted bust at exactly 1:1
+      MK.portrait(ctx, ch, x + 3, 4, 24, 24, { dim: down, glow: sel ? 0.28 : 0.12 });
+      const tx = x + 31;
+      const tw = cw - 35;
+      MK.title(ctx, tx, 5, ch.name, { maxWidth: tw, color: sel ? C.goldBright : C.ink });
+      const folk = String(speciesText(ch) || '').split(' · ')[0];
+      MK.text(ctx, tx, 14.5, `${folk ? `${folk} · ` : ''}${classText(ch)}`, { color: sel ? '#d8c8a4' : C.inkDim, maxWidth: tw });
       const hp = Math.max(0, num(ch.hp, 0)), max = Math.max(1, maxHpOf(ch));
-      UI.bar(ctx, tx, 22, Math.min(tw, 70), 5, hp / max, {
-        color: hpColor(ch), label: `${hp}/${max}`, size: 'sm', labelAlign: 'center',
-      });
+      const bw = Math.min(tw - 30, 70);
+      MK.meter(ctx, tx, 22, bw, 2.5, hp / max, { color: hpColor(ch), id: `sheet-hp-${ch.uid}` });
+      MK.text(ctx, tx + bw + 3, 21, `${hp}/${max}`, { color: down ? C.bad : C.ink, maxWidth: 28 });
+      // A wide card (a small party) has room for the numbers people look up most.
+      if (cw > 170) {
+        const facts = [`AC ${acOf(ch)}`, `Speed ${speedOf(ch)}`, `Init ${signed(initiativeMod(ch))}`,
+          `Prof ${signed(num(safe(() => profBonus(ch), 2), 2))}`];
+        let fx = x + cw - 8;
+        for (let k = facts.length - 1; k >= 0; k--) {
+          const fw = MK.measure(facts[k]);
+          if (fx - fw < tx + Math.max(MK.measure(ch.name, 'title'), 110) + 10) break;
+          fx -= fw;
+          MK.text(ctx, fx, 7, facts[k], { color: k === 0 ? C.goldBright : '#cfc3a6' });
+          fx -= 8;
+          if (k > 0) MK.bullet(ctx, fx + 4, 9, 'rgba(217,164,65,0.6)');
+        }
+        const conds = arr(ch.conditions).map((c) => titleCase(String((c && (c.id || c.name)) || c).replace(/-/g, ' ')));
+        const note = down ? 'Down and dying' : conds.length ? conds.join(', ') : 'In good health';
+        MK.text(ctx, x + cw - 8, 16, note, { color: down || conds.length ? '#e08a70' : '#8fae78', align: 'right', maxWidth: cw - 150 });
+      }
       this.tabRects.push({ x, y: 2, w: cw, h: 28, i, kind: 'member' });
     }
   }
@@ -1419,20 +1471,18 @@ export class PartyScene extends MenuScene {
 
   _drawStats(ctx, ch) {
     const y = CONTENT_Y;
-    // Left column: abilities and the combat block.
+    const PAD = 6;
+    // Left column: the six abilities, then the numbers a fight turns on.
     const LX = 3, LW = 130;
     UI.panel(ctx, LX, y, LW, CONTENT_H, { style: 'window' });
-    const ix = LX + 6, iw = LW - 12;
-    let ty = sectionHead(ctx, ix, y + 5, iw, 'ABILITIES');
-    txtR(ctx, ix + 62, ty, 'SCR', { size: 'sm', color: C.disabled });
-    txtR(ctx, ix + 90, ty, 'MOD', { size: 'sm', color: C.disabled });
-    txtR(ctx, ix + iw, ty, 'SAVE', { size: 'sm', color: C.disabled });
-    // 9px rhythm, not 10: six ability rows plus eight combat rows at 10px ran
-    // the last row ("Darkvision  60 ft.") to y=209 inside a panel whose
-    // interior ends at 206, so it printed on the page background below the
-    // frame. At 9 the column ends at 203 with room to spare.
+    const ix = LX + PAD, iw = LW - PAD * 2;
+    let ty = sectionHead(ctx, ix, y + 4, iw, 'Abilities');
+    const COL_S = ix + 62, COL_M = ix + 90;
+    MK.text(ctx, COL_S, ty, 'SCORE', { size: 'xs', color: '#8a7a5c', align: 'right' });
+    MK.text(ctx, COL_M, ty, 'MOD', { size: 'xs', color: '#8a7a5c', align: 'right' });
+    MK.text(ctx, ix + iw, ty, 'SAVE', { size: 'xs', color: '#8a7a5c', align: 'right' });
     const RH = 9;
-    ty += 8;
+    ty += 6;
     for (let i = 0; i < ABILITIES.length; i++) {
       const ab = ABILITIES[i];
       const ry = ty + i * RH;
@@ -1440,102 +1490,109 @@ export class PartyScene extends MenuScene {
       const md = num(safe(() => abilityMod(ch, ab), 0), 0);
       const sv = num(safe(() => saveMod(ch, ab), 0), 0);
       const prof = arr(ch.saveProfs).indexOf(ab) >= 0;
+      if (i & 1) { ctx.fillStyle = 'rgba(255,230,180,0.035)'; ctx.fillRect(ix - 2, ry - 1, iw + 4, RH); }
       txt(ctx, ix, ry, ABILITY_ABBR[ab], { size: 'md', color: C.gold, shadow: true });
-      txtR(ctx, ix + 62, ry, String(score), { size: 'sm', color: C.ink, shadow: true });
-      txtR(ctx, ix + 90, ry, signed(md), { size: 'sm', color: md >= 0 ? C.ink : C.bad, shadow: true });
-      txtR(ctx, ix + iw, ry, `${signed(sv)}${prof ? '●' : ''}`, {
-        size: 'sm', color: prof ? C.goldBright : C.inkDim, shadow: true,
-      });
+      txtR(ctx, COL_S, ry, String(score), { size: 'sm', color: C.inkBright, shadow: true });
+      txtR(ctx, COL_M, ry, signed(md), { size: 'sm', color: md >= 0 ? C.ink : C.bad, shadow: true });
+      // a proficient save is gilt, with a lozenge in the margin before it
+      txtR(ctx, ix + iw, ry, signed(sv), { size: 'sm', color: prof ? C.goldBright : C.inkDim, shadow: true });
+      if (prof) MK.bullet(ctx, ix + iw - 17, ry + 3.5, C.goldBright);
     }
     ty += ABILITIES.length * RH + 3;
 
-    ty = sectionHead(ctx, ix, ty, iw, 'IN COMBAT');
+    // AC, hit points, speed and initiative as boxed figures, the way a sheet has them
+    const hp = Math.max(0, num(ch.hp, 0));
+    const boxes = [
+      ['Armour', String(acOf(ch)), C.goldBright],
+      ['Hit pts', `${hp}/${maxHpOf(ch)}`, hp * 2 < maxHpOf(ch) ? C.bad : C.inkBright],
+      ['Speed', `${speedOf(ch)}`, C.ink],
+      ['Init', signed(initiativeMod(ch)), C.ink],
+    ];
+    const bw = (iw + 2 - 3 * 2) / 4;
+    boxes.forEach((b, k) => MK.statBox(ctx, ix - 1 + k * (bw + 2), ty, bw, 17, b[0], b[1], { color: b[2], size: b[1].length > 4 ? 'fine' : 'md' }));
+    ty += 21;
+
     const hd = safe(() => hitDiceTotal(ch), null) || { max: 0, used: 0 };
     const senses = (ch.senses && num(ch.senses.darkvision, 0)) || 0;
     const rows = [
-      ['Armour Class', String(acOf(ch))],
-      ['Hit Points', `${Math.max(0, num(ch.hp, 0))} / ${maxHpOf(ch)}${num(ch.tempHp, 0) ? ` +${ch.tempHp}` : ''}`],
-      ['Hit Dice', `${Math.max(0, num(hd.max, 0) - num(hd.used, 0))} / ${num(hd.max, 0)}`],
-      ['Speed', `${speedOf(ch)} ft.`],
-      ['Initiative', signed(initiativeMod(ch))],
-      ['Proficiency', signed(num(safe(() => profBonus(ch), 2), 2))],
-      ['Passive Perc.', String(num(safe(() => passivePerception(ch), 10), 10))],
-      ['Darkvision', senses ? `${senses} ft.` : '—'],
+      ['Hit Dice', `${Math.max(0, num(hd.max, 0) - num(hd.used, 0))} of ${num(hd.max, 0)} left`],
+      ['Proficiency bonus', signed(num(safe(() => profBonus(ch), 2), 2))],
+      ['Passive Perception', String(num(safe(() => passivePerception(ch), 10), 10))],
+      ['Darkvision', senses ? `${senses} ft.` : 'none'],
+      ['Temporary hit points', String(num(ch.tempHp, 0) || '—')],
     ];
-    rows.forEach((r, i) => kv(ctx, ix, ty + i * RH, iw, r[0], r[1], { color: i === 0 ? C.goldBright : C.ink }));
+    rows.forEach((r, i) => MK.kv(ctx, ix, ty + i * 6.5, iw, r[0], r[1]));
 
     // Middle column: who they are and what they are trained in.
     const MX = 136, MW = 118;
     UI.panel(ctx, MX, y, MW, CONTENT_H, { style: 'window' });
-    const mx = MX + 6, mw = MW - 12;
-    let my = sectionHead(ctx, mx, y + 5, mw, 'ORIGIN');
-    const lines = [
-      speciesText(ch),
-      classText(ch),
-      subclassText(ch) || '—',
-      titleCase(String(ch.backgroundId || 'wanderer').replace(/-/g, ' ')),
+    const mx = MX + PAD, mw = MW - PAD * 2;
+    let my = sectionHead(ctx, mx, y + 4, mw, 'Origin');
+    const origin = [
+      ['Folk', speciesText(ch)],
+      ['Calling', classText(ch)],
+      ['Path', subclassText(ch) || 'not yet chosen'],
+      ['Background', titleCase(String(ch.backgroundId || 'wanderer').replace(/-/g, ' '))],
     ];
-    for (const l of lines) { txt(ctx, mx, my, l, { size: 'sm', color: C.ink, shadow: true, maxWidth: mw }); my += 9; }
-
+    for (const [k, v] of origin) { MK.kv(ctx, mx, my, mw, k, v, { color: C.inkBright }); my += 6.5; }
+    my += 2;
     const prog = safe(() => xpProgress(ch), null);
     const toNext = num(safe(() => xpToNext(ch), 0), 0);
-    UI.bar(ctx, mx, my + 1, mw, 5, clampPct(prog), { color: C.xp });
-    txt(ctx, mx, my + 8, `XP ${num(ch.xp, 0)}${toNext > 0 ? ` · ${toNext} to go` : ''}`, {
-      size: 'sm', color: C.inkDim, shadow: true, maxWidth: mw,
-    });
-    my += 19;
+    MK.meter(ctx, mx, my, mw, 2.5, clampPct(prog), { color: C.xp });
+    my += 4.5;
+    MK.text(ctx, mx, my, `${num(ch.xp, 0)} XP`, { color: C.goldBright });
+    if (toNext > 0) MK.text(ctx, mx + mw, my, `${toNext} to level ${num(ch.level, 1) + 1}`, { color: C.inkDim, align: 'right' });
+    my += 9;
 
-    my = sectionHead(ctx, mx, my, mw, 'TRAINED IN');
+    my = sectionHead(ctx, mx, my, mw, 'Trained in');
     const profs = ch.profs || {};
     const pr = [
-      ['Armour', arr(profs.armor).map(titleCase).join(', ') || '—'],
-      ['Weapons', arr(profs.weapon).map(titleCase).join(', ') || '—'],
-      ['Tools', arr(profs.tool).map((t) => titleCase(String(t).replace(/-/g, ' '))).join(', ') || '—'],
+      ['Armour', arr(profs.armor).map(titleCase).join(', ') || 'none'],
+      ['Weapons', arr(profs.weapon).map(titleCase).join(', ') || 'none'],
+      ['Tools', arr(profs.tool).map((t) => titleCase(String(t).replace(/-/g, ' '))).join(', ') || 'none'],
       ['Languages', arr(profs.language).map(titleCase).join(', ') || 'Common'],
     ];
     for (const [label, val] of pr) {
-      txt(ctx, mx, my, label, { size: 'sm', color: C.goldDim, shadow: true, maxWidth: mw });
-      const r = UI.textWrapped(ctx, mx, my + 8, mw, val, { size: 'sm', color: C.ink, maxLines: 2 });
-      my += 8 + r.height + 2;
-      if (my > y + CONTENT_H - 40) break;
+      MK.text(ctx, mx, my, label, { size: 'fineb', color: '#c49a4a' });
+      const r = MK.para(ctx, mx + 34, my, mw - 34, val, { color: C.ink, maxLines: 3 });
+      my += Math.max(6, (r.height || 5)) + 2;
+      if (my > y + CONTENT_H - 30) break;
     }
 
-    if (my < y + CONTENT_H - 22) {
-      my = sectionHead(ctx, mx, my, mw, 'DEFENCES');
+    if (my < y + CONTENT_H - 20) {
+      my = sectionHead(ctx, mx, my + 1, mw, 'Defences');
       let cx = mx;
       const chips = []
         .concat(arr(ch.resist).map((r) => [r, C.blue]))
         .concat(arr(ch.immune).map((r) => [r, C.good]))
         .concat(arr(ch.vuln).map((r) => [r, C.bad]));
-      if (!chips.length) txt(ctx, mx, my, 'Nothing special.', { size: 'sm', color: C.inkDim, shadow: true });
+      if (!chips.length) MK.text(ctx, mx, my, 'Nothing special.', { color: C.inkDim });
       for (const [label, col] of chips.slice(0, 6)) {
-        const w = safe(() => UI.chip(ctx, cx, my, titleCase(String(label)), { color: col }), 0) || 0;
+        const w = safe(() => MK.chip(ctx, cx, my, titleCase(String(label)), { color: col }), 0) || 0;
         cx += w + 2;
-        if (cx > mx + mw - 24) { cx = mx; my += 10; }
+        if (cx > mx + mw - 24) { cx = mx; my += 9; }
       }
     }
 
     // Right column: all eighteen skills.
     const RX = 257, RW = VIEW_W - RX - 3;
     UI.panel(ctx, RX, y, RW, CONTENT_H, { style: 'window' });
-    const rx = RX + 6, rw = RW - 12;
-    let ry = sectionHead(ctx, rx, y + 5, rw, 'SKILLS');
+    const rx = RX + PAD, rw = RW - PAD * 2;
+    const ry0 = sectionHead(ctx, rx, y + 3, rw, 'Skills');
     for (let i = 0; i < SKILL_IDS.length; i++) {
       const id = SKILL_IDS[i];
       const def = SKILLS[id];
       const info = safe(() => skillMod(ch, id), null) || { mod: 0, prof: 'none' };
-      const yy = ry + i * 8;
-      const mark = info.prof === 'expert' ? '★' : info.prof === 'prof' ? '●' : '○';
-      const col = info.prof === 'expert' ? C.goldBright : info.prof === 'prof' ? C.gold : C.disabled;
-      txt(ctx, rx, yy, mark, { size: 'sm', color: col, shadow: true });
-      txt(ctx, rx + 8, yy, def.name, {
-        size: 'sm', color: info.prof === 'none' ? C.inkDim : C.ink, shadow: true, maxWidth: rw - 44,
-      });
-      // The ability tag is 3 glyphs = 17px right-aligned on rx+rw, so it opens
-      // at rx+rw-17: ending the modifier at rx+rw-16 merged its last digit
-      // into the tag's first letter ("+5DEX" printed as "+ЬEX"). Two clear px.
-      txtR(ctx, rx + rw - 21, yy, signed(num(info.mod, 0)), { size: 'sm', color: C.ink, shadow: true, maxWidth: 22 });
-      txtR(ctx, rx + rw, yy, ABILITY_ABBR[def.ability], { size: 'sm', color: C.disabled, shadow: true });
+      const yy = ry0 + i * 8;
+      const trained = info.prof !== 'none';
+      if (trained) { ctx.fillStyle = 'rgba(217,164,65,0.07)'; ctx.fillRect(rx - 2, yy - 0.5, rw + 4, 8); }
+      const col = info.prof === 'expert' ? C.goldBright : info.prof === 'prof' ? C.gold : '#5a5040';
+      // proficiency as a lozenge: filled when trained, doubled for expertise
+      MK.bullet(ctx, rx + 1.5, yy + 3.5, col);
+      if (info.prof === 'expert') MK.bullet(ctx, rx + 4.5, yy + 3.5, col);
+      txt(ctx, rx + 7, yy, def.name, { size: 'sm', color: trained ? C.inkBright : C.inkDim, shadow: true, maxWidth: rw - 32 });
+      txtR(ctx, rx + rw - 12, yy, signed(num(info.mod, 0)), { size: 'sm', color: trained ? C.goldBright : C.ink, shadow: true, maxWidth: 20 });
+      MK.text(ctx, rx + rw, yy + 1.5, ABILITY_ABBR[def.ability], { size: 'xs', color: '#8a7a5c', align: 'right' });
     }
   }
 
@@ -1564,9 +1621,9 @@ export class PartyScene extends MenuScene {
       const on = idx === sel;
       if (on) UI.highlight(ctx, LX + 3, ry - 1, LW - 8, rowH, { alpha: 0.2 });
       txt(ctx, LX + 10, ry, f.name, {
-        size: on ? 'md' : 'sm', color: on ? C.goldBright : C.ink, shadow: true, maxWidth: LW - 42,
+        size: 'sm', color: on ? C.goldBright : C.ink, shadow: true, maxWidth: LW - 42,
       });
-      txtR(ctx, LX + LW - 6, ry, sourceTag(f.source), { size: 'sm', color: C.disabled, shadow: true });
+      MK.text(ctx, LX + LW - 6, ry + 2, String(sourceTag(f.source)).toUpperCase(), { size: 'xs', color: '#8a7a5c', align: 'right' });
       if (on) UI.cursor(ctx, LX + 3, ry, this.t);
       this.rowRects.push({ x: LX + 3, y: ry - 1, w: LW - 8, h: rowH, i: idx });
     }
@@ -1579,11 +1636,11 @@ export class PartyScene extends MenuScene {
     this._paneRect = { x: DX, y: CONTENT_Y, w: DW, h: CONTENT_H };
     if (!f) return;
     const dx = DX + 7, dw = DW - 14;
-    txt(ctx, dx, CONTENT_Y + 5, f.name, { size: 'md', color: C.gold, shadow: true, maxWidth: dw });
+    MK.title(ctx, dx, CONTENT_Y + 5, f.name, { maxWidth: dw });
     let cx = dx;
-    cx += (safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, sourceLabel(f.source), { color: C.blue }), 0) || 0) + 3;
-    if (f.level) cx += (safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, `Level ${f.level}`, { color: C.goldDim }), 0) || 0) + 3;
-    if (f.uses && f.uses.max) safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, `${f.uses.max} / ${f.uses.recharge || 'long'} rest`, { color: C.green }));
+    cx += (safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, sourceLabel(f.source), { color: C.blue }), 0) || 0) + 3;
+    if (f.level) cx += (safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, `Level ${f.level}`, { color: C.goldDim }), 0) || 0) + 3;
+    if (f.uses && f.uses.max) safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, `${f.uses.max} / ${f.uses.recharge || 'long'} rest`, { color: C.green }));
 
     const body = [f.desc || 'No further rules text.', mechSummary(f.mech)].filter(Boolean).join('\n\n');
     this._drawScrollBody(ctx, dx, CONTENT_Y + 29, dw, CONTENT_H - 34, body);
@@ -1603,27 +1660,25 @@ export class PartyScene extends MenuScene {
       const ry = ty + i * rowH;
       const on = i === sel;
       if (on) UI.highlight(ctx, ix - 3, ry - 1, iw + 6, rowH - 1, { alpha: 0.2 });
-      txt(ctx, ix + 5, ry + 1, SLOT_NAMES[slot] || titleCase(slot), {
-        size: 'sm', color: on ? C.goldBright : C.inkDim, shadow: true, maxWidth: 49,
+      MK.text(ctx, ix + 5, ry + 3, String(SLOT_NAMES[slot] || titleCase(slot)).toUpperCase(), {
+        size: 'xs', color: on ? C.goldBright : '#9c8b6c', maxWidth: 40,
       });
       const inst = this._instFor(ch, slot);
       const d = inst ? (safe(() => itemDef(inst), null) || safe(() => resolveItem(inst.id), null)) : null;
+      const NX = ix + 46;
       if (d) {
-        UI.icon(ctx, itemIcon(d), ix + 57, ry, 9, null);
-        // The name had `iw - 72` and the stat line a flat 60px right-aligned:
-        // the two claimed the same 54px, so "Greatsword" and "2d6 slashing"
-        // printed on top of each other. One split, one shared budget.
+        UI.icon(ctx, itemIcon(d), NX, ry, 9, null);
+        // The name and its numbers share one budget: the numbers are fine
+        // type, so they take a third of the room the body face would.
         const stat = d.kind === 'weapon' ? safe(() => weaponLine(d), '') : safe(() => armorLine(d), '');
-        const sp = safe(() => UI.splitRow(iw - 69, d.name, stat || '', { size: 'sm', gap: 5, valueMax: 0.55 }), null)
-          || { labelW: iw - 75, valueW: 0 };
-        txt(ctx, ix + 69, ry + 1, d.name, {
-          size: 'sm', color: itemColor(inst.id, d), shadow: true, maxWidth: sp.labelW,
+        const avail = iw - 58;
+        const statW = stat ? Math.min(MK.measure(stat), Math.max(30, avail - 4 - UI.measure(d.name, 'sm'))) : 0;
+        txt(ctx, NX + 12, ry + 1, d.name, {
+          size: 'sm', color: itemColor(inst.id, d), shadow: true, maxWidth: avail - statW - (statW ? 4 : 0),
         });
-        if (stat && sp.valueW > 0) {
-          txtR(ctx, ix + iw, ry + 1, stat, { size: 'sm', color: C.disabled, shadow: true, maxWidth: sp.valueW });
-        }
+        if (stat) MK.text(ctx, ix + iw, ry + 2.5, stat, { color: '#a8987a', align: 'right', maxWidth: statW });
       } else {
-        txt(ctx, ix + 57, ry + 1, '— empty —', { size: 'sm', color: C.disabled, shadow: true });
+        MK.text(ctx, NX, ry + 2.5, 'empty', { color: '#6a5d48' });
       }
       if (on) UI.cursor(ctx, ix - 3, ry + 1, this.t);
       this.rowRects.push({ x: ix - 3, y: ry - 1, w: iw + 6, h: rowH, i });
@@ -1636,7 +1691,7 @@ export class PartyScene extends MenuScene {
     const inst = this._instFor(ch, slot);
     const d = inst ? (safe(() => itemDef(inst), null) || safe(() => resolveItem(inst.id), null)) : null;
     const dx = DX + 7, dw = DW - 14;
-    txt(ctx, dx, CONTENT_Y + 5, SLOT_NAMES[slot] || titleCase(slot), { size: 'sm', color: C.goldDim, shadow: true });
+    MK.section(ctx, dx, CONTENT_Y + 5, dw, SLOT_NAMES[slot] || titleCase(slot));
     if (!d) {
       txt(ctx, dx, CONTENT_Y + 17, 'Nothing equipped here.', { size: 'md', color: C.inkDim, shadow: true, maxWidth: dw });
       txt(ctx, dx, CONTENT_Y + 30, `Press ${keyFor('confirm')} to fit something from the pack.`, {
@@ -1644,20 +1699,20 @@ export class PartyScene extends MenuScene {
       });
       return;
     }
-    txt(ctx, dx, CONTENT_Y + 16, d.name, { size: 'md', color: itemColor(inst.id, d), shadow: true, maxWidth: dw });
-    txt(ctx, dx, CONTENT_Y + 27, `${titleCase(String(d.kind || ''))} · ${rarityName(d)} · ${num(d.weight, 0)} lb`, {
-      size: 'sm', color: C.inkDim, shadow: true, maxWidth: dw,
+    MK.title(ctx, dx, CONTENT_Y + 15, d.name, { color: itemColor(inst.id, d), maxWidth: dw });
+    MK.text(ctx, dx, CONTENT_Y + 26, `${titleCase(String(d.kind || ''))} · ${rarityName(d)} · ${num(d.weight, 0)} lb`, {
+      color: C.inkDim, maxWidth: dw,
     });
     const stat = d.kind === 'weapon' ? safe(() => weaponLine(d), '') : safe(() => armorLine(d), '');
-    if (stat) txt(ctx, dx, CONTENT_Y + 36, stat, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: dw });
+    if (stat) txt(ctx, dx, CONTENT_Y + 33, stat, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: dw });
     if (d.mastery) {
       const mi = safe(() => masteryInfo(d.mastery), null);
-      if (mi && mi.name) txt(ctx, dx, CONTENT_Y + 45, `Mastery: ${mi.name} — ${mi.desc || ''}`, {
-        size: 'sm', color: C.purple, shadow: true, maxWidth: dw,
+      if (mi && mi.name) MK.para(ctx, dx, CONTENT_Y + 43, dw, `Mastery: ${mi.name} — ${mi.desc || ''}`, {
+        color: C.purple, maxLines: 2,
       });
     }
     const body = [d.desc || '', mechSummary(d.mech)].filter(Boolean).join('\n\n');
-    this._drawScrollBody(ctx, dx, CONTENT_Y + 56, dw, CONTENT_H - 62, body);
+    this._drawScrollBody(ctx, dx, CONTENT_Y + 56, dw, CONTENT_H - 60, body);
   }
 
   /** The equip chooser, drawn over the detail pane with live AC/damage deltas. */
@@ -1682,11 +1737,11 @@ export class PartyScene extends MenuScene {
       const on = idx === p.index;
       if (on) UI.highlight(ctx, x + 5, ry - 1, w - 10, 12, { alpha: 0.22 });
       if (e.src === 'none') {
-        txt(ctx, x + 14, ry + 1, 'Take it off', { size: on ? 'md' : 'sm', color: on ? C.goldBright : C.inkDim, shadow: true });
+        txt(ctx, x + 14, ry + 1, 'Take it off', { size: 'sm', color: on ? C.goldBright : C.inkDim, shadow: true });
       } else {
         UI.icon(ctx, itemIcon(e.def), x + 12, ry, 9, null);
         txt(ctx, x + 24, ry + 1, itemName(e.id, e.def), {
-          size: on ? 'md' : 'sm', color: itemColor(e.id, e.def), shadow: true, maxWidth: w - 96,
+          size: 'sm', color: itemColor(e.id, e.def), shadow: true, maxWidth: w - 96,
         });
         const tag = e.src === 'pack' ? `pack${e.qty > 1 ? ` x${e.qty}` : ''}` : 'carried';
         txtR(ctx, x + w - 8, ry + 1, tag, { size: 'sm', color: C.disabled, shadow: true });
@@ -1757,9 +1812,9 @@ export class PartyScene extends MenuScene {
       if (on) UI.highlight(ctx, ix - 3, ry - 1, iw + 6, rowH, { alpha: 0.2 });
       UI.icon(ctx, e.icon, ix + 6, ry, 9, e.color);
       txt(ctx, ix + 18, ry + 1, e.name, {
-        size: on ? 'md' : 'sm', color: on ? C.goldBright : e.color, shadow: true, maxWidth: iw - 52,
+        size: 'sm', color: on ? C.goldBright : e.color, shadow: true, maxWidth: iw - 52,
       });
-      txtR(ctx, ix + iw, ry + 1, durText(e.dur), { size: 'sm', color: C.disabled, shadow: true });
+      MK.text(ctx, ix + iw, ry + 2.5, durText(e.dur), { color: '#8a7a5c', align: 'right' });
       if (on) UI.cursor(ctx, ix - 3, ry + 1, this.t);
       this.rowRects.push({ x: ix - 3, y: ry - 1, w: iw + 6, h: rowH, i: idx });
     }
@@ -1773,12 +1828,12 @@ export class PartyScene extends MenuScene {
       txtC(ctx, DX + DW / 2, CONTENT_Y + 76, 'Nothing to explain.', { size: 'sm', color: C.disabled });
       return;
     }
-    txt(ctx, dx, CONTENT_Y + 5, e.name, { size: 'md', color: e.color, shadow: true, maxWidth: dw });
+    MK.title(ctx, dx, CONTENT_Y + 5, e.name, { color: e.color, maxWidth: dw });
     let cx = dx;
-    cx += (safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, e.kind === 'condition' ? 'Condition' : 'Effect', { color: C.blue }), 0) || 0) + 3;
-    cx += (safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, durText(e.dur, true), { color: C.goldDim }), 0) || 0) + 3;
-    if (e.conc) cx += (safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, 'Concentration', { color: C.purple }), 0) || 0) + 3;
-    if (e.source) safe(() => UI.chip(ctx, cx, CONTENT_Y + 16, `from ${String(e.source).slice(0, 14)}`, { color: C.inkDim }));
+    cx += (safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, e.kind === 'condition' ? 'Condition' : 'Effect', { color: C.blue }), 0) || 0) + 3;
+    cx += (safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, durText(e.dur, true), { color: C.goldDim }), 0) || 0) + 3;
+    if (e.conc) cx += (safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, 'Concentration', { color: C.purple }), 0) || 0) + 3;
+    if (e.source) safe(() => MK.chip(ctx, cx, CONTENT_Y + 16, `from ${String(e.source).slice(0, 14)}`, { color: C.inkDim }));
     this._drawScrollBody(ctx, dx, CONTENT_Y + 29, dw, CONTENT_H - 34, e.desc || '');
   }
 
@@ -1794,13 +1849,13 @@ export class PartyScene extends MenuScene {
     // ("Jallarzi's Storm of Radiance" over "DC 14"), and HIT's right edge and
     // DAMAGE's left edge were the same pixel ("+8" welded to "2d6+5").
     const NAME_X = ix + 17;
-    const HIT_R = ix + 120, HIT_W = 30;      // right edge / width of the to-hit column
-    const DMG_W = 78;                        // damage column, right-aligned on ix+iw
-    const NAME_W = (HIT_R - HIT_W - 4) - NAME_X;
+    const HIT_R = ix + 134, HIT_W = 22;      // right edge / width of the to-hit column (fine)
+    const DMG_W = 64;                        // damage column, right-aligned on ix+iw (fine)
+    const NAME_W = (HIT_R - HIT_W - 3) - NAME_X;
     let ty = sectionHead(ctx, ix, CONTENT_Y + 5, iw, 'ATTACK OPTIONS');
-    txtR(ctx, HIT_R, ty, 'HIT', { size: 'sm', color: C.disabled });
-    txtR(ctx, ix + iw, ty, 'DAMAGE', { size: 'sm', color: C.disabled });
-    ty += 8;
+    MK.text(ctx, HIT_R, ty, 'HIT', { size: 'xs', color: '#8a7a5c', align: 'right' });
+    MK.text(ctx, ix + iw, ty, 'DAMAGE', { size: 'xs', color: '#8a7a5c', align: 'right' });
+    ty += 6;
 
     const sel = clamp(this.cursor[this.section], 0, Math.max(0, list.length - 1));
     const rowH = 12, rows = 11;
@@ -1818,10 +1873,10 @@ export class PartyScene extends MenuScene {
       if (on) UI.highlight(ctx, ix - 3, ry - 1, iw + 6, rowH, { alpha: 0.2 });
       UI.icon(ctx, a.kind === 'spell' ? 'mana' : 'sword', ix + 5, ry, 9, a.enabled ? null : C.disabled);
       txt(ctx, NAME_X, ry + 1, a.name, {
-        size: on ? 'md' : 'sm', color: a.enabled ? (on ? C.goldBright : C.ink) : C.disabled, shadow: true, maxWidth: NAME_W,
+        size: 'sm', color: a.enabled ? (on ? C.goldBright : C.ink) : C.disabled, shadow: true, maxWidth: NAME_W,
       });
-      txtR(ctx, HIT_R, ry + 1, a.hit, { size: 'sm', color: a.enabled ? C.gold : C.disabled, shadow: true, maxWidth: HIT_W });
-      txtR(ctx, ix + iw, ry + 1, a.line, { size: 'sm', color: a.enabled ? C.ink : C.disabled, shadow: true, maxWidth: DMG_W });
+      MK.text(ctx, HIT_R, ry + 2.5, a.hit, { size: 'fineb', color: a.enabled ? C.goldBright : C.disabled, align: 'right', maxWidth: HIT_W });
+      MK.text(ctx, ix + iw, ry + 2.5, a.line, { color: a.enabled ? C.ink : C.disabled, align: 'right', maxWidth: DMG_W });
       if (on) UI.cursor(ctx, ix - 3, ry + 1, this.t);
       this.rowRects.push({ x: ix - 3, y: ry - 1, w: iw + 6, h: rowH, i: idx });
     }
@@ -1832,15 +1887,15 @@ export class PartyScene extends MenuScene {
     const a = list[sel];
     const dx = DX + 7, dw = DW - 14;
     if (!a) return;
-    txt(ctx, dx, CONTENT_Y + 5, a.name, { size: 'md', color: C.gold, shadow: true, maxWidth: dw });
+    MK.title(ctx, dx, CONTENT_Y + 5, a.name, { maxWidth: dw });
     const rows2 = [
       ['To hit', a.hit],
       ['Damage', a.line],
       ['Range', a.range],
       ['Costs', titleCase(String(a.cost))],
     ];
-    rows2.forEach((r, i) => kv(ctx, dx, CONTENT_Y + 17 + i * 10, dw, r[0], r[1]));
-    let by = CONTENT_Y + 60;
+    rows2.forEach((r, i) => MK.kv(ctx, dx, CONTENT_Y + 18 + i * 7, dw, r[0], r[1], { color: C.inkBright }));
+    let by = CONTENT_Y + 50;
     if (a.mastery) {
       const mi = safe(() => masteryInfo(a.mastery), null);
       txt(ctx, dx, by, `Mastery: ${(mi && mi.name) || titleCase(a.mastery)}`, { size: 'sm', color: C.purple, shadow: true, maxWidth: dw });
@@ -1850,7 +1905,7 @@ export class PartyScene extends MenuScene {
     if (arr(a.props).length) {
       let cx = dx;
       for (const p of arr(a.props).slice(0, 5)) {
-        const w = safe(() => UI.chip(ctx, cx, by, titleCase(String(p)), { color: C.blue }), 0) || 0;
+        const w = safe(() => MK.chip(ctx, cx, by, titleCase(String(p)), { color: C.blue }), 0) || 0;
         cx += w + 2;
         if (cx > dx + dw - 26) { cx = dx; by += 10; }
       }
@@ -1876,27 +1931,27 @@ export class PartyScene extends MenuScene {
       if (on) UI.highlight(ctx, LX + 4, ry - 1, LW - 8, 28, { alpha: grabbed ? 0.34 : 0.2 });
       txt(ctx, LX + 7, ry + 9, String(i + 1), { size: 'md', color: grabbed ? C.goldBright : C.goldDim, shadow: true });
       drawMemberCell(ctx, ch, LX + 14, ry, LW - 22, 28, { selected: on });
-      if (Party.autoBattle[ch.uid]) safe(() => UI.chip(ctx, LX + LW - 26, ry + 1, 'AI', { color: C.cyan }));
+      if (Party.autoBattle[ch.uid]) safe(() => MK.chip(ctx, LX + LW - 26, ry + 1, 'AI', { color: C.cyan }));
       if (grabbed) txtR(ctx, LX + LW - 6, ry + 18, '↕ moving', { size: 'sm', color: C.goldBright, shadow: true });
       if (on) UI.cursor(ctx, LX + 4, ry + 9, this.t);
       this.rowRects.push({ x: LX + 4, y: ry - 1, w: LW - 8, h: 28, i, col: 0 });
     });
-    txtC(ctx, LX + LW / 2, CONTENT_Y + CONTENT_H - 12, 'First in line leads the way.', {
-      size: 'sm', color: C.disabled, maxWidth: LW - 10,
+    MK.text(ctx, LX + LW / 2, CONTENT_Y + CONTENT_H - 10, 'The first in line leads the way.', {
+      color: '#8a7a5c', align: 'center', maxWidth: LW - 10,
     });
 
     const RX = 201, RW = VIEW_W - RX - 3;
     UI.panel(ctx, RX, CONTENT_Y, RW, CONTENT_H, { style: 'window' });
     ty = sectionHead(ctx, RX + 6, CONTENT_Y + 5, RW - 12, 'AT THE STONEHILL INN', this.col === 1 ? C.gold : C.goldDim);
     if (!reserve.length) {
-      txt(ctx, RX + 8, ty + 4, 'No one is waiting on the bench.', { size: 'sm', color: C.inkDim, shadow: true, maxWidth: RW - 16 });
+      MK.para(ctx, RX + 8, ty + 3, RW - 16, 'No one is waiting on the bench. Companions you leave behind wait here, and rejoin when you come back for them.', { color: C.inkDim });
     }
     reserve.slice(0, 5).forEach((ch, i) => {
       const ry = ty + i * 30;
       const on = this.col === 1 && this.cursor[this.section] === i;
       if (on) UI.highlight(ctx, RX + 4, ry - 1, RW - 8, 28, { alpha: 0.2 });
       drawMemberCell(ctx, ch, RX + 6, ry, RW - 14, 28, { selected: on });
-      if (Party.autoBattle[ch.uid]) safe(() => UI.chip(ctx, RX + RW - 26, ry + 1, 'AI', { color: C.cyan }));
+      if (Party.autoBattle[ch.uid]) safe(() => MK.chip(ctx, RX + RW - 26, ry + 1, 'AI', { color: C.cyan }));
       if (on) UI.cursor(ctx, RX + 4, ry + 9, this.t);
       this.rowRects.push({ x: RX + 4, y: ry - 1, w: RW - 8, h: 28, i, col: 1 });
     });
@@ -1905,20 +1960,19 @@ export class PartyScene extends MenuScene {
   // --- shared scrolling text body ----------------------------------------
 
   _drawScrollBody(ctx, x, y, w, h, body) {
-    const lines = UI.wrapLines(String(body || ''), w, 'sm');
-    const lineH = 9;
+    // Rules text is prose that explains, so it is set in the fine face: twice
+    // the words in the same pane, and most of them no longer need scrolling.
+    const lines = MK.wrap(String(body || ''), w - 5);
+    const lineH = 6;
     const visible = Math.max(1, Math.floor(h / lineH));
     this._maxScroll = Math.max(0, lines.length - visible);
     const off = clamp(R(this.scroll), 0, this._maxScroll);
     UI.pushClip(ctx, x - 2, y - 2, w + 4, h + 3);
     for (let i = 0; i < visible && off + i < lines.length; i++) {
-      txt(ctx, x, y + i * lineH, lines[off + i], { size: 'sm', color: C.ink, shadow: true });
+      MK.text(ctx, x, y + i * lineH, lines[off + i], { color: C.ink, shadow: 'rgba(0,0,0,0.7)' });
     }
     UI.popClip(ctx);
-    if (this._maxScroll > 0) {
-      if (off > 0) txtR(ctx, x + w, y - 8, '▲', { size: 'sm', color: C.goldDim });
-      if (off < this._maxScroll) txtR(ctx, x + w, y + h - 2, '▼', { size: 'sm', color: C.goldDim });
-    }
+    MK.scroll(ctx, x + w - 3, y, visible * lineH, off, visible, lines.length);
   }
 }
 
@@ -2358,31 +2412,30 @@ export class InventoryScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.cells = [];
     this.tabRects = [];
     const list = this.rows.length ? this.rows : this._build();
 
-    // Header: weight and purse.
-    UI.panel(ctx, 2, 2, VIEW_W - 4, 15, { style: 'dark' });
-    txt(ctx, 8, 5, 'THE COMPANY PACK', { size: 'md', color: C.gold, shadow: true });
+    // Running head: the pack's name, its load and the purse.
+    MK.header(ctx, 'The Company Pack');
     const w = packWeight(), cap = partyCapacity();
     const over = w > cap;
-    UI.bar(ctx, 128, 5, 96, 7, cap > 0 ? w / cap : 0, {
-      color: over ? C.bad : (w > cap * 0.8 ? C.warn : C.green),
-      label: `${w} / ${cap} lb`, size: 'sm',
-    });
-    if (over) txt(ctx, 228, 6, 'OVERLOADED', { size: 'sm', color: C.bad, shadow: true });
-    UI.icon(ctx, 'coin', VIEW_W - 78, 4, 9, C.gold);
-    txtR(ctx, VIEW_W - 8, 6, goldText(Party.gold), { size: 'md', color: C.gold, shadow: true });
+    const loadCol = over ? C.bad : (w > cap * 0.8 ? C.warn : C.green);
+    MK.text(ctx, 150, 4, 'LOAD', { size: 'xs', color: '#8a7a5c' });
+    MK.meter(ctx, 150, 9.5, 80, 2.5, cap > 0 ? w / cap : 0, { color: loadCol });
+    MK.text(ctx, 230, 4, `${w} / ${cap} lb`, { color: over ? C.bad : C.ink, align: 'right' });
+    if (over) MK.text(ctx, 236, 7, 'Overloaded: every step is a struggle', { size: 'fineb', color: C.bad });
+    UI.icon(ctx, 'coin', VIEW_W - 60, 3.5, 9, C.gold);
+    txtR(ctx, VIEW_W - 8, 4.5, goldText(Party.gold), { size: 'md', color: C.goldBright, shadow: true });
 
     // Filter tabs.
-    UI.tabs(ctx, 2, 19, VIEW_W - 4, INV_TABS.map((t) => ({ label: t.label, icon: t.icon })), this.tab, {});
+    MK.tabs(ctx, 2, 19, VIEW_W - 4, INV_TABS.map((t) => ({ label: t.label, icon: t.icon })), this.tab, {});
     const tw = Math.floor((VIEW_W - 4) / INV_TABS.length);
     for (let i = 0; i < INV_TABS.length; i++) this.tabRects.push({ x: 2 + i * tw, y: 19, w: tw, h: 13, i });
 
-    // Grid.
+    // Grid: each cell a sunken well, the icon at twice its size, the count in
+    // the corner and a cyan lozenge on anything someone is wearing.
     const GX = 3, GY = 36, cell = 24, gap = 2;
     UI.panel(ctx, GX - 1, GY - 4, this.cols * (cell + gap) + 4, this.visRows * (cell + gap) + 6, { style: 'inset' });
     const totalRows = Math.max(1, Math.ceil(list.length / this.cols));
@@ -2391,31 +2444,38 @@ export class InventoryScene extends MenuScene {
       for (let c = 0; c < this.cols; c++) {
         const idx = (this.rowTop + r) * this.cols + c;
         const cx = GX + c * (cell + gap), cy = GY + r * (cell + gap);
-        UI.panel(ctx, cx, cy, cell, cell, { style: 'inset', shadow: 0 });
         const it = list[idx];
+        MK.well(ctx, cx, cy, cell, cell, it ? 'rgba(10,7,5,0.62)' : 'rgba(6,5,8,0.4)');
         if (!it) continue;
         this.cells.push({ x: cx, y: cy, w: cell, h: cell, i: idx });
         const col = itemColor(it.id, it.def);
-        UI.icon(ctx, itemIcon(it.def), cx + 7, cy + 6, 11, null);
-        if (it.def && it.def.rarity && it.def.rarity !== 'common') {
-          ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 1;
-          ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
+        const rare = it.def && it.def.rarity && it.def.rarity !== 'common';
+        if (rare) {
+          // a glow of the rarity's colour under the icon, and a hairline of it round the cell
+          const g = ctx.createRadialGradient(cx + cell / 2, cy + cell / 2, 1, cx + cell / 2, cy + cell / 2, cell * 0.6);
+          g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.save(); ctx.globalAlpha = 0.22; ctx.fillStyle = g; ctx.fillRect(cx, cy, cell, cell); ctx.restore();
+          ctx.save(); ctx.globalAlpha = 0.8;
+          ctx.fillStyle = col;
+          ctx.fillRect(cx, cy, cell, 0.5); ctx.fillRect(cx, cy + cell - 0.5, cell, 0.5);
+          ctx.fillRect(cx, cy, 0.5, cell); ctx.fillRect(cx + cell - 0.5, cy, 0.5, cell);
           ctx.restore();
         }
-        if (it.qty > 1) txtR(ctx, cx + cell - 2, cy + cell - 8, String(it.qty), { size: 'sm', color: C.ink, shadow: true });
-        if (equippedBy(it.entry.uid)) txt(ctx, cx + 2, cy + 1, 'E', { size: 'sm', color: C.cyan, shadow: true });
+        UI.icon(ctx, itemIcon(it.def), cx + 4, cy + 4, 16, null);
+        if (it.qty > 1) MK.text(ctx, cx + cell - 1.5, cy + cell - 5, String(it.qty), { size: 'fineb', color: C.inkBright, align: 'right', shadow: 'rgba(0,0,0,0.95)' });
+        if (equippedBy(it.entry.uid)) MK.bullet(ctx, cx + 3, cy + 3, C.cyan);
         if (idx === this.index) UI.frameSel(ctx, cx - 1, cy - 1, cell + 2, cell + 2, this.t);
       }
     }
     if (totalRows > this.visRows) {
-      scrollHint(ctx, GX + this.cols * (cell + gap) - 1, GY, this.visRows * (cell + gap) - gap, this.rowTop, this.visRows, totalRows);
+      MK.scroll(ctx, GX + this.cols * (cell + gap) - 1, GY, this.visRows * (cell + gap) - gap, this.rowTop, this.visRows, totalRows);
     }
 
     // Sort line under the grid.
-    const sy = GY + this.visRows * (cell + gap) + 4;
-    txt(ctx, GX + 2, sy, `Sort: ${SORTS[this.sort].label}`, { size: 'sm', color: C.goldDim, shadow: true });
-    txtR(ctx, GX + this.cols * (cell + gap) - 2, sy, `${list.length} of ${arr(Party.inventory).length} items`, {
-      size: 'sm', color: C.inkDim, shadow: true,
+    const sy = GY + this.visRows * (cell + gap) + 2;
+    MK.text(ctx, GX + 2, sy, `Sorted by ${String(SORTS[this.sort].label).toLowerCase()}`, { color: '#c49a4a' });
+    MK.text(ctx, GX + this.cols * (cell + gap) - 2, sy, `${list.length} of ${arr(Party.inventory).length} items`, {
+      color: C.inkDim, align: 'right',
     });
 
     // Detail pane.
@@ -2435,7 +2495,7 @@ export class InventoryScene extends MenuScene {
 
   _drawDetail(ctx, it, x, y, w, h) {
     if (!it) {
-      txtC(ctx, x + w / 2, y + h / 2 - 4, 'The pack is empty here.', { size: 'sm', color: C.disabled });
+      MK.text(ctx, x + w / 2, y + h / 2 - 4, 'Nothing in the pack here.', { color: C.disabled, align: 'center' });
       return;
     }
     const d = it.def;
@@ -2444,37 +2504,37 @@ export class InventoryScene extends MenuScene {
     const mystery = !!(it.entry && it.entry.unidentified);
     const col = mystery ? C.purple : itemColor(it.id, d);
     const shown = mystery ? unknownName(d) : itemName(it.id, d);
-    const nameLines = UI.wrapLines(shown, w, 'md');
-    let ty = y;
-    for (const l of nameLines.slice(0, 2)) { txt(ctx, x, ty, l, { size: 'md', color: col, shadow: true }); ty += 11; }
-    txt(ctx, x, ty, mystery
+    // the item as a figure in a gilt frame beside its name
+    MK.frame(ctx, x, y, 24, 24, { glow: 0.18 });
+    UI.icon(ctx, itemIcon(d), x + 4, y + 4, 16, null);
+    const nx = x + 29, nw = w - 29;
+    const nameLines = MK.wrap(shown, nw, 'title');
+    let ty = y + 1;
+    for (const l of nameLines.slice(0, 2)) { MK.title(ctx, nx, ty, l, { color: col, maxWidth: nw }); ty += 10; }
+    MK.text(ctx, nx, ty, mystery
       ? `${titleCase(String((d && d.kind) || 'item'))} · unidentified`
       : `${titleCase(String((d && d.kind) || 'item'))} · ${rarityName(d)}`, {
-      size: 'sm', color: mystery ? C.goldDim : C.inkDim, shadow: true, maxWidth: w,
+      color: mystery ? C.goldDim : '#a8987a', maxWidth: nw,
     });
-    ty += 10;
+    ty = Math.max(ty + 8, y + 28);
     if (mystery) {
-      kv(ctx, x, ty, w, 'Weight', `${num(d && d.weight, 0)} lb${it.qty > 1 ? ` (x${it.qty})` : ''}`);
-      ty += 13;
-      UI.divider(ctx, x, ty, w);
+      MK.kv(ctx, x, ty, w, 'Weight', `${num(d && d.weight, 0)} lb${it.qty > 1 ? ` (x${it.qty})` : ''}`);
+      ty += 9;
+      MK.rule(ctx, x, ty, w);
       ty += 4;
-      const lines = UI.wrapLines(
-        'The Weave clings to it and will not say why. Identify, Detect Magic or a temple appraisal will give up its name.',
-        w, 'sm',
-      );
-      for (let i = 0; i < lines.length && ty < y + h - 8; i++) { txt(ctx, x, ty, lines[i], { size: 'sm', color: C.inkDim, shadow: true }); ty += 9; }
+      MK.para(ctx, x, ty, w, 'The Weave clings to it and will not say why. Identify, Detect Magic or a temple appraisal will give up its name.', { color: C.inkDim });
       this._maxScroll = 0;
       return;
     }
-    kv(ctx, x, ty, w, 'Weight', `${num(d && d.weight, 0)} lb${it.qty > 1 ? ` (x${it.qty})` : ''}`);
-    kv(ctx, x, ty + 9, w, 'Value', goldText(num(d && d.cost, 0)));
-    ty += 20;
+    MK.kv(ctx, x, ty, w, 'Weight', `${num(d && d.weight, 0)} lb${it.qty > 1 ? ` (x${it.qty})` : ''}`, { color: C.inkBright });
+    MK.kv(ctx, x, ty + 6.5, w, 'Value', goldText(num(d && d.cost, 0)), { color: C.goldBright });
+    ty += 15;
 
     const stat = d && d.kind === 'weapon' ? safe(() => weaponLine(d), '') : safe(() => armorLine(d), '');
     if (stat) { txt(ctx, x, ty, stat, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: w }); ty += 10; }
 
     const holder = equippedBy(it.entry.uid);
-    if (holder) { txt(ctx, x, ty, `Worn by ${holder.name}`, { size: 'sm', color: C.cyan, shadow: true, maxWidth: w }); ty += 10; }
+    if (holder) { MK.text(ctx, x, ty, `Worn by ${holder.name}`, { size: 'fineb', color: C.cyan, maxWidth: w }); ty += 7; }
 
     if (d && d.use) {
       const u = d.use;
@@ -2483,26 +2543,24 @@ export class InventoryScene extends MenuScene {
           : u.kind === 'temphp' ? `Grants ${u.dice} temporary hit points.`
             : u.kind === 'spell' ? `Casts ${(SPELLS[u.spellId] || {}).name || u.spellId}.`
               : 'Consumed on use.';
-      txt(ctx, x, ty, line, { size: 'sm', color: C.green, shadow: true, maxWidth: w });
-      ty += 10;
+      MK.text(ctx, x, ty, line, { size: 'fineb', color: C.green, maxWidth: w });
+      ty += 7;
     }
 
-    UI.divider(ctx, x, ty, w);
-    ty += 4;
+    MK.rule(ctx, x, ty + 1, w);
+    ty += 5;
     const body = [(d && d.desc) || 'A plain thing of no great story.', mechSummary(d && d.mech)].filter(Boolean).join('\n\n');
-    const lines = UI.wrapLines(body, w, 'sm');
-    const avail = Math.max(1, Math.floor((y + h - ty) / 9));
+    const lines = MK.wrap(body, w - 5);
+    const LH = 6;
+    const avail = Math.max(1, Math.floor((y + h - ty) / LH));
     this._maxScroll = Math.max(0, lines.length - avail);
     const off = clamp(R(this.scroll), 0, this._maxScroll);
     UI.pushClip(ctx, x - 2, ty - 1, w + 4, y + h - ty + 1);
     for (let i = 0; i < avail && off + i < lines.length; i++) {
-      txt(ctx, x, ty + i * 9, lines[off + i], { size: 'sm', color: C.ink, shadow: true });
+      MK.text(ctx, x, ty + i * LH, lines[off + i], { color: C.ink, shadow: 'rgba(0,0,0,0.7)' });
     }
     UI.popClip(ctx);
-    if (this._maxScroll > 0) {
-      if (off > 0) txtR(ctx, x + w, ty - 8, '▲', { size: 'sm', color: C.goldDim });
-      if (off < this._maxScroll) txtR(ctx, x + w, y + h - 7, '▼', { size: 'sm', color: C.goldDim });
-    }
+    MK.scroll(ctx, x + w - 3, ty, avail * LH, off, avail, lines.length);
   }
 }
 
@@ -2523,6 +2581,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 function isCaster(ch) {
   if (!ch || !ch.spells) return false;
+  if ((safe(() => knownSpells(ch), []) || []).some(id=>SPELLS[id]?.level===0)) return true;
   if (arr(ch.spells.cantrips).length || arr(ch.spells.known).length || arr(ch.spells.prepared).length) return true;
   const slots = ch.spells.slots || {};
   for (const k of Object.keys(slots)) if (num(slots[k] && slots[k].max, 0) > 0) return true;
@@ -2558,7 +2617,7 @@ export class SpellbookScene extends MenuScene {
     const ch = this.ch;
     const out = [];
     if (!ch) { this.rows = out; return out; }
-    const ids = spellIdsFor(ch);
+    const ids = [...new Set([...spellIdsFor(ch), ...arr(ch.spells?.book)])];
     const prepared = arr(ch.spells && ch.spells.prepared);
     const always = safe(() => alwaysPreparedSpells(ch), []) || [];
     const f = SPELL_FILTERS[this.filter].id;
@@ -2851,8 +2910,7 @@ export class SpellbookScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.rowRects = [];
     this.tabRects = [];
 
@@ -2870,20 +2928,18 @@ export class SpellbookScene extends MenuScene {
     this._drawHeader(ctx, ch);
 
     // Filter strip.
-    UI.panel(ctx, 2, 28, VIEW_W - 4, 12, { style: 'dark' });
-    txt(ctx, 8, 30, '◀', { size: 'sm', color: C.gold });
-    txt(ctx, 16, 30, `Filter: ${SPELL_FILTERS[this.filter].label}`, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: 120 });
-    txt(ctx, 140, 30, '▶', { size: 'sm', color: C.gold });
+    UI.panel(ctx, 2, 28, VIEW_W - 4, 12, { style: 'dark', studs: false });
+    MK.keycap(ctx, 7, 30.5, keyFor('prev'));
+    MK.text(ctx, 18, 32, String(SPELL_FILTERS[this.filter].label).toUpperCase(), { size: 'fineb', color: C.goldBright, letterSpacing: 2, maxWidth: 110 });
+    MK.keycap(ctx, 130, 30.5, keyFor('next'));
     // Fixed slots: prepared count 152..238, concentration 242..392. The two
     // can never meet, whatever the spell is called.
     if (this._prep) {
-      txt(ctx, 152, 30, this._prep, {
-        size: 'sm', color: this._prepWarn ? C.warn : C.inkDim, shadow: true, maxWidth: 86,
-      });
+      MK.text(ctx, 152, 32, this._prep, { color: this._prepWarn ? C.warn : '#cfc3a6', maxWidth: 86 });
     }
     const conc = safe(() => isConcentrating(ch), false);
-    txtR(ctx, VIEW_W - 8, 30, conc ? `Concentrating on ${(SPELLS[(ch.concentration || {}).spellId] || {}).name || 'a spell'}` : 'Not concentrating', {
-      size: 'sm', color: conc ? C.purple : C.disabled, shadow: true, maxWidth: 150,
+    MK.text(ctx, VIEW_W - 8, 32, conc ? `Concentrating on ${(SPELLS[(ch.concentration || {}).spellId] || {}).name || 'a spell'}` : 'Not concentrating', {
+      color: conc ? C.purple : '#6a5d48', align: 'right', maxWidth: 150,
     });
 
     // Spell list.
@@ -2899,23 +2955,26 @@ export class SpellbookScene extends MenuScene {
       const r = rows[idx];
       const ry = LY + 5 + i * rowH;
       if (r.head) {
-        txt(ctx, LX + 6, ry + 1, r.label, { size: 'sm', color: C.goldDim, shadow: true, maxWidth: LW - 14 });
-        UI.divider(ctx, LX + 6 + UI.measure(r.label, 'sm') + 4, ry + 4, Math.max(4, LW - 20 - UI.measure(r.label, 'sm')));
+        MK.section(ctx, LX + 6, ry + 2.5, LW - 14, r.label);
         continue;
       }
       const on = idx === this.index;
       if (on) UI.highlight(ctx, LX + 3, ry - 1, LW - 8, rowH, { alpha: 0.2 });
       const sp = r.spell;
       const school = (SCHOOLS[sp.school] || {}).color || C.ink;
-      txt(ctx, LX + 8, ry, r.prepared ? '♦' : '○', { size: 'sm', color: r.prepared ? (r.locked ? C.cyan : C.goldBright) : C.disabled, shadow: true });
-      txt(ctx, LX + 17, ry, sp.name, {
-        size: on ? 'md' : 'sm', color: on ? C.goldBright : (r.prepared ? C.ink : C.inkDim), shadow: true, maxWidth: LW - 46,
+      // prepared: a filled lozenge (cyan when it can never be unprepared); not: a hollow one
+      if (r.prepared) MK.bullet(ctx, LX + 10.5, ry + 3.5, r.locked ? C.cyan : C.goldBright);
+      else { ctx.fillStyle = '#5a5040'; ctx.fillRect(LX + 10, ry + 2.5, 1, 2); ctx.fillRect(LX + 9.5, ry + 3, 2, 1); }
+      txt(ctx, LX + 16, ry, sp.name, {
+        size: 'sm', color: on ? C.goldBright : (r.prepared ? C.ink : C.inkDim), shadow: true, maxWidth: LW - 44,
       });
-      let mx = LX + LW - 8;
-      if (sp.ritual) { txtR(ctx, mx, ry, 'R', { size: 'sm', color: C.blue, shadow: true }); mx -= 7; }
-      if (sp.concentration) { txtR(ctx, mx, ry, 'C', { size: 'sm', color: C.purple, shadow: true }); mx -= 7; }
-      ctx.fillStyle = school;
-      ctx.fillRect(R(mx - 3), R(ry + 2), 3, 3);
+      let mx = LX + LW - 9;
+      if (sp.ritual) { MK.text(ctx, mx, ry + 1.5, 'R', { size: 'xs', color: C.blue, align: 'right' }); mx -= 5; }
+      if (sp.concentration) { MK.text(ctx, mx, ry + 1.5, 'C', { size: 'xs', color: C.purple, align: 'right' }); mx -= 5; }
+      // the school's colour as a small gem
+      ctx.fillStyle = '#0a0705'; ctx.fillRect(mx - 4, ry + 1, 4, 4);
+      ctx.fillStyle = school; ctx.fillRect(mx - 3.5, ry + 1.5, 3, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(mx - 3.5, ry + 1.5, 1, 0.5);
       if (on) UI.cursor(ctx, LX + 2, ry, this.t);
       this.rowRects.push({ x: LX + 3, y: ry - 1, w: LW - 8, h: rowH, i: idx });
     }
@@ -2947,14 +3006,13 @@ export class SpellbookScene extends MenuScene {
     for (let i = 0; i < n; i++) {
       const x = 4 + i * (cw + 2);
       const on = i === this.caster;
-      UI.panel(ctx, x, 4, cw, 20, { style: on ? 'gold' : 'plain', shadow: on ? 0.35 : 0.1 });
+      UI.panel(ctx, x, 4, cw, 20, { style: on ? 'window' : 'dark', shadow: on ? 0.35 : 0.1, studs: false });
+      if (on) { ctx.fillStyle = C.goldBright; ctx.fillRect(x + 2, 21.5, cw - 4, 0.5); }
       const m = this.casters[i];
-      safe(() => UI.portrait(ctx, m, x + 2, 6, 16, { shadow: 0.15 }));
-      txt(ctx, x + 21, 7, m.name, {
-        size: on ? 'md' : 'sm', color: on ? '#2a1c07' : C.ink, shadow: !on, maxWidth: cw - 25,
-      });
-      txt(ctx, x + 21, 16, `Lv ${num(safe(() => casterLevel(m), m.level), m.level || 1)} caster`, {
-        size: 'sm', color: on ? '#4a3410' : C.inkDim, shadow: !on, maxWidth: cw - 25,
+      MK.portrait(ctx, m, x + 2, 6, 16, 16, { glow: on ? 0.25 : 0.1 });
+      MK.title(ctx, x + 21, 7, m.name, { color: on ? C.goldBright : C.ink, maxWidth: cw - 24 });
+      MK.text(ctx, x + 21, 16.5, `Level ${num(safe(() => casterLevel(m), m.level), m.level || 1)} caster`, {
+        color: on ? '#d8c8a4' : C.inkDim, maxWidth: cw - 24,
       });
       this.tabRects.push({ x, y: 4, w: cw, h: 20, i });
     }
@@ -2963,8 +3021,8 @@ export class SpellbookScene extends MenuScene {
     const prepMode = safe(() => isPreparedCaster(cls.id, cls.subclassId), true);
     const cap = num(safe(() => preparedMax(ch), 0), 0);
     const used = arr(ch.spells && ch.spells.prepared).length;
-    kv(ctx, bx, 5, 114, 'Spell save DC', String(num(safe(() => spellDC(ch), 8), 8)), { color: C.goldBright });
-    kv(ctx, bx, 14, 114, 'Spell attack', signed(num(safe(() => spellAtk(ch), 0), 0)), { color: C.goldBright });
+    MK.statBox(ctx, bx + 52, 4, 30, 20, 'Save DC', String(num(safe(() => spellDC(ch), 8), 8)));
+    MK.statBox(ctx, bx + 84, 4, 30, 20, 'Base atk', signed(num(safe(() => spellAtk(ch), 0), 0)));
     // The prepared count used to be a third row at y=23 inside a panel whose
     // interior ends at y=23: seven glyph rows plus a shadow ran to y=31, three
     // pixels past the frame and onto the filter strip at y=28. Two 9px rows
@@ -2980,9 +3038,9 @@ export class SpellbookScene extends MenuScene {
       return;
     }
     const school = (SCHOOLS[sp.school] || {});
-    txt(ctx, x, y, sp.name, { size: 'md', color: school.color || C.gold, shadow: true, maxWidth: w });
-    txt(ctx, x, y + 11, sp.level === 0 ? `${school.name || sp.school} cantrip` : `${ordinal(sp.level)}-level ${school.name || sp.school}`, {
-      size: 'sm', color: C.inkDim, shadow: true, maxWidth: w,
+    MK.title(ctx, x, y, sp.name, { color: school.color || C.goldBright, maxWidth: w });
+    MK.text(ctx, x, y + 10.5, sp.level === 0 ? `${school.name || sp.school} cantrip` : `${ordinal(sp.level)}-level ${school.name || sp.school}`, {
+      color: '#a8987a', maxWidth: w,
     });
 
     // `componentText()` returns "V, S, M (…)" for 362 of the 364 spells, and
@@ -3009,21 +3067,19 @@ export class SpellbookScene extends MenuScene {
       ['Components', compShort],
       ['Duration', titleCase(String(sp.duration || 'instant'))],
     ];
-    rows.forEach((r, i) => kv(ctx, x, y + 22 + i * 9, w, r[0], r[1]));
+    rows.forEach((r, i) => MK.kv(ctx, x, y + 19 + i * 6.5, w, r[0], r[1], { color: C.inkBright }));
 
-    let ty = y + 60;
+    let ty = y + 46;
     let cx = x;
-    if (sp.concentration) cx += (safe(() => UI.chip(ctx, cx, ty, 'Concentration', { color: C.purple }), 0) || 0) + 3;
-    if (sp.ritual) cx += (safe(() => UI.chip(ctx, cx, ty, 'Ritual', { color: C.blue }), 0) || 0) + 3;
-    if (sp.attack) cx += (safe(() => UI.chip(ctx, cx, ty, `${titleCase(sp.attack)} attack ${signed(num(safe(() => spellAtk(ch), 0), 0))}`, { color: C.gold }), 0) || 0) + 3;
-    if (sp.save) cx += (safe(() => UI.chip(ctx, cx, ty, `${ABILITY_ABBR[sp.save.ability] || sp.save.ability} save DC ${num(safe(() => spellDC(ch), 8), 8)}`, { color: C.warn }), 0) || 0) + 3;
-    ty += 12;
+    if (sp.concentration) cx += (safe(() => MK.chip(ctx, cx, ty, 'Concentration', { color: C.purple }), 0) || 0) + 3;
+    if (sp.ritual) cx += (safe(() => MK.chip(ctx, cx, ty, 'Ritual', { color: C.blue }), 0) || 0) + 3;
+    if (sp.attack) cx += (safe(() => MK.chip(ctx, cx, ty, `${titleCase(sp.attack)} attack ${signed(num(safe(() => spellAtk(ch,sp.id), 0), 0))}`, { color: C.gold }), 0) || 0) + 3;
+    if (sp.save) cx += (safe(() => MK.chip(ctx, cx, ty, `${ABILITY_ABBR[sp.save.ability] || sp.save.ability} save DC ${num(safe(() => spellDC(ch), 8), 8)}`, { color: C.warn }), 0) || 0) + 3;
+    if (cx > x) ty += 10;
 
     if (mat) {
-      const r = safe(() => UI.textWrapped(ctx, x, ty, w, `Material: ${mat[1]}`, {
-        size: 'sm', color: C.inkDim, shadow: true, maxLines: 3,
-      }), null);
-      ty += (r && r.height ? r.height : 9) + 2;
+      const r = MK.para(ctx, x, ty, w, `Material: ${mat[1]}`, { color: '#a8987a', maxLines: 3 });
+      ty += (r && r.height ? r.height : 5) + 3;
     }
 
     const lvl = num(ch.level, 1);
@@ -3042,28 +3098,28 @@ export class SpellbookScene extends MenuScene {
 
     const upcast = upcastText(sp);
     const body = [sp.desc || '', upcast].filter(Boolean).join('\n\n');
-    const lines = UI.wrapLines(body, w, 'sm');
-    const avail = Math.max(1, Math.floor((y + h - ty - 2) / 9));
+    const lines = MK.wrap(body, w - 5);
+    const LH = 6;
+    MK.rule(ctx, x, ty, w);
+    ty += 4;
+    const avail = Math.max(1, Math.floor((y + h - ty) / LH));
     this._maxScroll = Math.max(0, lines.length - avail);
     const off = clamp(R(this.scroll), 0, this._maxScroll);
     UI.pushClip(ctx, x - 2, ty - 1, w + 4, y + h - ty + 1);
     for (let i = 0; i < avail && off + i < lines.length; i++) {
       const l = lines[off + i];
-      txt(ctx, x, ty + i * 9, l, {
-        size: 'sm', color: l.indexOf('At Higher Levels') === 0 ? C.goldDim : C.ink, shadow: true,
+      MK.text(ctx, x, ty + i * LH, l, {
+        color: l.indexOf('At Higher Levels') === 0 ? C.goldBright : C.ink, shadow: 'rgba(0,0,0,0.7)',
       });
     }
     UI.popClip(ctx);
-    if (this._maxScroll > 0) {
-      if (off > 0) txtR(ctx, x + w, ty - 8, '▲', { size: 'sm', color: C.goldDim });
-      if (off < this._maxScroll) txtR(ctx, x + w, y + h - 7, '▼', { size: 'sm', color: C.goldDim });
-    }
+    MK.scroll(ctx, x + w - 3, ty, avail * LH, off, avail, lines.length);
   }
 
   /** One pip row per spell level, plus the warlock's pact slots on their own line. */
   _drawSlots(ctx, ch, x, y) {
-    UI.panel(ctx, x, y, VIEW_W - x * 2, 14, { style: 'dark' });
-    txt(ctx, x + 5, y + 4, 'SLOTS', { size: 'sm', color: C.goldDim, shadow: true });
+    UI.panel(ctx, x, y, VIEW_W - x * 2, 14, { style: 'dark', studs: false });
+    MK.text(ctx, x + 5, y + 5, 'SLOTS', { size: 'fineb', color: '#c49a4a', letterSpacing: 2 });
     let cx = x + 34;
     const slots = (ch.spells && ch.spells.slots) || {};
     let any = false;
@@ -3072,7 +3128,7 @@ export class SpellbookScene extends MenuScene {
       if (!s || !num(s.max, 0)) continue;
       any = true;
       const left = Math.max(0, num(s.max, 0) - num(s.used, 0));
-      txt(ctx, cx, y + 4, String(lv), { size: 'sm', color: C.goldDim, shadow: true });
+      MK.text(ctx, cx + 1, y + 5, ordinal(lv), { color: '#a8987a' });
       const w = safe(() => UI.pips(ctx, cx + 7, y + 4, num(s.max, 0), left, { size: 4, gap: 1, color: SLOT_TINT[lv - 1] }), 0) || 0;
       cx += 9 + w + 7;
       if (cx > VIEW_W - 90) break;
@@ -3084,7 +3140,7 @@ export class SpellbookScene extends MenuScene {
       safe(() => UI.pips(ctx, VIEW_W - 58, y + 4, num(pact.max, 0), left, { size: 4, gap: 1, color: C.purple }));
       any = true;
     }
-    if (!any) txt(ctx, x + 34, y + 4, 'No spell slots — cantrips only.', { size: 'sm', color: C.disabled, shadow: true });
+    if (!any) MK.text(ctx, x + 34, y + 5, 'No spell slots yet: cantrips only.', { color: '#8a7a5c' });
   }
 
   _drawAlpha(ctx) {
@@ -3097,7 +3153,7 @@ export class SpellbookScene extends MenuScene {
       const cx = x + 8 + col * 22, cy = y + 6 + row * 16;
       const on = i === this.alpha.index;
       if (on) UI.highlight(ctx, cx - 2, cy - 2, 18, 14, { alpha: 0.3 });
-      txtC(ctx, cx + 7, cy, ALPHABET[i], { size: on ? 'md' : 'sm', color: on ? C.goldBright : C.inkDim, shadow: true });
+      txtC(ctx, cx + 7, cy, ALPHABET[i], { size: 'sm', color: on ? C.goldBright : C.inkDim, shadow: true });
     }
     txtC(ctx, x + w / 2, y + h - 10, `${keyFor('confirm')} jump  ·  ${keyFor('cancel')} back`, { size: 'sm', color: C.disabled });
   }
@@ -3220,12 +3276,14 @@ export class JournalScene extends MenuScene {
         out.push({ kind: 'quest', q, id: q.id, label: q.title || titleCase(String(q.id).replace(/-/g, ' ')) });
       }
     } else if (id === 'done') {
+      // A generated quest is not in QUESTS; the director keeps its title (st.world.quests).
+      const generatedTitle = (qid) => { const g = st.world && st.world.quests && st.world.quests[qid]; return g && g.title ? { title: g.title } : null; };
       for (const qid of arr(st.quests && st.quests.done)) {
-        const d = QUESTS()[qid] || null;
+        const d = QUESTS()[qid] || generatedTitle(qid);
         out.push({ kind: 'quest', q: { id: qid, title: (d && d.title) || titleCase(String(qid).replace(/-/g, ' ')), steps: [], done: true }, id: qid, label: (d && d.title) || titleCase(String(qid).replace(/-/g, ' ')) });
       }
       for (const qid of arr(st.quests && st.quests.failed)) {
-        const d = QUESTS()[qid] || null;
+        const d = QUESTS()[qid] || generatedTitle(qid);
         out.push({ kind: 'quest', failed: true, q: { id: qid, title: (d && d.title) || titleCase(String(qid).replace(/-/g, ' ')), steps: [] }, id: qid, label: (d && d.title) || titleCase(String(qid).replace(/-/g, ' ')) });
       }
     } else if (id === 'lore') {
@@ -3247,6 +3305,8 @@ export class JournalScene extends MenuScene {
         if (!text) continue;
         out.push({ kind: 'lore', id: `rumour-${out.length}`, label: 'A rumour in the taproom', body: text, tag: 'Heard' });
       }
+      // The world director's record of the Coast and of the party (rules/worlddirector.js).
+      for (const e of safe(() => chronicleEntries(st), []) || []) out.unshift(e);
       const best = (st.bestiary && Object.keys(st.bestiary)) || [];
       for (const mid of best) {
         const m = MONSTERS[mid];
@@ -3313,23 +3373,19 @@ export class JournalScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.rowRects = [];
     this.tabRects = [];
     const list = this.entries.length ? this.entries : this._build();
     const st = S();
 
-    UI.panel(ctx, 2, 2, VIEW_W - 4, 13, { style: 'dark' });
-    txt(ctx, 8, 4, 'JOURNAL', { size: 'md', color: C.gold, shadow: true });
-    if (st) {
-      const q = trackedQuest(st);
-      txtR(ctx, VIEW_W - 8, 5, q ? `Tracking: ${q.title || q.id}` : 'Nothing tracked', {
-        size: 'sm', color: q ? C.goldBright : C.disabled, shadow: true, maxWidth: 250,
-      });
-    }
+    const q0 = st ? trackedQuest(st) : null;
+    MK.header(ctx, 'Journal', {
+      sub: q0 ? `Following: ${q0.title || q0.id}` : 'Following nothing',
+      subColor: q0 ? C.goldBright : '#6a5d48',
+    });
 
-    UI.tabs(ctx, 2, 17, VIEW_W - 4, JOURNAL_TABS.map((t) => ({ label: t.label, icon: t.icon })), this.tab, {});
+    MK.tabs(ctx, 2, 17, VIEW_W - 4, JOURNAL_TABS.map((t) => ({ label: t.label, icon: t.icon })), this.tab, {});
     const tw = Math.floor((VIEW_W - 4) / JOURNAL_TABS.length);
     for (let i = 0; i < JOURNAL_TABS.length; i++) this.tabRects.push({ x: 2 + i * tw, y: 17, w: tw, h: 13, i });
 
@@ -3343,7 +3399,9 @@ export class JournalScene extends MenuScene {
     this.top[this.tab] = top = clamp(top, 0, Math.max(0, list.length - rows));
 
     if (!list.length) {
-      txtC(ctx, LX + LW / 2, LY + 80, 'Nothing here.', { size: 'sm', color: C.disabled });
+      const empty = ['No work in hand. Notice boards and tavern keepers always know of some.',
+        'Nothing finished yet.', 'No contracts signed.', 'Nothing learned yet.', 'No standing with anyone yet.'][this.tab] || 'Nothing here.';
+      MK.para(ctx, LX + 10, LY + 70, LW - 20, empty, { color: C.inkDim, align: 'center' });
     }
     UI.pushClip(ctx, LX + 2, LY + 3, LW - 4, rowH * rows + 2);
     for (let i = 0; i < rows && top + i < list.length; i++) {
@@ -3353,41 +3411,39 @@ export class JournalScene extends MenuScene {
       const on = idx === sel;
       if (on) UI.highlight(ctx, LX + 3, ry - 1, LW - 8, rowH, { alpha: 0.2 });
       let col = on ? C.goldBright : C.ink;
-      let mark = '';
+      let mark = null;
       if (e.kind === 'quest') {
         const tracked = st && st.quests && st.quests.tracked === e.q.id;
-        if (e.failed) { col = C.bad; mark = '✗'; }
-        else if (e.q.done) { col = C.good; mark = '✓'; }
-        else if (tracked) mark = '★';
+        if (e.failed) { col = C.bad; mark = ['✗', C.bad]; }
+        else if (e.q.done) { col = on ? C.goldBright : C.good; mark = ['✓', C.good]; }
+        else if (tracked) mark = ['★', C.goldBright];
       } else if (e.kind === 'faction') {
         col = on ? C.goldBright : (e.f.color || C.ink);
       }
-      // The right-hand tag had no width and the label had the whole row, so
-      // "Giant Fire Beetle" and its "Bestiary" tag shared 45px of column.
+      // The right-hand tag is fine type, so the label keeps most of the row.
       const tag = e.kind === 'lore' ? (e.tag || '') : (e.kind === 'faction' ? String(num(e.value, 0)) : '');
-      const sp = safe(() => UI.splitRow(LW - 22, e.label, tag, { size: on ? 'md' : 'sm', gap: 5 }), null)
-        || { labelW: LW - 24, valueW: 0 };
-      if (mark) txt(ctx, LX + 7, ry, mark, { size: 'sm', color: col, shadow: true });
-      txt(ctx, LX + 16, ry, e.label, { size: on ? 'md' : 'sm', color: col, shadow: true, maxWidth: sp.labelW });
-      if (tag && sp.valueW > 0) {
-        txtR(ctx, LX + LW - 6, ry, tag, {
-          size: 'sm', color: e.kind === 'faction' ? C.goldDim : C.disabled, shadow: true, maxWidth: sp.valueW,
-        });
+      const tagW = tag ? Math.min(MK.measure(tag), 50) : 0;
+      if (mark) txt(ctx, LX + 7, ry, mark[0], { size: 'sm', color: mark[1], shadow: true });
+      txt(ctx, LX + 16, ry, e.label, { size: 'sm', color: col, shadow: true, maxWidth: LW - 24 - (tagW ? tagW + 4 : 0) });
+      if (tag) {
+        MK.text(ctx, LX + LW - 7, ry + 2, tag, { color: e.kind === 'faction' ? C.goldBright : '#8a7a5c', align: 'right', maxWidth: tagW });
       }
       if (on) UI.cursor(ctx, LX + 2, ry, this.t);
       this.rowRects.push({ x: LX + 3, y: ry - 1, w: LW - 8, h: rowH, i: idx });
     }
     UI.popClip(ctx);
-    if (list.length > rows) scrollHint(ctx, LX + LW - 4, LY + 4, rowH * rows, top, rows, list.length);
+    if (list.length > rows) MK.scroll(ctx, LX + LW - 6, LY + 4, rowH * rows, top, rows, list.length);
 
+    // The entry itself is the party's own writing: a sheet of parchment.
     const DX = 165, DW = VIEW_W - DX - 3;
-    UI.panel(ctx, DX, LY, DW, LH, { style: 'window' });
+    const pg = MK.page(ctx, DX, LY, DW, LH);
     this._paneRect = { x: DX, y: LY, w: DW, h: LH };
     const e = list[sel] || null;
-    if (!e) { /* nothing */ }
-    else if (e.kind === 'quest') this._drawQuest(ctx, e, DX + 7, LY + 5, DW - 14, LH - 10);
-    else if (e.kind === 'faction') this._drawFaction(ctx, e, DX + 7, LY + 5, DW - 14, LH - 10);
-    else this._drawLore(ctx, e, DX + 7, LY + 5, DW - 14, LH - 10);
+    const px = pg.ix + 8, py = pg.iy + 4, pw = pg.iw - 14, ph = pg.ih - 7;
+    if (!e) MK.ink(ctx, px + pw / 2, py + ph / 2 - 3, 'A clean page.', { color: MK.PAGE_INK.dim, align: 'center' });
+    else if (e.kind === 'quest') this._drawQuest(ctx, e, px, py, pw, ph);
+    else if (e.kind === 'faction') this._drawFaction(ctx, e, px, py, pw, ph);
+    else this._drawLore(ctx, e, px, py, pw, ph);
 
     this.drawMessage(ctx, 6, MSG_Y, VIEW_W - 12);
     hintBar(ctx, HINT_Y, [
@@ -3397,57 +3453,61 @@ export class JournalScene extends MenuScene {
     this.drawPrompt(ctx);
   }
 
+  /** A name on parchment: the display face in iron-gall ink with a rubric capital. */
+  _pageTitle(ctx, x, y, s, w, color) {
+    return safe(() => UI.heading(ctx, x, y, MK.fit(s, w, 'title'), {
+      size: 'title', color: color || MK.PAGE_INK.title, capColor: MK.PAGE_INK.rubric, capGilt: false, shadow: false,
+    }), { w: 0, h: 8 });
+  }
+
   _drawQuest(ctx, e, x, y, w, h) {
     const st = S();
     const q = e.q;
     const d = questDef(q);
-    txt(ctx, x, y, q.title || titleCase(String(q.id).replace(/-/g, ' ')), {
-      size: 'md', color: e.failed ? C.bad : (q.done ? C.good : C.gold), shadow: true, maxWidth: w,
-    });
-    txt(ctx, x, y + 11, `Given by ${giverName(q)}`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: w });
-    let cx = x, cy = y + 21;
+    const P = MK.PAGE_INK;
+    this._pageTitle(ctx, x, y, q.title || titleCase(String(q.id).replace(/-/g, ' ')), w,
+      e.failed ? '#7a1c12' : (q.done ? '#2f5a1c' : P.title));
+    MK.ink(ctx, x, y + 10, `Given by ${giverName(q)}`, { color: P.dim, maxWidth: w });
+    let cx = x, cy = y + 17;
     const fac = questFaction(q);
+    const pill = (label, color) => { cx += (safe(() => MK.chip(ctx, cx, cy, label, { color, bg: 'rgba(60,40,20,0.12)' }), 0) || 0) + 3; };
     if (fac) {
       const f = FACTIONS.find((z) => z.id === fac);
-      cx += (safe(() => UI.chip(ctx, cx, cy, (f && f.name) || titleCase(fac), { color: (f && f.color) || C.blue }), 0) || 0) + 3;
+      pill((f && f.name) || titleCase(fac), '#2a4a7a');
     }
-    if (d && d.type) cx += (safe(() => UI.chip(ctx, cx, cy, titleCase(d.type), { color: C.goldDim }), 0) || 0) + 3;
-    if (d && d.minLevel) cx += (safe(() => UI.chip(ctx, cx, cy, `Lv ${d.minLevel}+`, { color: C.warn }), 0) || 0) + 3;
-    if (st && st.quests && st.quests.tracked === q.id) safe(() => UI.chip(ctx, cx, cy, 'Tracked', { color: C.goldBright }));
-    cy += 13;
+    if (d && d.type) pill(titleCase(d.type), '#6a4a1a');
+    if (d && d.minLevel) pill(`Level ${d.minLevel}+`, '#8a3a1a');
+    if (st && st.quests && st.quests.tracked === q.id) pill('Followed', '#7a5a10');
+    if (cx > x) cy += 10;
 
     const desc = (d && d.desc) || q.desc || '';
     if (desc) {
-      const r = UI.textWrapped(ctx, x, cy, w, desc, { size: 'sm', color: C.ink, maxLines: 4 });
+      const r = MK.capPara(ctx, x, cy, w, desc, { color: P.body, shadow: false, maxH: 44 });
       cy += r.height + 4;
     }
 
-    cy = sectionHead(ctx, x, cy, w, 'OBJECTIVES');
+    cy = MK.pageSection(ctx, x, cy, w, 'What remains');
     const steps = arr(q.steps);
     if (!steps.length) {
-      txt(ctx, x, cy, e.failed ? 'Abandoned.' : q.done ? 'All done.' : 'No steps recorded.', {
-        size: 'sm', color: C.inkDim, shadow: true, maxWidth: w,
-      });
-      cy += 10;
+      MK.ink(ctx, x, cy, e.failed ? 'Abandoned.' : q.done ? 'All done.' : 'No steps recorded.', { color: P.dim, maxWidth: w });
+      cy += 7;
     }
     for (const s of steps.slice(0, 6)) {
       const done = !!s.done;
-      txt(ctx, x, cy, done ? '✓' : '○', { size: 'sm', color: done ? C.good : C.disabled, shadow: true });
-      txt(ctx, x + 9, cy, stepText(s), {
-        size: 'sm', color: done ? C.inkDim : C.ink, shadow: true, maxWidth: w - 44,
-      });
+      if (done) MK.ink(ctx, x, cy, '✓', { size: 'fineb', color: '#2f5a1c' });
+      else MK.bullet(ctx, x + 1.5, cy + 2, P.rubric);
+      MK.ink(ctx, x + 6, cy, stepText(s), { color: done ? P.dim : P.body, maxWidth: w - 30 });
+      if (done) { ctx.fillStyle = 'rgba(58,39,18,0.55)'; ctx.fillRect(x + 6, cy + 2, Math.min(w - 30, MK.measure(stepText(s))), 0.5); }
       const count = num(s.count, 1);
-      if (count > 1) {
-        txtR(ctx, x + w, cy, `${num(s.progress, 0)}/${count}`, { size: 'sm', color: done ? C.good : C.goldDim, shadow: true });
-      }
-      cy += 10;
+      if (count > 1) MK.ink(ctx, x + w, cy, `${num(s.progress, 0)} of ${count}`, { size: 'fineb', color: done ? '#2f5a1c' : P.gilt, align: 'right' });
+      cy += 7;
     }
 
-    cy += 2;
-    cy = sectionHead(ctx, x, cy, w, 'REWARD');
+    cy += 3;
+    cy = MK.pageSection(ctx, x, cy, w, 'The reward');
     const rw = (d && d.rewards) || q.rewards || null;
     if (!rw) {
-      txt(ctx, x, cy, 'Whatever you can carry out.', { size: 'sm', color: C.inkDim, shadow: true, maxWidth: w });
+      MK.ink(ctx, x, cy, 'Whatever you can carry out.', { color: P.dim, maxWidth: w });
     } else {
       const bits = [];
       if (num(rw.xp, 0)) bits.push(`${rw.xp} XP`);
@@ -3457,61 +3517,63 @@ export class JournalScene extends MenuScene {
         bits.push(itemName(iid, safe(() => resolveItem(iid), null)));
       }
       if (num(rw.reputation, 0) && fac) bits.push(`${signed(rw.reputation)} standing`);
-      const r = UI.textWrapped(ctx, x, cy, w, bits.join(' · ') || 'Coin and goodwill.', { size: 'sm', color: C.gold, maxLines: 2 });
-      cy += r.height;
+      MK.para(ctx, x, cy, w, bits.join(' · ') || 'Coin and goodwill.', { size: 'fineb', color: P.gilt, shadow: false, maxLines: 2 });
     }
     if (q.startedDay) {
-      txt(ctx, x, y + h - 9, `Taken on ${dateText(num(q.startedDay, 1))}`, { size: 'sm', color: C.disabled, shadow: true, maxWidth: w });
+      MK.ink(ctx, x + w, y + h - 5, `Taken on ${dateText(num(q.startedDay, 1))}`, { color: P.dim, align: 'right', maxWidth: w });
     }
     this._maxScroll = 0;
   }
 
   _drawLore(ctx, e, x, y, w, h) {
-    txt(ctx, x, y, e.label, { size: 'md', color: C.gold, shadow: true, maxWidth: w });
-    if (e.tag) safe(() => UI.chip(ctx, x, y + 12, e.tag, { color: C.blue }));
-    const ty = y + 26;
-    const lines = UI.wrapLines(String(e.body || ''), w, 'sm');
-    const avail = Math.max(1, Math.floor((y + h - ty) / 9));
+    const P = MK.PAGE_INK;
+    this._pageTitle(ctx, x, y, e.label, w);
+    if (e.tag) safe(() => MK.chip(ctx, x, y + 11, e.tag, { color: '#2a4a7a', bg: 'rgba(60,40,20,0.12)' }));
+    const ty = y + (e.tag ? 22 : 13);
+    const LH = 6;
+    const lines = MK.wrap(String(e.body || ''), w - 5);
+    const avail = Math.max(1, Math.floor((y + h - ty) / LH));
     this._maxScroll = Math.max(0, lines.length - avail);
     const off = clamp(R(this.scroll), 0, this._maxScroll);
-    UI.pushClip(ctx, x - 2, ty - 1, w + 4, y + h - ty + 1);
-    for (let i = 0; i < avail && off + i < lines.length; i++) {
-      txt(ctx, x, ty + i * 9, lines[off + i], { size: 'sm', color: C.ink, shadow: true });
+    if (off === 0) {
+      // the opening of an entry gets its initial; scrolling sets it plain
+      MK.capPara(ctx, x, ty, w - 5, String(e.body || ''), { color: P.body, shadow: false, maxH: y + h - ty });
+    } else {
+      UI.pushClip(ctx, x - 2, ty - 1, w + 4, y + h - ty + 1);
+      for (let i = 0; i < avail && off + i < lines.length; i++) MK.ink(ctx, x, ty + i * LH, lines[off + i]);
+      UI.popClip(ctx);
     }
-    UI.popClip(ctx);
-    if (this._maxScroll > 0) {
-      if (off > 0) txtR(ctx, x + w, ty - 8, '▲', { size: 'sm', color: C.goldDim });
-      if (off < this._maxScroll) txtR(ctx, x + w, y + h - 7, '▼', { size: 'sm', color: C.goldDim });
-    }
+    MK.scroll(ctx, x + w - 3, ty, avail * LH, off, avail, lines.length);
   }
 
   _drawFaction(ctx, e, x, y, w, h) {
+    const P = MK.PAGE_INK;
     const f = e.f;
     const v = num(e.value, 0);
-    txt(ctx, x, y, f.name, { size: 'md', color: f.color, shadow: true, maxWidth: w });
+    this._pageTitle(ctx, x, y, f.name, w);
     const rank = factionRank(f.id, v);
-    txt(ctx, x, y + 12, `Standing: ${rank}`, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: w });
+    MK.ink(ctx, x, y + 11, `Standing: ${rank}`, { size: 'fineb', color: P.gilt, maxWidth: w });
     const next = nextRepAt(v);
-    UI.bar(ctx, x, y + 23, w, 7, next > 0 ? clamp(v / next, 0, 1) : 1, {
-      color: f.color, label: `${v} / ${next}`, size: 'sm',
-    });
-    let ty = y + 36;
-    const r = UI.textWrapped(ctx, x, ty, w, f.blurb, { size: 'sm', color: C.ink, maxLines: 4 });
-    ty += r.height + 6;
+    MK.meter(ctx, x, y + 18, w - 40, 2.5, next > 0 ? clamp(v / next, 0, 1) : 1, { color: f.color });
+    MK.ink(ctx, x + w, y + 17, `${v} of ${next}`, { color: P.dim, align: 'right' });
+    let ty = y + 25;
+    const r = MK.capPara(ctx, x, ty, w, f.blurb, { color: P.body, shadow: false, maxH: 40 });
+    ty += r.height + 5;
 
-    ty = sectionHead(ctx, x, ty, w, 'RANKS');
+    ty = MK.pageSection(ctx, x, ty, w, 'Ranks');
     f.ranks.forEach((name, i) => {
       const at = num(REP_RANKS[i + 1] && REP_RANKS[i + 1].at, (i + 1) * 25);
       const held = v >= at;
-      txt(ctx, x, ty + i * 10, held ? '✓' : '○', { size: 'sm', color: held ? C.good : C.disabled, shadow: true });
-      txt(ctx, x + 9, ty + i * 10, name, { size: 'sm', color: held ? C.ink : C.inkDim, shadow: true, maxWidth: w - 40 });
-      txtR(ctx, x + w, ty + i * 10, String(at), { size: 'sm', color: C.disabled, shadow: true });
+      if (held) MK.ink(ctx, x, ty + i * 7, '✓', { size: 'fineb', color: '#2f5a1c' });
+      else MK.bullet(ctx, x + 1.5, ty + i * 7 + 2, P.rubric);
+      MK.ink(ctx, x + 6, ty + i * 7, name, { color: held ? P.body : P.dim, maxWidth: w - 40 });
+      MK.ink(ctx, x + w, ty + i * 7, String(at), { color: P.dim, align: 'right' });
     });
-    ty += f.ranks.length * 10 + 4;
+    ty += f.ranks.length * 7 + 4;
     const st = S();
     const contracts = st ? arr(st.quests && st.quests.active).filter((q) => questFaction(q) === f.id).length : 0;
-    txt(ctx, x, ty, contracts ? `${contracts} contract${contracts === 1 ? '' : 's'} in hand.` : 'No contracts in hand.', {
-      size: 'sm', color: contracts ? C.goldBright : C.disabled, shadow: true, maxWidth: w,
+    MK.ink(ctx, x, ty, contracts ? `${contracts} contract${contracts === 1 ? '' : 's'} in hand.` : 'No contracts in hand.', {
+      size: 'fineb', color: contracts ? P.gilt : P.dim, maxWidth: w,
     });
     this._maxScroll = 0;
   }
@@ -3656,14 +3718,14 @@ export class MapScene extends MenuScene {
       softImport('../world/overworld.js', 'overworld').then((ow) => {
         const go = ow && ow.travelTo;
         if (go) {
-          Game.transition('fade', () => {
+          Game.transition('journey', () => {
             // Only pass tile coordinates when the site actually carries them;
             // otherwise let the destination map use its own spawn point.
             safe(() => (Number.isFinite(site.tx) && Number.isFinite(site.ty)
               ? go(site.id, site.tx, site.ty, 'down')
               : go(site.id)));
             if (Game.top === this) Game.pop();
-          });
+          }, {dur:1.35,journey:journeyInfo({name:SWORD_COAST_SITES.find(s=>s.id===st.mapId)?.name||st.mapId},{...site,kind:'town'},st)});
         } else if (st) {
           st.mapId = site.id;
           st.lastTown = site.town ? site.id : st.lastTown;
@@ -3686,37 +3748,32 @@ export class MapScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     const st = S();
     this.siteRects = [];
 
-    UI.panel(ctx, 2, 2, VIEW_W - 4, 13, { style: 'dark' });
     const map = this.map;
     const region = (map && map.name) || prettyMapName(st && st.mapId);
-    const capW = Math.min(UI.measure(region.toUpperCase(), 'md'), 220);
-    txt(ctx, 8, 4, region.toUpperCase(), { size: 'md', color: C.gold, shadow: true, maxWidth: capW });
+    let stamp = '';
     if (st) {
       const ti = safe(() => timeInfo(st), null) || {};
-      // "22 Alturiak, 1497 DR · 8:00 am" is 179px and the longest region name
-      // ("Neverwinter — Protector's Enclave") leaves 169. Drop the year before
-      // dropping the clock: the hour is what a traveller is reading this for.
-      const slot = Math.max(40, VIEW_W - 8 - (8 + capW) - 6);
-      let stamp = `${ti.date || ''} · ${ti.clock || ''}`;
-      if (UI.measure(stamp, 'sm') > slot) stamp = `${String(ti.date || '').replace(/,\s*-?\d+\s*DR\s*$/i, '')} · ${ti.clock || ''}`;
-      txtR(ctx, VIEW_W - 8, 5, stamp, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: slot });
+      stamp = `${ti.date || ''} · ${ti.clock || ''}`;
     }
+    MK.header(ctx, region, { sub: stamp, subColor: '#cfc3a6' });
 
+    // The survey is a sheet of parchment: what the party has walked is inked
+    // in, the rest of the sheet is still blank.
     const AX = 3, AY = 18, AW = VIEW_W - 6, AH = 185;
-    UI.panel(ctx, AX, AY, AW, AH, { style: 'inset' });
-    const in_ = { x: AX + 3, y: AY + 3, w: AW - 6, h: AH - 6 };
+    const pg = MK.page(ctx, AX, AY, AW, AH, { margin: false });
+    const in_ = { x: pg.ix + 3, y: pg.iy + 3, w: pg.iw - 6, h: pg.ih - 6 };
 
     if (!map) {
-      txtC(ctx, VIEW_W / 2, AY + 80, 'No survey of this place exists.', { size: 'md', color: C.inkDim });
-      txtC(ctx, VIEW_W / 2, AY + 94, 'Walk it, and the map will fill itself in.', { size: 'sm', color: C.disabled });
+      MK.ink(ctx, VIEW_W / 2, AY + 80, 'No survey of this place exists.', { size: 'fineb', align: 'center' });
+      MK.ink(ctx, VIEW_W / 2, AY + 90, 'Walk it, and the map will fill itself in.', { color: MK.PAGE_INK.dim, align: 'center' });
     } else {
       this._drawTiles(ctx, map, in_);
       if (this.isWorld) this._drawSites(ctx, in_);
+      this._drawRose(ctx, in_.x + in_.w - 14, in_.y + 14);
     }
 
     this._drawLegend(ctx, 3, 205);
@@ -3727,131 +3784,196 @@ export class MapScene extends MenuScene {
     this.drawPrompt(ctx);
   }
 
+  /**
+   * The tiles surveyed so far as a box with a margin of unwalked ground round
+   * it (the whole map when it has no fog). Recounted only when the survey grows.
+   */
+  _surveyed(map, mw, mh) {
+    const d = map.discovered;
+    if (!d || typeof d.size !== 'number' || !d.size) return { x: 0, y: 0, w: mw, h: mh };
+    if (this._ext && this._ext.map === map && this._ext.n === d.size) return this._ext;
+    let x0 = mw, y0 = mh, x1 = 0, y1 = 0;
+    for (const key of d) {
+      const c = key.indexOf(',');
+      const x = +key.slice(0, c), y = +key.slice(c + 1);
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    const pad = 6;
+    const bx0 = clamp(x0 - pad, 0, mw - 1), by0 = clamp(y0 - pad, 0, mh - 1);
+    const bx1 = clamp(x1 + pad, bx0, mw - 1), by1 = clamp(y1 + pad, by0, mh - 1);
+    this._ext = { map, n: d.size, x: bx0, y: by0, w: Math.max(12, bx1 - bx0 + 1), h: Math.max(8, by1 - by0 + 1) };
+    return this._ext;
+  }
+
+  /** A small compass rose in the sheet's corner: north in rubric, the other points in sepia. */
+  _drawRose(ctx, cx, cy) {
+    const P = MK.PAGE_INK;
+    const arm = (dx, dy, len, col) => {
+      for (let i = 1; i <= len; i++) {
+        const w = Math.max(0.5, (len - i) * 0.35);
+        ctx.fillStyle = col;
+        if (dx) ctx.fillRect(cx + dx * i - 0.25, cy - w / 2, 0.5, w);
+        else ctx.fillRect(cx - w / 2, cy + dy * i - 0.25, w, 0.5);
+      }
+    };
+    arm(0, -1, 9, P.rubric); arm(0, 1, 7, P.dim); arm(-1, 0, 7, P.dim); arm(1, 0, 7, P.dim);
+    ctx.fillStyle = P.title; ctx.fillRect(cx - 1, cy - 1, 2, 2);
+    MK.ink(ctx, cx, cy - 14.5, 'N', { size: 'fineb', color: P.rubric, align: 'center' });
+  }
+
   _drawTiles(ctx, map, in_) {
     const st = S() || {};
+    const P = MK.PAGE_INK;
     const mw = num(map.w || map.width, 0), mh = num(map.h || map.height, 0);
     if (!mw || !mh) {
-      txtC(ctx, in_.x + in_.w / 2, in_.y + in_.h / 2 - 4, 'This map has no shape yet.', { size: 'sm', color: C.disabled });
+      MK.ink(ctx, in_.x + in_.w / 2, in_.y + in_.h / 2 - 4, 'This map has no shape yet.', { color: P.dim, align: 'center' });
       return;
     }
-    let scale = Math.floor(Math.min(in_.w / mw, in_.h / mh));
-    const panning = scale < 1;
-    if (scale < 1) scale = 1;
-    scale = Math.min(scale, 6);
-
+    // Fit what has been walked, not the whole sheet: early on a few streets
+    // fill the page large, and the plan draws back as the survey grows. The
+    // scale is a whole number of DEVICE pixels per tile (half-pixel steps in
+    // logical terms), from one device pixel a tile for a great city up to 7px.
+    const ext = this._surveyed(map, mw, mh);
+    const k = clamp(Math.floor(Math.min((in_.w * 2) / ext.w, (in_.h * 2) / ext.h)), 1, 14);
+    const scale = k / 2;
     const viewW = Math.min(in_.w, mw * scale);
     const viewH = Math.min(in_.h, mh * scale);
-    const ox = R(in_.x + (in_.w - viewW) / 2);
-    const oy = R(in_.y + (in_.h - viewH) / 2);
+    const panning = mw * scale > in_.w + 0.5 || mh * scale > in_.h + 0.5;
+    const ox = Math.round((in_.x + (in_.w - viewW) / 2) * 2) / 2;
+    const oy = Math.round((in_.y + (in_.h - viewH) / 2) * 2) / 2;
 
     if (!this._centred) {
-      this.cam.x = clamp(num(st.x, mw / 2) - viewW / (2 * scale), 0, Math.max(0, mw - viewW / scale));
-      this.cam.y = clamp(num(st.y, mh / 2) - viewH / (2 * scale), 0, Math.max(0, mh - viewH / scale));
+      this.cam.x = clamp(ext.x + ext.w / 2 - viewW / (2 * scale), 0, Math.max(0, mw - viewW / scale));
+      this.cam.y = clamp(ext.y + ext.h / 2 - viewH / (2 * scale), 0, Math.max(0, mh - viewH / scale));
       this._centred = true;
     }
     if (panning) {
       this.cam.x = clamp(this.cam.x, 0, Math.max(0, mw - viewW / scale));
       this.cam.y = clamp(this.cam.y, 0, Math.max(0, mh - viewH / scale));
     } else { this.cam.x = 0; this.cam.y = 0; }
-
-    // Explored tiles only.
-    let disc = null;
-    const raw = st.discovered && st.discovered[st.mapId];
-    if (raw) disc = raw instanceof Set ? raw : (Array.isArray(raw) ? new Set(raw) : null);
-
-    UI.pushClip(ctx, ox, oy, viewW, viewH);
-    ctx.fillStyle = '#0a0c12';
-    ctx.fillRect(ox, oy, viewW, viewH);
-    const cols = Math.ceil(viewW / scale), rowsN = Math.ceil(viewH / scale);
     const bx = Math.floor(this.cam.x), by = Math.floor(this.cam.y);
-    for (let ry = 0; ry < rowsN; ry++) {
-      for (let rx = 0; rx < cols; rx++) {
-        const tx = bx + rx, ty = by + ry;
-        if (tx < 0 || ty < 0 || tx >= mw || ty >= mh) continue;
-        if (disc && !disc.has(`${tx},${ty}`)) continue;
-        ctx.fillStyle = tileColor(map, tx, ty);
-        ctx.fillRect(ox + rx * scale, oy + ry * scale, scale, scale);
+
+    // The plan the HUD's minimap keeps (ui/hudmap.js): explored tiles in the
+    // cartographer's inks, one pixel a tile, blown up whole.
+    UI.pushClip(ctx, ox, oy, viewW, viewH);
+    const plan = safe(() => planCanvas(map), null);
+    if (plan) {
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      const cw = Math.min(mw - bx, Math.ceil(viewW / scale)), chh = Math.min(mh - by, Math.ceil(viewH / scale));
+      ctx.save(); ctx.globalAlpha = 0.92;
+      ctx.drawImage(plan, bx, by, cw, chh, ox, oy, cw * scale, chh * scale);
+      ctx.restore();
+      ctx.imageSmoothingEnabled = sm;
+    } else {
+      // no plan to borrow: the old flag colours, tile by tile
+      let disc = null;
+      const raw = st.discovered && st.discovered[st.mapId];
+      if (raw) disc = raw instanceof Set ? raw : (Array.isArray(raw) ? new Set(raw) : null);
+      const cols = Math.ceil(viewW / scale), rowsN = Math.ceil(viewH / scale);
+      for (let ry = 0; ry < rowsN; ry++) {
+        for (let rx = 0; rx < cols; rx++) {
+          const tx = bx + rx, ty = by + ry;
+          if (tx >= mw || ty >= mh) continue;
+          if (disc && !disc.has(`${tx},${ty}`)) continue;
+          ctx.fillStyle = tileColor(map, tx, ty);
+          ctx.fillRect(ox + rx * scale, oy + ry * scale, scale, scale);
+        }
       }
     }
 
-    const plot = (tx, ty) => ({ x: ox + (tx - bx) * scale + Math.floor(scale / 2), y: oy + (ty - by) * scale + Math.floor(scale / 2) });
+    const seen = (x, y) => {
+      const d = map.discovered;
+      return !d || typeof d.has !== 'function' || d.has(`${x},${y}`);
+    };
+    const plot = (tx, ty) => ({ x: ox + (tx - bx + 0.5) * scale, y: oy + (ty - by + 0.5) * scale });
+    const dot = (p, r, fill, edge) => {
+      ctx.fillStyle = edge; ctx.fillRect(p.x - r - 0.5, p.y - r - 0.5, r * 2 + 1, r * 2 + 1);
+      ctx.fillStyle = fill; ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+    };
 
-    // Warps and doors.
+    // Ways out and doors in, as rubric and gilt lozenges.
     for (const tg of arr(map.triggers)) {
       if (!tg) continue;
-      const k = String(tg.kind || '');
-      if (k !== 'warp' && k !== 'door' && k !== 'inn' && k !== 'shop' && k !== 'chest') continue;
-      if (disc && !disc.has(`${tg.x},${tg.y}`)) continue;
+      const kd = String(tg.kind || '');
+      if (kd !== 'warp' && kd !== 'door' && kd !== 'inn' && kd !== 'shop' && kd !== 'chest') continue;
+      if (!seen(tg.x, tg.y)) continue;
       const p = plot(num(tg.x, 0), num(tg.y, 0));
-      ctx.fillStyle = k === 'warp' ? '#7fe08a' : k === 'chest' ? '#e0b040' : '#e0c060';
-      ctx.fillRect(p.x - 1, p.y - 1, 3, 3);
+      if (kd === 'warp') { MK.bullet(ctx, p.x, p.y, '#2f6a2a'); MK.bullet(ctx, p.x, p.y - 1, '#2f6a2a'); }
+      else dot(p, 1, kd === 'chest' ? '#c8901c' : P.rubric, 'rgba(40,20,8,0.8)');
     }
-    // Living things.
+    // Living things: townsfolk in lapis, anything hostile in red.
     for (const e of arr(map.entities)) {
       if (!e || e.hidden) continue;
-      if (disc && !disc.has(`${Math.round(num(e.x, 0))},${Math.round(num(e.y, 0))}`)) continue;
-      const p = plot(Math.round(num(e.x, 0)), Math.round(num(e.y, 0)));
-      const k = String(e.kind || '');
-      if (k === 'monster') ctx.fillStyle = '#e05a4a';
-      else if (k === 'npc') ctx.fillStyle = '#7fd0f0';
-      else if (k === 'chest') ctx.fillStyle = '#e0b040';
-      else continue;
-      ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+      const ex = Math.round(num(e.x, 0)), ey = Math.round(num(e.y, 0));
+      if (!seen(ex, ey)) continue;
+      const kd = String(e.kind || '');
+      const p = plot(ex, ey);
+      if (kd === 'monster') dot(p, 1, '#b8281e', '#3a0a06');
+      else if (kd === 'npc') dot(p, 0.5, '#28408a', 'rgba(20,20,50,0.6)');
+      else if (kd === 'chest') dot(p, 1, '#c8901c', '#3a2408');
     }
-    // The party.
+    // The party: a gilt lozenge that breathes, on a dark ring.
     const p = plot(Math.round(num(st.x, 0)), Math.round(num(st.y, 0)));
-    const pulse = 0.55 + 0.45 * Math.sin(this.t * 5);
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#fff2c0';
-    ctx.fillRect(p.x - 2, p.y - 2, 5, 5);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = C.gold;
-    ctx.fillRect(p.x - 1, p.y - 1, 3, 3);
+    const pulse = 0.5 + 0.5 * Math.sin(this.t * 5);
+    ctx.fillStyle = `rgba(154,42,26,${(0.25 + 0.35 * pulse).toFixed(3)})`;
+    ctx.fillRect(p.x - 4, p.y - 0.5, 8, 1); ctx.fillRect(p.x - 0.5, p.y - 4, 1, 8);
+    for (let i = 0; i <= 6; i++) {
+      const hw = 3 - Math.abs(3 - i);
+      ctx.fillStyle = '#2a1406'; ctx.fillRect(p.x - hw - 0.5, p.y - 3.5 + i, hw * 2 + 1, 1);
+    }
+    for (let i = 1; i <= 5; i++) {
+      const hw = Math.max(0.5, 2.5 - Math.abs(3 - i));
+      ctx.fillStyle = i < 3 ? GILT.hi : GILT.base; ctx.fillRect(p.x - hw, p.y - 3.5 + i, hw * 2, 1);
+    }
     UI.popClip(ctx);
 
     if (panning) {
-      txtR(ctx, in_.x + in_.w - 2, in_.y + in_.h - 8, `${mw}x${mh} — arrows to pan`, { size: 'sm', color: C.disabled, shadow: true });
+      MK.ink(ctx, in_.x + in_.w - 2, in_.y + in_.h - 5, `${mw} x ${mh} paces · arrows to pan`, { color: P.dim, align: 'right' });
     }
   }
 
   _drawSites(ctx, in_) {
     this.sites = this.sites.length ? this.sites : this._visibleSites();
     const st = S() || {};
+    const P = MK.PAGE_INK;
     this.sites.forEach((s, i) => {
       const px = R(in_.x + clamp(num(s.nx, 0.5), 0, 1) * (in_.w - 8)) + 4;
       const py = R(in_.y + clamp(num(s.ny, 0.5), 0, 1) * (in_.h - 8)) + 4;
       this.siteRects.push({ x: px, y: py, i });
       const on = i === this.site;
       const here = st.mapId === s.id;
-      const col = !s.known ? C.disabled : here ? C.goldBright : s.town ? C.gold : C.blue;
-      ctx.fillStyle = '#0a0708';
-      ctx.fillRect(px - 3, py - 3, 6, 6);
+      const col = !s.known ? '#9a8a6a' : here ? P.rubric : s.town ? '#7a4a12' : '#28408a';
+      ctx.fillStyle = 'rgba(40,24,10,0.8)';
+      ctx.fillRect(px - 2.5, py - 2.5, 5, 5);
       ctx.fillStyle = col;
       ctx.fillRect(px - 2, py - 2, 4, 4);
       if (s.known) {
         const label = `${s.name}`;
-        const lw = UI.measure(label, 'sm');
+        const lw = MK.measure(label, 'fineb');
         const lx = clamp(px + 5, in_.x, in_.x + in_.w - lw - 2);
-        txt(ctx, lx, py - 3, label, { size: on ? 'md' : 'sm', color: on ? C.goldBright : C.ink, outline: true });
-        if (on) txt(ctx, lx, py + 6, `Suggested Lv ${s.level}`, { size: 'sm', color: C.warn, outline: true });
+        MK.ink(ctx, lx, py - 2, label, { size: 'fineb', color: on ? P.rubric : P.title });
+        if (on) MK.ink(ctx, lx, py + 4, `for a party of level ${s.level}`, { color: P.dim });
       } else if (on) {
-        txt(ctx, px + 5, py - 3, '???', { size: 'sm', color: C.disabled, outline: true });
+        MK.ink(ctx, px + 5, py - 2, 'Unexplored', { color: P.dim });
       }
       if (on) UI.frameSel(ctx, px - 5, py - 5, 10, 10, this.t);
     });
   }
 
   _drawLegend(ctx, x, y) {
-    UI.panel(ctx, x, y, VIEW_W - x * 2, 14, { style: 'dark' });
+    UI.panel(ctx, x, y, VIEW_W - x * 2, 14, { style: 'dark', studs: false });
     const items = this.isWorld
-      ? [['Town', C.gold], ['Site', C.blue], ['Unknown', C.disabled], ['You', '#fff2c0']]
-      : [['You', '#fff2c0'], ['Warp', '#7fe08a'], ['Door', '#e0c060'], ['Friend', '#7fd0f0'], ['Foe', '#e05a4a'], ['Water', '#2c5a8a'], ['Wall', '#4a4a58']];
-    let cx = x + 6;
+      ? [['Town', '#7a4a12'], ['Site', '#28408a'], ['Unexplored', '#9a8a6a'], ['You are here', MK.PAGE_INK.rubric]]
+      : [['You', GILT.base], ['Way out', '#2f6a2a'], ['Door', MK.PAGE_INK.rubric], ['Folk', '#28408a'], ['Foe', '#b8281e'],
+        ['Water', '#6f96b4'], ['Wall', '#5a4028'], ['Roof', '#94523a']];
+    let cx = x + 7;
     for (const [label, col] of items) {
-      ctx.fillStyle = col;
-      ctx.fillRect(R(cx), R(y + 5), 4, 4);
-      txt(ctx, cx + 7, y + 4, label, { size: 'sm', color: C.inkDim, shadow: true });
-      cx += 9 + UI.measure(label, 'sm') + 8;
+      ctx.fillStyle = '#0a0705'; ctx.fillRect(cx - 0.5, y + 4.5, 5, 5);
+      ctx.fillStyle = col; ctx.fillRect(cx, y + 5, 4, 4);
+      MK.text(ctx, cx + 7, y + 5.5, label, { color: '#cfc3a6' });
+      cx += 7 + MK.measure(label) + 10;
       if (cx > VIEW_W - 30) break;
     }
   }
@@ -3864,18 +3986,25 @@ export class MapScene extends MenuScene {
 const OPT_GROUPS = [
   { id: 'audio', label: 'Audio', icon: 'mana' },
   { id: 'display', label: 'Display', icon: 'eye' },
+  { id: 'style', label: 'Style', icon: 'quill' },
   { id: 'combat', label: 'Combat', icon: 'sword' },
   { id: 'controls', label: 'Controls', icon: 'anvil' },
+  { id: 'songbook', label: 'Songs', icon: 'lute' },
 ];
+
+// The customization settings live in SETTING_SPEC's display group (their
+// owners put them there); the Options screen gathers them on their own page.
+const STYLE_KEYS = ['uiTheme', 'hudPreset', 'pixelFilter', 'scanlines'];
+const groupOf = (key, spec) => (STYLE_KEYS.includes(key) ? 'style' : spec.group);
 
 const SETTING_DESC = {
   showEdges: 'Shade the lip of every wall, hedge and cliff so the ground you can actually walk on reads at a glance.',
   showExits: 'Mark the ways out of a place with a lit threshold and the name of where it leads.',
   volMaster: 'Overall loudness of everything the game plays.',
-  volMusic: 'The chiptune score: town themes, field marches, battle music.',
-  volSfx: 'Blips, blades, spells and the clatter of dice.',
+  volMusic: 'The score: organum and motets in the temples, estampies and rotas in the taverns, the drums of the Flaming Fist on the field.',
+  volSfx: 'Blades, spells, footfalls and the clatter of dice.',
   muted: 'Silence the game entirely without losing your volume levels.',
-  textSpeed: 'How fast dialogue types itself out. Instant prints the whole line at once.',
+  textSpeed: 'How fast dialogue writes itself out. Instant prints the whole line at once.',
   scale: 'How many screen pixels each game pixel takes. Auto fits the window.',
   showGrid: 'Draw the five-foot grid over the battlefield.',
   showDamageNumbers: 'Float damage and healing numbers over creatures as they are hit.',
@@ -3883,9 +4012,19 @@ const SETTING_DESC = {
   screenShake: 'Shake the screen on critical hits and heavy blows.',
   reducedMotion: 'Cut particles, shake and flashes back to a minimum.',
   colorblind: 'Shift the palette for protanopia, deuteranopia or tritanopia.',
+  minimapZoom: 'How much ground the corner map shows. Clicking the map itself cycles this too.',
+  uiTheme: 'The binding every window is made of. Folio is dark calf with gilt fillets; Timber is oak boards and brass; Iron is blackened plate; Parchment is sepia leather.',
+  hudPreset: 'Where the pieces of the road HUD sit. Choosing one lays them out afresh; Arrange HUD fine-tunes from there.',
+  arrangeHud: 'Close the menus and move the HUD by hand: drag a panel, arrows nudge it, H hides it, R puts it back, Esc when you are done. F8 does the same on the road.',
+  pixelFilter: 'A colour grade over the world, never the interface. Warm gilds the lights, Tapestry pulls every colour to a medieval dye, Gloom is an overcast day, Vivid is high summer.',
+  scanlines: 'A fine scanline mask over the whole screen, like an old cathode-ray set.',
   autoEndTurn: 'End a turn automatically once nothing useful is left to do.',
   battleSpeed: 'Multiplier on battle animations. Higher is faster.',
   difficulty: 'Enemy numbers and damage. Story is forgiving; Deadly is not.',
+  wildEncounters: 'How often trouble jumps out of the long grass. Off leaves only the groups you can see coming.',
+  roamingMonsters: 'Show the bands of foes that wander the wilds, so you can meet them or go round.',
+  encounterPacing: 'How eventful the open road is: how many travellers and bands are out, how fast tension builds, and how long the quiet lasts after a fight. Calm, Normal or Perilous.',
+  battleZoom: 'Fit the whole arena on screen, or follow the action close in.',
 };
 
 const ACTION_LABELS = {
@@ -3896,21 +4035,153 @@ const ACTION_LABELS = {
   tab1: 'Shortcut 1', tab2: 'Shortcut 2', tab3: 'Shortcut 3', tab4: 'Shortcut 4', tab5: 'Shortcut 5',
 };
 
+/** How an enum's value reads on the page: theme and preset names from their owners. */
+function optionLabel(key, v) {
+  if (key === 'uiTheme') return safe(() => UI.themeName(v), null) || titleCase(String(v));
+  if (key === 'hudPreset') return safe(() => Layout.presetLabel(v), null) || titleCase(String(v));
+  if (key === 'scale') return v === 'auto' ? 'Auto' : `${v}x`;
+  if (key === 'battleSpeed') return `${v}x`;
+  if (key === 'minimapZoom') return v === 0.5 ? 'Wide' : v === 2 ? 'Close' : 'Normal';
+  return titleCase(String(v));
+}
+
+// --- the Minstrel's Songbook ------------------------------------------------
+
+// The first score's tunes carry no title of their own; these are the names
+// their composer gave them in core/music.js. Anything else reads its id.
+const OLD_TITLES = {
+  title: 'The Sword Coast', town: 'Phandalin Market', field: 'The Triboar Trail',
+  inn: 'The Stonehill Common Room', temple: 'The Shrine of Luck', forest: 'Neverwinter Wood',
+  city: "Neverwinter, Protector's Enclave", orchestral: 'The Coast Road', rivertune: 'Down the Chionthar',
+};
+const BOOKS = [
+  { id: 'sacred', label: 'Sacred & Courtly' },
+  { id: 'secular', label: 'Dances & Songs' },
+  { id: 'old', label: 'The First Score' },
+];
+
+/** Every track the audio engine knows, as songbook rows, grouped by book. */
+function songbookTracks() {
+  const ids = arr(safe(() => (typeof Audio.catalogue === 'function' ? Audio.catalogue().map((t) => t.id || t) : Audio.tracks), []));
+  const groups = safe(() => TRACK_GROUPS, {}) || {};
+  const bookOf = (id) => (arr(groups.sacred).includes(id) ? 'sacred' : arr(groups.secular).includes(id) ? 'secular' : 'old');
+  const out = [];
+  for (const b of BOOKS) {
+    const rows = ids.filter((id) => bookOf(id) === b.id).map((id) => {
+      const t = safe(() => TRACKS[id], null) || {};
+      return { kind: 'song', id, book: b.label, label: t.title || OLD_TITLES[id] || titleCase(id.replace(/([a-z])([A-Z])/g, '$1 $2')),
+        contexts: arr(t.contexts), bpm: num(t.bpm, 0), bars: num(t.loopBars, 0), room: t.room || '' };
+    });
+    if (!rows.length) continue;
+    out.push({ kind: 'book', label: b.label, count: rows.length });
+    out.push(...rows);
+  }
+  return out;
+}
+function favourites() { return arr(safe(() => Save.settings.musicFavorites, null)); }
+function isFavourite(id) { return favourites().includes(id); }
+function toggleFavourite(id) {
+  const f = favourites();
+  const next = f.includes(id) ? f.filter((x) => x !== id) : f.concat([id]);
+  safe(() => Save.setSetting('musicFavorites', next.length ? next : null));
+  return !f.includes(id);
+}
+/** "Sumer is icumen in (Yawning Portal Rota)" -> the part before the bracket, the bracket as a note. */
+function splitTitle(s) {
+  const m = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(String(s || ''));
+  return m ? [m[1], m[2]] : [String(s || ''), ''];
+}
+
+// Letter index of each pitch class (C C# D D# E F F# G G# A A# B), for staff positions.
+const DIATONIC = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+
+/** The opening notes of a track's highest voice: [{ pos, dur }] with pos in diatonic steps. */
+function incipitOf(id, n = 14) {
+  const t = safe(() => TRACKS[id], null);
+  if (!t) return [];
+  let best = null; let bestPitch = -1;
+  for (const L of arr(t.layers)) {
+    if (!L || L.wave === 'noise') continue;
+    const notes = arr(L.pattern).filter((e) => Array.isArray(e) && typeof e[1] === 'number');
+    if (notes.length < 4) continue;
+    const head = notes.slice(0, n);
+    const avg = head.reduce((a, e) => a + e[1], 0) / head.length;
+    if (avg > bestPitch) { bestPitch = avg; best = head; }
+  }
+  return (best || []).map((e) => ({ pos: DIATONIC[((e[1] % 12) + 12) % 12] + Math.floor(e[1] / 12) * 7, dur: num(e[2], 1) }));
+}
+
+/**
+ * The first bars of a tune in square notation: four rubric staff lines, a C
+ * clef, and a punctum for each note (a virga, with its tail, for the long
+ * ones) — how a cantor's book would have written it down.
+ */
+function drawIncipit(ctx, x, y, w, h, id) {
+  const notes = incipitOf(id, Math.max(4, Math.floor((w - 14) / 9)));
+  const gap = 3;                                   // logical px between staff lines
+  const sy = y + Math.max(2, Math.round((h - gap * 3) / 2));
+  ctx.fillStyle = 'rgba(216,80,58,0.8)';
+  for (let i = 0; i < 4; i++) ctx.fillRect(x, sy + i * gap, w, 0.5);
+  // C clef on the second line from the top: two stacked squares on a stem
+  ctx.fillStyle = '#d8503a';
+  ctx.fillRect(x + 1, sy + gap - 1.5, 1, gap * 2);
+  ctx.fillRect(x + 2, sy + gap - 1.5, 1.5, 1.5); ctx.fillRect(x + 2, sy + gap * 2 - 0.5, 1.5, 1.5);
+  if (!notes.length) return;
+  const sorted = notes.map((n) => n.pos).sort((a, b) => a - b);
+  const mid = sorted[sorted.length >> 1];
+  const durs = notes.map((n) => n.dur).sort((a, b) => a - b);
+  const longAt = durs[Math.floor(durs.length * 0.75)];
+  const step = (w - 14) / notes.length;
+  const yOf = (pos) => Math.round((sy + gap * 1.5 - clamp(pos - mid, -5, 5) * (gap / 2) - 1) * 2) / 2;
+  notes.forEach((n, i) => {
+    // pos -> y: the middle of the staff is the median pitch; one step is a line or a space
+    const ny = yOf(n.pos);
+    const nx = Math.round((x + 7 + i * step) * 2) / 2;
+    ctx.fillStyle = 'rgba(216,80,58,0.8)';
+    for (let ly = sy - gap; ly >= ny + 1; ly -= gap) ctx.fillRect(nx - 1, ly, 4, 0.5);          // ledger lines above
+    for (let ly = sy + gap * 4; ly <= ny + 1; ly += gap) ctx.fillRect(nx - 1, ly, 4, 0.5);      // and below
+    ctx.fillStyle = '#0a0706'; ctx.fillRect(nx - 0.5, ny - 0.5, 3, 3);
+    ctx.fillStyle = '#ece0c2'; ctx.fillRect(nx, ny, 2, 2);
+    ctx.fillStyle = '#fffaf0'; ctx.fillRect(nx, ny, 1, 0.5);
+    // a virga: the long notes carry a tail on their right side
+    if (n.dur > longAt && n.dur > 2) { ctx.fillStyle = '#ece0c2'; ctx.fillRect(nx + 1.5, ny + 2, 0.5, 3); }
+  });
+  // a custos at the end of the line: the next note's pitch, as scribes marked it
+  const cy = yOf(notes[notes.length - 1].pos) + 1;
+  ctx.fillStyle = 'rgba(236,224,194,0.7)';
+  ctx.fillRect(x + w - 3, cy - 0.5, 0.5, 1); ctx.fillRect(x + w - 2.5, cy, 0.5, 1); ctx.fillRect(x + w - 2, cy - 1.5, 0.5, 2.5);
+}
+
 export class OptionsScene extends MenuScene {
   constructor(opts = {}) {
     super('options');
     this.opts = opts || {};
-    this.group = 0;
-    this.index = [0, 0, 0, 0];
-    this.top = [0, 0, 0, 0];
+    this.group = Math.max(0, OPT_GROUPS.findIndex((g) => g.id === opts.group));
+    this.index = OPT_GROUPS.map(() => 0);
+    this.top = OPT_GROUPS.map(() => 0);
     this.rebind = null;      // { action } while listening for a key
     this.rows = [];
     this.rowRects = [];
     this.tabRects = [];
+    this.songs = null;       // songbook rows, built on first visit
+    this.heard = null;       // what the road was playing when the songbook first played a tune
+    this.auditioning = null; // the track id the songbook started
   }
 
+  exit() {
+    super.exit();
+    // Hand the music back to the road once the player has finished listening.
+    if (this.heard) {
+      const h = this.heard;
+      this.heard = null;
+      safe(() => Audio.music(h.context || h.track || null));
+    }
+  }
+
+  _gid() { return (OPT_GROUPS[this.group] || OPT_GROUPS[0]).id; }
+
   _build() {
-    const gid = OPT_GROUPS[this.group].id;
+    const gid = this._gid();
     const spec = safe(() => Save.SETTING_SPEC, null) || {};
     const out = [];
     if (gid === 'controls') {
@@ -3918,16 +4189,32 @@ export class OptionsScene extends MenuScene {
         if (a === 'debug') continue;
         out.push({ kind: 'bind', action: a, label: ACTION_LABELS[a] || titleCase(a) });
       }
+    } else if (gid === 'songbook') {
+      if (!this.songs) this.songs = songbookTracks();
+      out.push({ kind: 'road', label: 'The music of the road' });
+      out.push(...this.songs);
+      this.rows = out;
+      return out;
     } else {
-      for (const key of Object.keys(spec)) {
+      // The style page reads in STYLE_KEYS order (binding first, then the HUD, then the lens).
+      const keys = gid === 'style' ? STYLE_KEYS.filter((k) => spec[k]) : Object.keys(spec);
+      for (const key of keys) {
         const s = spec[key];
-        if (!s || s.group !== gid || s.kind === 'custom') continue;
+        if (!s || s.kind === 'custom' || groupOf(key, s) !== gid) continue;
         out.push({ kind: s.kind, key, label: s.name || titleCase(key), spec: s });
+        if (key === 'hudPreset') out.push({ kind: 'action', key: 'arrangeHud', label: 'Arrange HUD' });
       }
     }
     out.push({ kind: 'reset', label: gid === 'controls' ? 'Restore Default Keys' : 'Reset to Defaults' });
     this.rows = out;
     return out;
+  }
+
+  /** The first row a cursor may rest on at or after i (the songbook's book titles are not rows to stop on). */
+  _stop(rows, i, dir = 1) {
+    let k = clamp(i, 0, Math.max(0, rows.length - 1));
+    for (let n = 0; n < rows.length && rows[k] && rows[k].kind === 'book'; n++) k = (k + dir + rows.length) % rows.length;
+    return k;
   }
 
   update(dt) {
@@ -3941,7 +4228,7 @@ export class OptionsScene extends MenuScene {
 
     const g0 = this.group;
     this.group = navPage(this.group, OPT_GROUPS.length);
-    const tp = tabPressed(4);
+    const tp = tabPressed(5);
     if (tp >= 0) this.group = tp;
     if (this.group !== g0) return;
 
@@ -3950,13 +4237,23 @@ export class OptionsScene extends MenuScene {
       if (clicked(m, r.x, r.y, r.w, r.h)) { this.group = r.i; sfx('cursor'); return; }
     }
 
-    this.index[this.group] = navV(this.index[this.group], rows.length);
-    const row = rows[this.index[this.group]];
+    const g = this.group;
+    const before = this.index[g];
+    this.index[g] = navV(this.index[g], rows.length);
+    if (this.index[g] !== before) this.index[g] = this._stop(rows, this.index[g], this.index[g] < before ? -1 : 1);
+    else this.index[g] = this._stop(rows, this.index[g]);
+    const row = rows[this.index[g]];
+
+    const w = wheelOver(m, 3, 33, 236, CONTENT_BOTTOM - 33);
+    if (w) this.top[g] = clamp(this.top[g] + w * 2, 0, Math.max(0, rows.length - 12));
 
     for (const r of this.rowRects) {
+      if (r.star && clicked(m, r.star.x, r.star.y, r.star.w, r.star.h)) {
+        this.index[g] = r.i; this._favourite(rows[r.i]); return;
+      }
       if (hit(m, r.x, r.y, r.w, r.h)) {
-        if (this.index[this.group] !== r.i) { this.index[this.group] = r.i; sfx('cursor'); }
-        if (clicked(m, r.x, r.y, r.w, r.h)) { this._activate(rows[r.i]); return; }
+        if (this.index[g] !== r.i && rows[r.i].kind !== 'book') { this.index[g] = r.i; sfx('cursor'); }
+        if (clicked(m, r.x, r.y, r.w, r.h) && rows[r.i].kind !== 'book') { this._activate(rows[r.i]); return; }
       }
     }
 
@@ -3964,6 +4261,7 @@ export class OptionsScene extends MenuScene {
       if (Input.repeatConsume('left')) this._cycle(row, -1);
       if (Input.repeatConsume('right')) this._cycle(row, 1);
     }
+    if (row && row.kind === 'song' && Input.consume('interact')) { this._favourite(row); return; }
     if (Input.consume('confirm')) { this._activate(row); return; }
     if (Input.consume('cancel')) this.close();
   }
@@ -3973,6 +4271,9 @@ export class OptionsScene extends MenuScene {
     if (row.kind === 'bool') { this._cycle(row, 1); return; }
     if (row.kind === 'enum' || row.kind === 'range') { this._cycle(row, 1); return; }
     if (row.kind === 'bind') { this._beginRebind(row.action); return; }
+    if (row.kind === 'action' && row.key === 'arrangeHud') { this._arrange(); return; }
+    if (row.kind === 'song') { this._play(row); return; }
+    if (row.kind === 'road') { this._road(); return; }
     if (row.kind === 'reset') this._reset();
   }
 
@@ -3987,7 +4288,43 @@ export class OptionsScene extends MenuScene {
     if (v) safe(() => Audio.setVolume(v.master, v.music, v.sfx));
     safe(() => { Audio.muted = !!Save.settings.muted; });
     safe(() => { FX.reducedMotion = !!Save.settings.reducedMotion; });
+    // Owners also follow EV_SETTINGS, which Save emits on every change; these
+    // direct calls make the change land this frame, whatever order they hear it in.
+    safe(() => { if (UI.theme !== Save.settings.uiTheme) UI.setTheme(Save.settings.uiTheme, false); });
+    safe(() => Stage.applySettings(Save.settings));
     safe(() => bus.emit('settings:changed', Save.settings));
+  }
+
+  _arrange() {
+    sfx('select');
+    const ok = safe(() => (typeof Game.arrangeHud === 'function' ? Game.arrangeHud() : false), false);
+    if (!ok) this.say('There is no HUD on screen to arrange. Try again from the road.', true);
+  }
+
+  _play(row) {
+    if (!safe(() => Audio.hasTrack(row.id), true)) { this.say('That tune is not in the book.', true); return; }
+    if (!this.heard) this.heard = safe(() => ({ ...Audio.nowPlaying }), null) || { track: null, context: null };
+    this.auditioning = row.id;
+    safe(() => Audio.music(row.id, { exact: true }));
+    sfx('select');
+    this.say(`The minstrel strikes up ${splitTitle(row.label)[0]}.`);
+  }
+
+  _road() {
+    if (!this.heard) { this.say('The road is already choosing the music.'); return; }
+    const h = this.heard;
+    this.heard = null;
+    this.auditioning = null;
+    safe(() => Audio.music(h.context || h.track || null));
+    sfx('select');
+    this.say('The minstrel falls silent; the road plays on.');
+  }
+
+  _favourite(row) {
+    if (!row || row.kind !== 'song') return;
+    const on = toggleFavourite(row.id);
+    sfx(on ? 'select' : 'back');
+    this.say(on ? `${splitTitle(row.label)[0]}: marked in the songbook.` : `${splitTitle(row.label)[0]}: mark struck out.`);
   }
 
   _beginRebind(action) {
@@ -4007,9 +4344,9 @@ export class OptionsScene extends MenuScene {
   }
 
   _reset() {
-    const controls = OPT_GROUPS[this.group].id === 'controls';
+    const controls = this._gid() === 'controls';
     this.ask(controls ? 'Restore default keys?' : 'Reset settings?',
-      controls ? 'Every action goes back to its original key.' : 'Volume, speed, difficulty and accessibility go back to the defaults.',
+      controls ? 'Every action goes back to its original key.' : 'Volume, speed, style, difficulty and accessibility go back to the defaults.',
       [{ label: 'Reset', value: 'yes', color: C.bad }, { label: 'Cancel', value: null }],
       (v) => {
         if (v !== 'yes') return;
@@ -4030,55 +4367,68 @@ export class OptionsScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.rowRects = [];
     this.tabRects = [];
     const rows = this.rows.length ? this.rows : this._build();
-
-    UI.panel(ctx, 2, 2, VIEW_W - 4, 13, { style: 'dark' });
-    txt(ctx, 8, 4, 'SETTINGS', { size: 'md', color: C.gold, shadow: true });
-    txtR(ctx, VIEW_W - 8, 5, safe(() => Save.available, true) ? 'Saved to this browser' : 'Storage unavailable — changes are temporary', {
-      size: 'sm', color: safe(() => Save.available, true) ? C.disabled : C.warn, shadow: true, maxWidth: 250,
+    const avail = safe(() => Save.available, true);
+    MK.header(ctx, 'Settings', {
+      sub: avail ? 'Kept in this browser' : 'Storage unavailable: changes last this session only',
+      subColor: avail ? C.inkDim : C.warn,
     });
 
-    UI.tabs(ctx, 2, 17, VIEW_W - 4, OPT_GROUPS.map((g) => ({ label: g.label, icon: g.icon })), this.group, {});
+    MK.tabs(ctx, 2, 17, VIEW_W - 4, OPT_GROUPS.map((g) => ({ label: g.label, icon: g.icon })), this.group, {});
     const tw = Math.floor((VIEW_W - 4) / OPT_GROUPS.length);
     for (let i = 0; i < OPT_GROUPS.length; i++) this.tabRects.push({ x: 2 + i * tw, y: 17, w: tw, h: 13, i });
 
     const LX = 3, LY = 33, LW = 236, LH = CONTENT_BOTTOM - 33;
     UI.panel(ctx, LX, LY, LW, LH, { style: 'window' });
-    const rowH = 14, visible = 12;
+    const song = this._gid() === 'songbook';
+    const rowH = song ? 10 : 14;
+    const visible = Math.floor((LH - 8) / rowH);
     const sel = clamp(this.index[this.group], 0, Math.max(0, rows.length - 1));
     let top = this.top[this.group];
     if (sel < top) top = sel;
     if (sel > top + visible - 1) top = sel - visible + 1;
     this.top[this.group] = top = clamp(top, 0, Math.max(0, rows.length - visible));
 
+    const m = Input.mouse;
     UI.pushClip(ctx, LX + 2, LY + 3, LW - 4, rowH * visible + 2);
     for (let i = 0; i < visible && top + i < rows.length; i++) {
       const idx = top + i;
       const r = rows[idx];
       const ry = LY + 5 + i * rowH;
       const on = idx === sel;
-      if (on) UI.highlight(ctx, LX + 3, ry - 1, LW - 8, rowH - 1, { alpha: 0.2 });
-      const lc = r.kind === 'reset' ? C.warn : (on ? C.goldBright : C.ink);
-      txt(ctx, LX + 11, ry + 2, r.label, { size: on ? 'md' : 'sm', color: lc, shadow: true, maxWidth: 118 });
-      this._drawValue(ctx, r, LX + 134, ry + 2, LW - 142, on);
-      if (on) UI.cursor(ctx, LX + 3, ry + 2, this.t);
-      this.rowRects.push({ x: LX + 3, y: ry - 1, w: LW - 8, h: rowH - 1, i: idx });
+      const rect = { x: LX + 5, y: ry - 1, w: LW - 12, h: rowH - 1, i: idx };
+      if (r.kind !== 'book') {
+        if (on) MK.selRow(ctx, rect.x, rect.y, rect.w, rect.h, this.t);
+        else if (hit(m, rect.x, rect.y, rect.w, rect.h)) MK.hoverRow(ctx, rect.x, rect.y, rect.w, rect.h);
+      }
+      if (song) this._drawSongRow(ctx, r, rect, on);
+      else {
+        const lc = r.kind === 'reset' ? C.warn : r.kind === 'action' ? C.gold : (on ? C.goldBright : C.ink);
+        txt(ctx, LX + 11, ry + 2.5, r.label, { size: 'sm', color: lc, shadow: true, maxWidth: 118 });
+        this._drawValue(ctx, r, LX + 134, ry + 2.5, LW - 144, on);
+      }
+      this.rowRects.push(rect);
     }
     UI.popClip(ctx);
-    if (rows.length > visible) scrollHint(ctx, LX + LW - 4, LY + 4, rowH * visible, top, visible, rows.length);
+    MK.scroll(ctx, LX + LW - 6, LY + 4, rowH * visible, top, visible, rows.length);
 
     const DX = 243, DW = VIEW_W - DX - 3;
     UI.panel(ctx, DX, LY, DW, LH, { style: 'window' });
-    this._drawDetail(ctx, rows[sel], DX + 7, LY + 5, DW - 14, LH - 10);
+    if (song) this._drawSongDetail(ctx, rows[sel], DX + 8, LY + 6, DW - 16, LH - 12);
+    else this._drawDetail(ctx, rows[sel], DX + 8, LY + 6, DW - 16, LH - 12);
 
     this.drawMessage(ctx, 6, MSG_Y, VIEW_W - 12);
-    hintBar(ctx, HINT_Y, [
+    const r = rows[sel];
+    hintBar(ctx, HINT_Y, song ? [
+      [keyFor('cancel'), 'Back'], [keyFor('confirm'), r && r.kind === 'road' ? 'Return' : 'Play'],
+      r && r.kind === 'song' ? [keyFor('interact'), isFavourite(r.id) ? 'Unmark' : 'Mark'] : null,
+      [`${keyFor('prev')}/${keyFor('next')}`, 'Page'],
+    ] : [
       [keyFor('cancel'), 'Back'], [`${keyFor('left')}${keyFor('right')}`, 'Change'],
-      [keyFor('confirm'), 'Set'], [`${keyFor('prev')}/${keyFor('next')}`, 'Group'],
+      [keyFor('confirm'), r && r.kind === 'action' ? 'Open' : 'Set'], [`${keyFor('prev')}/${keyFor('next')}`, 'Page'],
     ]);
     if (this.rebind) this._drawRebind(ctx);
     this.drawPrompt(ctx);
@@ -4090,59 +4440,205 @@ export class OptionsScene extends MenuScene {
       txtR(ctx, x + w, y, '↩', { size: 'md', color: C.warn, shadow: true });
       return;
     }
+    if (r.kind === 'action') {
+      MK.text(ctx, x + w, y + 1.5, 'open ▶', { size: 'fineb', color: on ? C.goldBright : C.goldDim, align: 'right' });
+      return;
+    }
     if (r.kind === 'bind') {
       const list = arr(safe(() => Input.bindings[r.action], []));
-      const label = list.length ? list.slice(0, 2).map(codeLabel).join(' / ') : 'unbound';
-      txtR(ctx, x + w, y, label, { size: 'sm', color: list.length ? C.goldBright : C.bad, shadow: true, maxWidth: w });
+      let kx = x + w;
+      if (!list.length) { MK.text(ctx, kx, y + 1.5, 'unbound', { color: C.bad, align: 'right' }); return; }
+      for (const code of list.slice(0, 2).reverse()) {
+        const lab = codeLabel(code);
+        const kw = Math.max(6.5, MK.measure(lab, 'fineb') + 3);
+        kx -= kw;
+        MK.keycap(ctx, kx, y, lab, { dim: !on });
+        kx -= 3;
+      }
       return;
     }
     const v = settings[r.key];
     if (r.kind === 'bool') {
-      txtR(ctx, x + w, y, v ? 'ON' : 'OFF', { size: 'md', color: v ? C.good : C.disabled, shadow: true });
+      this._toggle(ctx, x + w - 17, y, !!v, on);
       return;
     }
     if (r.kind === 'range') {
       const pct = clamp((num(v, 0) - num(r.spec.min, 0)) / Math.max(0.001, num(r.spec.max, 1) - num(r.spec.min, 0)), 0, 1);
-      UI.bar(ctx, x, y + 1, w - 30, 6, pct, { color: on ? C.gold : C.goldDim });
-      txtR(ctx, x + w, y, `${Math.round(pct * 100)}%`, { size: 'sm', color: C.ink, shadow: true });
+      UI.bar(ctx, x, y + 1.5, w - 24, 4, pct, { color: on ? C.gold : C.goldDim });
+      MK.text(ctx, x + w, y + 1.5, `${Math.round(pct * 100)}%`, { color: on ? C.goldBright : C.ink, align: 'right' });
       return;
     }
-    // enum
-    const label = titleCase(String(v));
+    // enum: the value between two chevrons, and a pip for each choice under it
+    const label = optionLabel(r.key, v);
+    const opts = arr(r.spec.options);
     txt(ctx, x, y, '◀', { size: 'sm', color: on ? C.gold : C.disabled });
-    txtC(ctx, x + w / 2, y, label, { size: on ? 'md' : 'sm', color: on ? C.goldBright : C.ink, shadow: true, maxWidth: w - 20 });
+    txtC(ctx, x + w / 2, y - 0.5, label, { size: 'sm', color: on ? C.goldBright : C.ink, shadow: true, maxWidth: w - 20 });
     txtR(ctx, x + w, y, '▶', { size: 'sm', color: on ? C.gold : C.disabled });
+    if (on && opts.length > 1 && opts.length <= 8) {
+      const cur = opts.indexOf(v);
+      const px0 = x + w / 2 - (opts.length * 3) / 2;
+      for (let i = 0; i < opts.length; i++) {
+        ctx.fillStyle = i === cur ? C.goldBright : 'rgba(163,122,38,0.55)';
+        ctx.fillRect(px0 + i * 3, y + 8.5, i === cur ? 1.5 : 1, 1);
+      }
+    }
+  }
+
+  /** An on/off switch: a slot with a gilt knob that sits right when on. */
+  _toggle(ctx, x, y, v, on) {
+    const w = 17, h = 7;
+    MK.well(ctx, x, y, w, h, v ? 'rgba(40,70,36,0.85)' : 'rgba(10,8,10,0.8)');
+    MK.text(ctx, v ? x + 3 : x + w - 3, y + 1.5, v ? 'on' : 'off', { color: v ? '#bfe8b0' : C.disabled, align: v ? 'left' : 'right', shadow: false });
+    const kx = v ? x + w - 6.5 : x + 0.5;
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, on ? '#fff0b8' : '#e0c070'); g.addColorStop(1, on ? '#c8962e' : '#8a6424');
+    ctx.fillStyle = '#140c05'; ctx.fillRect(kx, y + 0.5, 6, h - 1);
+    ctx.fillStyle = g; ctx.fillRect(kx + 0.5, y + 1, 5, h - 2);
   }
 
   _drawDetail(ctx, r, x, y, w, h) {
     if (!r) return;
-    txt(ctx, x, y, r.label, { size: 'md', color: C.gold, shadow: true, maxWidth: w });
-    let ty = y + 14;
+    MK.title(ctx, x, y, r.label, { maxWidth: w });
+    let ty = y + 13;
     const desc = r.kind === 'bind'
       ? 'Press Confirm, then press the key you want. Escape aborts. The old key stays as a spare.'
       : r.kind === 'reset'
         ? 'Put everything on this page back the way it shipped.'
         : (SETTING_DESC[r.key] || 'Adjust this option.');
-    const res = UI.textWrapped(ctx, x, ty, w, desc, { size: 'sm', color: C.ink, maxLines: 6 });
-    ty += res.height + 8;
+    const res = MK.para(ctx, x, ty, w, desc, { color: C.ink, maxLines: 9 });
+    ty += res.height + 6;
 
     if (r.kind === 'enum') {
-      ty = sectionHead(ctx, x, ty, w, 'CHOICES');
+      ty = rubric(ctx, x, ty, w, 'Choices');
       const v = safe(() => Save.settings[r.key], null);
       for (const o of arr(r.spec.options)) {
         const on = o === v;
-        txt(ctx, x, ty, on ? '●' : '○', { size: 'sm', color: on ? C.goldBright : C.disabled, shadow: true });
-        txt(ctx, x + 9, ty, titleCase(String(o)), { size: 'sm', color: on ? C.ink : C.inkDim, shadow: true, maxWidth: w - 12 });
-        ty += 9;
-        if (ty > y + h - 10) break;
+        if (on) MK.bullet(ctx, x + 1.5, ty + 1.5, C.goldBright);
+        else { ctx.fillStyle = C.disabled; ctx.fillRect(x + 1, ty + 1.5, 1, 0.5); }
+        MK.text(ctx, x + 6, ty, optionLabel(r.key, o), { color: on ? C.goldBright : C.inkDim, maxWidth: w - 8 });
+        ty += 6.5;
+        if (ty > y + h - 6) break;
       }
+      if (r.key === 'uiTheme') this._themeSwatches(ctx, x, Math.max(ty + 3, y + h - 26), w);
+    } else if (r.kind === 'bool') {
+      ty = rubric(ctx, x, ty, w, 'Now');
+      const v = !!safe(() => Save.settings[r.key], false);
+      MK.text(ctx, x, ty, v ? 'On. Confirm turns it off.' : 'Off. Confirm turns it on.', { color: v ? C.good : C.inkDim, maxWidth: w });
     } else if (r.kind === 'bind') {
-      ty = sectionHead(ctx, x, ty, w, 'BOUND KEYS');
+      ty = rubric(ctx, x, ty, w, 'Bound keys');
       const list = arr(safe(() => Input.bindings[r.action], []));
-      if (!list.length) txt(ctx, x, ty, 'Nothing bound.', { size: 'sm', color: C.bad, shadow: true });
+      if (!list.length) MK.text(ctx, x, ty, 'Nothing bound.', { color: C.bad });
       list.forEach((code, i) => {
-        safe(() => UI.keyHint(ctx, x, ty + i * 13, codeLabel(code), i === 0 ? 'primary' : 'spare'));
+        const kw = MK.keycap(ctx, x, ty + i * 9, codeLabel(code));
+        MK.text(ctx, x + kw + 3, ty + i * 9 + 1.5, i === 0 ? 'primary' : 'spare', { color: C.inkDim });
       });
+    } else if (r.kind === 'action' && r.key === 'arrangeHud') {
+      ty = rubric(ctx, x, ty, w, 'Preset');
+      MK.text(ctx, x, ty, optionLabel('hudPreset', safe(() => Layout.preset, 'default')), { color: C.goldBright, maxWidth: w });
+    }
+  }
+
+  /** A little specimen of each binding, the one in force framed. */
+  _themeSwatches(ctx, x, y, w) {
+    const ids = arr(safe(() => UI.THEMES, [])).slice(0, 4);
+    if (!ids.length) return;
+    const cur = safe(() => UI.theme, 'folio');
+    const mats = { folio: 'vellum', timber: 'timber', iron: 'iron', parchment: 'leather' };
+    const sw = Math.floor((w - (ids.length - 1) * 3) / ids.length);
+    ids.forEach((id, i) => {
+      const sx = x + i * (sw + 3);
+      safe(() => UI.panel(ctx, sx, y, sw, 16, { style: mats[id] || 'window', studs: false }));
+      MK.text(ctx, sx + sw / 2, y + 6, safe(() => UI.themeName(id), id), { color: id === cur ? C.goldBright : C.inkDim, align: 'center', maxWidth: sw - 4 });
+      if (id === cur) safe(() => UI.frameSel(ctx, sx - 1, y - 1, sw + 2, 18, this.t));
+    });
+  }
+
+  _drawSongRow(ctx, r, rect, on) {
+    const x = rect.x, y = rect.y + 1;
+    if (r.kind === 'book') {
+      MK.section(ctx, x + 2, y + 2, rect.w - 4, `${r.label} · ${r.count}`);
+      return;
+    }
+    if (r.kind === 'road') {
+      MK.text(ctx, x + 3, y + 1.5, '↩', { size: 'fineb', color: on ? C.goldBright : C.goldDim });
+      MK.text(ctx, x + 11, y + 1.5, this.heard ? 'Back to the music of the road' : 'The road is choosing the music', {
+        size: on ? 'fineb' : 'fine', color: this.heard ? C.gold : C.inkDim, maxWidth: rect.w - 20 });
+      return;
+    }
+    const playing = safe(() => Audio.playing, null) === r.id;
+    const fav = isFavourite(r.id);
+    // the favourite mark: a gilt star, or its outline
+    const star = { x: x + 2, y: y - 0.5, w: 9, h: 9 };
+    MK.text(ctx, x + 3, y + 1.5, fav ? '★' : '·', { size: 'fineb', color: fav ? C.goldBright : C.disabled });
+    const [name, note] = splitTitle(r.label);
+    const nw = rect.w - 18 - (playing ? 14 : 0);
+    const shown = MK.fit(name, nw, on ? 'fineb' : 'fine');
+    const tr = MK.text(ctx, x + 11, y + 1.5, shown, { size: on ? 'fineb' : 'fine', color: playing ? C.goldBright : on ? C.goldBright : C.ink, maxWidth: nw });
+    if (note && tr.w + 6 < nw) MK.text(ctx, x + 11 + tr.w + 3, y + 1.5, note, { color: C.inkDim, maxWidth: nw - tr.w - 3 });
+    if (playing) this._eq(ctx, x + rect.w - 11, y + 0.5);
+    rect.star = star;
+  }
+
+  /** Three bars dancing: this is the tune you are hearing. */
+  _eq(ctx, x, y) {
+    for (let i = 0; i < 3; i++) {
+      const hgt = 2 + Math.round((Math.sin(this.t * (5 + i * 1.7) + i * 2) * 0.5 + 0.5) * 4.5);
+      ctx.fillStyle = C.goldBright;
+      ctx.fillRect(x + i * 2.5, y + 7 - hgt, 1.5, hgt);
+    }
+  }
+
+  _drawSongDetail(ctx, r, x, y, w, h) {
+    if (!r) return;
+    if (r.kind === 'road') {
+      MK.title(ctx, x, y, "The Minstrel's Songbook", { maxWidth: w });
+      let ty = y + 14;
+      ty += MK.para(ctx, x, ty, w, 'Every tune the company can call for, old and new: organum and motets from the temples of the Realms, dances and drinking songs from the Sword Coast\'s taverns. Play any of them here; mark the ones you love.', { maxLines: 8 }).height + 6;
+      ty = rubric(ctx, x, ty, w, 'Now playing');
+      const np = safe(() => Audio.nowPlaying, null) || {};
+      const row = (this.songs || []).find((s) => s.id === np.track);
+      MK.text(ctx, x, ty, row ? splitTitle(row.label)[0] : (np.track ? titleCase(String(np.track)) : 'Silence'), { color: C.goldBright, maxWidth: w });
+      ty += 7;
+      if (np.context) MK.text(ctx, x, ty, `chosen by the road for: ${np.context}`, { color: C.inkDim, maxWidth: w });
+      ty += 10;
+      ty = rubric(ctx, x, ty, w, 'Marked');
+      MK.text(ctx, x, ty, `${favourites().length} of ${(this.songs || []).filter((s) => s.kind === 'song').length} tunes`, { color: C.ink });
+      return;
+    }
+    if (r.kind !== 'song') return;
+    const [name, note] = splitTitle(r.label);
+    const lines = MK.wrap(name, w, 'title');
+    let ty = y;
+    // A long title takes two lines of the display face rather than an ellipsis.
+    for (const l of lines.slice(0, 2)) { MK.title(ctx, x, ty, l, { maxWidth: w }); ty += 11; }
+    if (note) { MK.text(ctx, x, ty, note, { color: C.inkDim, maxWidth: w }); ty += 7; }
+    ty += 3;
+    ty = rubric(ctx, x, ty, w, r.book);
+    const secs = r.bpm > 0 && r.bars > 0 ? Math.round((r.bars * 4 * 60) / r.bpm) : 0;
+    const kvs = [
+      ['Heard at', r.contexts.length ? r.contexts.join(', ') : 'wherever it is called for'],
+      ['Tempo', r.bpm ? `${r.bpm} beats a minute` : '—'],
+      ['One pass', secs ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : '—'],
+      ['Room', r.room ? titleCase(r.room) : 'Open air'],
+    ];
+    for (const [k, v] of kvs) {
+      const vl = MK.wrap(v, w - 40);
+      MK.kv(ctx, x, ty, w, k, vl.length > 1 ? '' : v, { lead: vl.length <= 1 });
+      if (vl.length > 1) vl.slice(0, 2).forEach((l, i) => MK.text(ctx, x + w, ty + i * 5.5, l, { color: C.ink, align: 'right' }));
+      ty += vl.length > 1 ? 12 : 7;
+    }
+    ty += 4;
+    const playing = safe(() => Audio.playing, null) === r.id;
+    const fav = isFavourite(r.id);
+    ty = rubric(ctx, x, ty, w, playing ? 'Playing now' : 'The minstrel');
+    if (playing) { this._eq(ctx, x, ty - 1); MK.text(ctx, x + 11, ty, 'You are hearing it.', { color: C.goldBright }); }
+    else MK.text(ctx, x, ty, `${keyFor('confirm')} to have it played.`, { color: C.inkDim, maxWidth: w });
+    ty += 7;
+    MK.text(ctx, x, ty, fav ? '★ Marked as a favourite.' : `${keyFor('interact')} marks it as a favourite.`, { color: fav ? C.goldBright : C.inkDim, maxWidth: w });
+    ty += 11;
+    if (ty < y + h - 22) {
+      ty = rubric(ctx, x, ty, w, 'Incipit');
+      drawIncipit(ctx, x, ty + 1, w, Math.min(20, y + h - ty - 1), r.id);
     }
   }
 
@@ -4157,9 +4653,7 @@ export class OptionsScene extends MenuScene {
     txtC(ctx, x + w / 2, y + 12, ACTION_LABELS[this.rebind.action] || this.rebind.action, {
       size: 'md', color: UI.inkFor('window', 'accent'), shadow: true, maxWidth: w - 16,
     });
-    txtC(ctx, x + w / 2, y + 28, 'Escape to keep the old one.', {
-      size: 'sm', color: UI.inkFor('window', 'dim'), shadow: true, maxWidth: w - 16,
-    });
+    MK.text(ctx, x + w / 2, y + 30, 'Escape keeps the old one.', { color: UI.inkFor('window', 'dim'), align: 'center', maxWidth: w - 16 });
   }
 }
 
@@ -4208,7 +4702,7 @@ function statBlockLines(m, kills, w) {
   const L = [];
   const push = (kind, text, color) => L.push({ kind, text, color });
   const wrap = (text, color, kind) => {
-    for (const l of UI.wrapLines(String(text || ''), w, 'sm')) push(kind || 'body', l, color);
+    for (const l of MK.wrap(String(text || ''), w)) push(kind || 'body', l, color);
   };
 
   push('rule', '');
@@ -4349,20 +4843,15 @@ export class BestiaryScene extends MenuScene {
   }
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.rowRects = [];
     const list = this.list.length ? this.list : this._build();
     const st = S();
     const known = list.filter((e) => e.kills > 0).length;
 
-    UI.panel(ctx, 2, 2, VIEW_W - 4, 13, { style: 'dark' });
-    txt(ctx, 8, 4, 'BESTIARY', { size: 'md', color: C.gold, shadow: true });
-    // "275 of 275 recorded" is 113px; the slot runs 74..192 (the filter block
-    // right-aligns into 200px of the remaining 392), so 116 is the real cap.
-    txt(ctx, 74, 5, `${known} of ${list.length} recorded`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: 116 });
-    txtR(ctx, VIEW_W - 8, 5, `◀ ${BEST_FILTERS[this.filter].label} ▶   ·   ${this.sortByCR ? 'by CR' : 'by name'}`, {
-      size: 'sm', color: C.goldDim, shadow: true, maxWidth: 200,
+    MK.header(ctx, 'Bestiary', {
+      sub: `${known} of ${list.length} recorded  ·  ${BEST_FILTERS[this.filter].label}  ·  ${this.sortByCR ? 'by challenge' : 'by name'}`,
+      subColor: '#cfc3a6',
     });
 
     const LX = 3, LY = 18, LW = 148, LH = CONTENT_BOTTOM - 18;
@@ -4380,12 +4869,12 @@ export class BestiaryScene extends MenuScene {
       const on = idx === this.index;
       const seen = e.kills > 0;
       if (on) UI.highlight(ctx, LX + 3, ry - 1, LW - 8, rowH, { alpha: 0.2 });
-      UI.icon(ctx, seen ? 'skull' : 'lock', LX + 8, ry, 8, seen ? null : C.disabled);
-      txt(ctx, LX + 19, ry, seen ? e.m.name : '???', {
-        size: on ? 'md' : 'sm', color: seen ? (on ? C.goldBright : C.ink) : C.disabled, shadow: true, maxWidth: LW - 52,
+      UI.icon(ctx, seen ? 'skull' : 'lock', LX + 8, ry, 8, seen ? null : '#4a4238');
+      txt(ctx, LX + 19, ry, seen ? e.m.name : 'Unrecorded', {
+        size: 'sm', color: seen ? (on ? C.goldBright : C.ink) : '#5a5040', shadow: true, maxWidth: LW - 44,
       });
-      txtR(ctx, LX + LW - 6, ry, seen ? `×${e.kills}` : crText(num(e.m.cr, 0)), {
-        size: 'sm', color: seen ? C.goldDim : C.disabled, shadow: true,
+      MK.text(ctx, LX + LW - 7, ry + 2, seen ? `${e.kills} slain` : `CR ${crText(num(e.m.cr, 0))}`, {
+        color: seen ? C.goldBright : '#6a5d48', align: 'right',
       });
       if (on) UI.cursor(ctx, LX + 2, ry, this.t);
       this.rowRects.push({ x: LX + 3, y: ry - 1, w: LW - 8, h: rowH, i: idx });
@@ -4394,9 +4883,10 @@ export class BestiaryScene extends MenuScene {
     if (list.length > visible) scrollHint(ctx, LX + LW - 4, LY + 4, rowH * visible, this.top, visible, list.length);
 
     const DX = 155, DW = VIEW_W - DX - 3;
-    UI.panel(ctx, DX, LY, DW, LH, { style: 'window' });
+    // A stat block is a page of a monster manual: parchment, rubric rules.
+    const pg = MK.page(ctx, DX, LY, DW, LH, { margin: false });
     this._paneRect = { x: DX, y: LY, w: DW, h: LH };
-    this._drawBlock(ctx, list[this.index] || null, DX + 7, LY + 5, DW - 14, LH - 10, st);
+    this._drawBlock(ctx, list[this.index] || null, pg.ix + 6, pg.iy + 4, pg.iw - 12, pg.ih - 7, st);
 
     this.drawMessage(ctx, 6, MSG_Y, VIEW_W - 12);
     hintBar(ctx, HINT_Y, [
@@ -4407,65 +4897,75 @@ export class BestiaryScene extends MenuScene {
   }
 
   _drawBlock(ctx, e, x, y, w, h, st) {
-    if (!e) { txtC(ctx, x + w / 2, y + h / 2, 'Nothing here.', { size: 'sm', color: C.disabled }); return; }
+    const P = MK.PAGE_INK;
+    if (!e) { MK.ink(ctx, x + w / 2, y + h / 2, 'A clean page.', { color: P.dim, align: 'center' }); return; }
     const m = e.m;
     const seen = e.kills > 0;
 
-    // Sprite plate, top-right.
-    const px = x + w - 40, py = y + 2;
-    UI.panel(ctx, px, py, 38, 40, { style: 'inset', shadow: 0.2 });
+    // The creature itself, in a gilt frame top right, at a whole-number scale.
+    const FW = 44, FH = 46;
+    const fx = x + w - FW, fy = y;
+    const f = MK.frame(ctx, fx, fy, FW, FH, { ground: ['#3a2c20', '#120d09'], glow: seen ? 0.25 : 0.05 });
     const spriteName = m.sprite || m.id;
     if (safe(() => hasSprite(spriteName), false)) {
       const frame = monsterFrame(spriteName);
-      if (seen) {
-        safe(() => drawSprite(ctx, spriteName, frame, px + 19, py + 37, { scale: 1, shadow: 0.25, tint: m.tint || null, tintAmt: m.tint ? 0.4 : 0 }));
-      } else {
-        safe(() => drawSprite(ctx, spriteName, frame, px + 19, py + 37, { scale: 1, tint: '#101018', tintAmt: 1, alpha: 0.9 }));
-      }
+      const sz = spriteSize(spriteName);
+      const k = Math.max(1, Math.min(3, Math.floor(Math.min((f.iw - 2) / sz.w, (f.ih - 2) / sz.h))));
+      const bx = f.ix + f.iw / 2, by = f.iy + f.ih - Math.max(1, Math.floor((f.ih - sz.h * k) / 2));
+      UI.pushClip(ctx, f.ix, f.iy, f.iw, f.ih);
+      if (seen) safe(() => drawSprite(ctx, spriteName, frame, bx, by, { scale: k, shadow: 0.3, tint: m.tint || null, tintAmt: m.tint ? 0.4 : 0 }));
+      else safe(() => drawSprite(ctx, spriteName, frame, bx, by, { scale: k, tint: '#0c0a08', tintAmt: 1, alpha: 0.85 }));
+      UI.popClip(ctx);
     } else {
-      UI.icon(ctx, 'skull', px + 14, py + 14, 12, seen ? null : C.disabled);
+      UI.icon(ctx, 'skull', f.ix + f.iw / 2 - 8, f.iy + f.ih / 2 - 8, 16, seen ? null : '#3a3228');
     }
 
-    txt(ctx, x, y, seen ? m.name : '???', { size: 'md', color: seen ? C.gold : C.disabled, shadow: true, maxWidth: w - 44 });
-    txt(ctx, x, y + 11, seen ? safe(() => statLine(m), '') : 'Unrecorded', {
-      size: 'sm', color: C.inkDim, shadow: true, maxWidth: w - 44,
-    });
+    const tw = w - FW - 6;
+    safe(() => UI.heading(ctx, x, y, MK.fit(seen ? m.name : 'Unrecorded', tw, 'title'), {
+      size: 'title', color: P.title, capColor: P.rubric, capGilt: false, shadow: false,
+    }));
+    MK.ink(ctx, x, y + 10, seen ? safe(() => statLine(m), '') : `Challenge ${crText(num(m.cr, 0))}`, { color: P.dim, maxWidth: tw });
 
     if (!seen) {
       this._maxScroll = 0;
-      UI.textWrapped(ctx, x, y + 30, w - 44, 'You have never put one of these in the ground. Kill one, and Oghma willing, the notes will write themselves.', {
-        size: 'sm', color: C.disabled, maxLines: 4,
+      MK.capPara(ctx, x, y + 20, tw, 'You have never put one of these in the ground. Kill one, and Oghma willing, the notes will write themselves.', {
+        color: P.dim, shadow: false,
       });
       return;
     }
 
-    const lines = statBlockLines(m, e.kills, w - 4);
-    const bodyY = y + 22;
-    const avail = Math.max(1, Math.floor((y + h - bodyY) / 9));
+    const LH = 6;
+    const lines = statBlockLines(m, e.kills, w - 6);
+    const bodyY = y + 18;
+    const avail = Math.max(1, Math.floor((y + h - bodyY) / LH));
     this._maxScroll = Math.max(0, lines.length - avail);
     const off = clamp(R(this.scroll), 0, this._maxScroll);
     UI.pushClip(ctx, x - 2, bodyY - 1, w + 4, y + h - bodyY + 1);
     for (let i = 0; i < avail && off + i < lines.length; i++) {
       const l = lines[off + i];
-      const ly = bodyY + i * 9;
-      // Keep the first rows clear of the sprite plate.
-      const lw = ly < y + 44 ? w - 44 : w;
-      if (l.kind === 'rule') { UI.divider(ctx, x, ly + 3, lw); continue; }
-      if (l.kind === 'head') { txt(ctx, x, ly, l.text, { size: 'sm', color: C.goldDim, shadow: true, maxWidth: lw }); continue; }
-      if (l.kind === 'name') { txt(ctx, x, ly, l.text, { size: 'md', color: C.goldBright, shadow: true, maxWidth: lw }); continue; }
-      if (l.kind === 'abilities') { txt(ctx, x, ly, l.text, { size: 'sm', color: C.ink, shadow: true, maxWidth: lw }); continue; }
-      if (l.kind === 'kv') {
-        const bits = String(l.text).split('|');
-        kv(ctx, x, ly, lw, bits[0], bits[1] || '');
+      const ly = bodyY + i * LH;
+      // Keep the first rows clear of the portrait frame.
+      const lw = ly < fy + FH + 1 ? tw : w - 5;
+      if (l.kind === 'rule') {
+        // the tapering red rule of a stat block
+        const g = ctx.createLinearGradient(x, 0, x + lw, 0);
+        g.addColorStop(0, 'rgba(154,42,26,0.85)'); g.addColorStop(1, 'rgba(154,42,26,0.05)');
+        ctx.fillStyle = g; ctx.fillRect(x, ly + 2.5, lw, 1);
         continue;
       }
-      txt(ctx, x, ly, l.text, { size: 'sm', color: l.color || C.ink, shadow: true, maxWidth: lw });
+      if (l.kind === 'head') { MK.ink(ctx, x, ly, l.text, { size: 'fineb', color: P.rubric, letterSpacing: 2, maxWidth: lw }); continue; }
+      if (l.kind === 'name') { MK.ink(ctx, x, ly, l.text, { size: 'fineb', color: P.title, maxWidth: lw }); continue; }
+      if (l.kind === 'abilities') { MK.ink(ctx, x, ly, l.text, { size: 'fineb', color: P.body, maxWidth: lw }); continue; }
+      if (l.kind === 'kv') {
+        const bits = String(l.text).split('|');
+        MK.ink(ctx, x, ly, bits[0], { size: 'fineb', color: P.rubric });
+        MK.ink(ctx, x + MK.measure(bits[0], 'fineb') + 3, ly, bits[1] || '', { maxWidth: lw - MK.measure(bits[0], 'fineb') - 3 });
+        continue;
+      }
+      MK.ink(ctx, x, ly, l.text, { color: l.color === C.inkDim ? P.dim : P.body, maxWidth: lw });
     }
     UI.popClip(ctx);
-    if (this._maxScroll > 0) {
-      if (off > 0) txtR(ctx, x + w, bodyY - 8, '▲', { size: 'sm', color: C.goldDim });
-      if (off < this._maxScroll) txtR(ctx, x + w, y + h - 7, '▼', { size: 'sm', color: C.goldDim });
-    }
+    MK.scroll(ctx, x + w - 3, bodyY, avail * LH, off, avail, lines.length);
     void st;
   }
 }
@@ -4618,14 +5118,12 @@ export class SaveMenuScene extends MenuScene {
   // --- drawing ------------------------------------------------------------
 
   draw(ctx) {
-    ctx.fillStyle = C.bgDeep;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    MK.desk(ctx);
     this.rowRects = [];
 
-    UI.panel(ctx, 2, 2, VIEW_W - 4, 14, { style: 'dark' });
-    txt(ctx, 8, 4, this.mode === 'load' ? 'READ A JOURNAL' : 'WRITE THE JOURNAL', { size: 'md', color: C.gold, shadow: true });
-    txtR(ctx, VIEW_W - 8, 5, safe(() => Save.available, true) ? '' : 'Storage is off — saves will not survive.', {
-      size: 'sm', color: C.warn, shadow: true, maxWidth: 220,
+    MK.header(ctx, this.mode === 'load' ? 'Read a Journal' : 'Write the Journal', {
+      sub: safe(() => Save.available, true) ? 'Kept in this browser' : 'Storage is off: saves will not survive.',
+      subColor: safe(() => Save.available, true) ? '#8a7a5c' : C.warn,
     });
 
     const CARD_H = 36, CARD_W = VIEW_W - 16;
@@ -4635,49 +5133,53 @@ export class SaveMenuScene extends MenuScene {
       const on = i === this.index;
       this.rowRects.push({ x: 8, y, w: CARD_W, h: CARD_H, i });
       UI.panel(ctx, 8, y, CARD_W, CARD_H, {
-        style: s.corrupt ? 'danger' : (s.empty ? 'plain' : 'window'),
-        shadow: on ? 0.45 : 0.2,
+        style: s.corrupt ? 'danger' : (s.empty ? 'dark' : 'window'),
+        shadow: on ? 0.45 : 0.2, studs: false,
       });
-      txt(ctx, 14, y + 4, s.label || `Slot ${s.slot}`, {
-        size: 'sm', color: s.slot === 0 ? C.cyan : C.goldDim, shadow: true, maxWidth: 60,
+      if (on) {
+        const g = ctx.createLinearGradient(8, 0, 8 + CARD_W, 0);
+        g.addColorStop(0, 'rgba(255,214,150,0.12)'); g.addColorStop(1, 'rgba(255,214,150,0)');
+        ctx.fillStyle = g; ctx.fillRect(10, y + 2, CARD_W - 4, CARD_H - 4);
+      }
+      // the slot's name in small capitals down the left margin
+      MK.text(ctx, 15, y + 5, String(s.label || `Slot ${s.slot}`).toUpperCase(), {
+        size: 'fineb', color: s.slot === 0 ? C.cyan : '#c49a4a', letterSpacing: 2, maxWidth: 58,
       });
 
       if (s.empty) {
-        txt(ctx, 14, y + 16, '— empty —', { size: 'md', color: C.disabled, shadow: true });
+        MK.text(ctx, 15, y + 17, 'A blank page', { color: '#6a5d48' });
         if (on) UI.frameSel(ctx, 7, y - 1, CARD_W + 2, CARD_H + 2, this.t);
         continue;
       }
       if (s.corrupt) {
-        txt(ctx, 14, y + 16, 'Corrupt save', { size: 'md', color: C.bad, shadow: true });
+        MK.text(ctx, 15, y + 17, 'This page is torn and cannot be read.', { size: 'fineb', color: C.bad });
         if (on) UI.frameSel(ctx, 7, y - 1, CARD_W + 2, CARD_H + 2, this.t);
         continue;
       }
 
-      // Portraits — deserialised only for the highlighted card, name chips otherwise.
+      // Portraits: painted busts for the highlighted card, initials otherwise.
       const px = 76;
       const party = on ? this._partyFor(s.slot) : null;
       if (party && party.length) {
-        party.slice(0, 4).forEach((ch, k) => safe(() => UI.portrait(ctx, ch, px + k * 22, y + 4, 20, { shadow: 0.2 })));
+        party.slice(0, 4).forEach((ch, k) => MK.portrait(ctx, ch, px + k * 23, y + 5, 22, 26, { glow: 0.2 }));
       } else {
         arr(s.partyNames).slice(0, 4).forEach((nm, k) => {
-          UI.panel(ctx, px + k * 22, y + 4, 20, 20, { style: 'inset', shadow: 0 });
-          txtC(ctx, px + k * 22 + 10, y + 10, String(nm || '?').charAt(0).toUpperCase(), { size: 'md', color: C.inkDim });
+          const f = MK.frame(ctx, px + k * 23, y + 5, 22, 26, { glow: 0.08 });
+          MK.title(ctx, f.ix + f.iw / 2, f.iy + f.ih / 2 - 4, String(nm || '?').charAt(0).toUpperCase(), { align: 'center', color: '#8a7a5c' });
         });
       }
 
-      const tx = px + 94;
-      txt(ctx, tx, y + 4, `${s.name || 'Adventurer'}`, { size: 'md', color: C.goldBright, shadow: true, maxWidth: 118 });
-      txt(ctx, tx, y + 15, `Level ${num(s.level, 1)} · ${plural(num(s.partySize, 0), 'companion')}`, {
-        size: 'sm', color: C.ink, shadow: true, maxWidth: 118,
-      });
-      txt(ctx, tx, y + 25, `${s.mapName || 'The Sword Coast'}${num(s.gold, 0) ? ` · ${goldText(s.gold)}` : ''}`, {
-        size: 'sm', color: C.inkDim, shadow: true, maxWidth: 118,
+      const tx = px + 96;
+      MK.title(ctx, tx, y + 5, `${s.name || 'Adventurer'}`, { maxWidth: 124 });
+      MK.text(ctx, tx, y + 16, `Level ${num(s.level, 1)} · ${plural(num(s.partySize, 0), 'companion')}`, { color: C.inkBright, maxWidth: 124 });
+      MK.text(ctx, tx, y + 23, `${s.mapName || 'The Sword Coast'}${num(s.gold, 0) ? ` · ${goldText(s.gold)}` : ''}`, {
+        color: C.inkDim, maxWidth: 124,
       });
 
-      const rx = VIEW_W - 14;
-      txtR(ctx, rx, y + 4, s.playtimeText || playtimeText(num(s.playtime, 0)), { size: 'sm', color: C.gold, shadow: true });
-      txtR(ctx, rx, y + 14, dateText(num(s.day, 1)), { size: 'sm', color: C.inkDim, shadow: true, maxWidth: 120 });
-      txtR(ctx, rx, y + 24, s.ago ? `saved ${s.ago}` : (s.savedAtText || ''), { size: 'sm', color: C.disabled, shadow: true, maxWidth: 120 });
+      const rx = VIEW_W - 15;
+      MK.text(ctx, rx, y + 5, s.playtimeText || playtimeText(num(s.playtime, 0)), { size: 'fineb', color: C.goldBright, align: 'right' });
+      MK.text(ctx, rx, y + 16, dateText(num(s.day, 1)), { color: C.ink, align: 'right', maxWidth: 120 });
+      MK.text(ctx, rx, y + 23, s.ago ? `written ${s.ago}` : (s.savedAtText || ''), { color: '#8a7a5c', align: 'right', maxWidth: 120 });
       if (on) UI.frameSel(ctx, 7, y - 1, CARD_W + 2, CARD_H + 2, this.t);
     }
 

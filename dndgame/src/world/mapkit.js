@@ -250,7 +250,7 @@ export function clearStanding(map, x, y) {
 export function sweepStanding(map, resOrId) {
   if (!resOrId) return map;
   if (typeof resOrId === 'string') {
-    const doors = new Set([tid('DOOR_CLOSED'), tid('DOOR_OPEN'), tid('IRON_DOOR'), tid('GATE')].filter((v) => v != null));
+    const doors = new Set([tid('DOOR_CLOSED'), tid('DOOR_OPEN'), tid('IRON_DOOR'), tid('GATE'), tid('GATEWAY')].filter((v) => v != null));
     for (const k of reservedFor(resOrId)) {
       const [x, y] = k.split(',').map(Number);
       if (!map.inBounds(x, y)) continue;
@@ -321,8 +321,13 @@ export const FOOTPRINTS = {};
  * b: { x, y, w, h, wall, roof:'thatch'|'shingle'|'tile'|'slate', base,
  *      roofRows, peak:dx, chimney:dx, chimney2:dx, roofPatch:[[dx,dy]], patchTile,
  *      door:dx, ironDoor|iron, windows:[dx], upper:[dx], shutters:[dx], loading:[dx],
- *      sign:dx, lit, course, band, bandTile, approach, step, interior,
+ *      stalls:[dx], stained:[dx], sign:dx, trade, lit, course, band, bandTile,
+ *      approach, step, interior, open, inside:[[dx,key]],
  *      wings:[{dx,dy,w,h,roof,wall,roofRows,windows}], porch, lantern, dormers }
+ *
+ * OPEN makes a shed with no front wall — a smithy's forge shed, a cart shed,
+ * a market hall: the bottom row is its planked back wall seen under the eave,
+ * a post at each end, and `inside` puts the trade against it (a FORGE, HAY).
  *
  * WINGS make an L or a T out of one call. A wing is a second mass hung off the
  * main block at (x+dx, y+dy); it shares the wall, base and course, gets its own
@@ -373,7 +378,12 @@ export function building(map, b, res) {
       dset(map, x + i, y + j, id);
     }
   }
-  if (b.peak != null) oset(map, x + b.peak, y, tid('ROOF_PEAK', 'THATCH_RIDGE'));
+  // Dormers break the eave line: a gabled window on the hard roofs, an eyebrow
+  // in thatch. `peak` (one) and `dormer` (a list) both put them on the last
+  // roof row, which is the eave; a one-row roof has no room for one.
+  const pre = { thatch: 'THATCH', shingle: 'SHINGLE', tile: 'TILE', slate: 'SLATE' }[b.roof] || 'THATCH';
+  const dormers = [].concat(b.peak != null ? [b.peak] : [], b.dormer || []);
+  if (roofRows >= 2) for (const dx of dormers) if (dx > 0 && dx < w - 1) oset(map, x + dx, y + roofRows - 1, tid(`DORMER_${pre}${b.lit ? '_LIT' : ''}`, 'ROOF_PEAK'));
   for (const [px, py] of b.roofPatch || []) oset(map, x + px, y + py, tid(b.patchTile || 'SHINGLE_ROOF', 'THATCH_RIDGE'));
   if (b.chimney != null) oset(map, x + b.chimney, y, tid('CHIMNEY', 'THATCH_RIDGE'));
   if (b.chimney2 != null) oset(map, x + b.chimney2, y, tid('CHIMNEY', 'THATCH_RIDGE'));
@@ -382,9 +392,18 @@ export function building(map, b, res) {
   // `_drawOverhangs` reads to ramp the eave's shadow down the first wall row.
 
   // --- the footing the wall stands on -------------------------------------
-  for (let i = 0; i < w; i++) dset(map, x + i, fy, course);
-  // A jetty beam between two storeys.
-  if (b.band != null) for (let i = 0; i < w; i++) dset(map, x + i, y + b.band, tid(b.bandTile || 'LOG_WALL', wallKey));
+  // An OPEN shed has none: its bottom row is the back wall you see under the
+  // eave, a post at each end, and whatever the trade keeps against it.
+  if (b.open) {
+    for (let i = 0; i < w; i++) dset(map, x + i, fy, tid('SHED_WALL', wallKey));
+    dset(map, x, fy, tid('SHED_POST_L', 'PILLAR'));
+    dset(map, x + w - 1, fy, tid('SHED_POST_R', 'PILLAR'));
+    for (const [dx, key] of b.inside || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, fy, tid(key, 'CRATE'));
+  } else for (let i = 0; i < w; i++) dset(map, x + i, fy, course);
+  // Between two storeys: a jetty beam on a timber house, a lit string course on
+  // a masonry one (a log strip across a stone hall read as a repair).
+  const masonry = wallKey === 'STONE_WALL' || wallKey === 'BRICK_WALL';
+  if (b.band != null) for (let i = 0; i < w; i++) dset(map, x + i, y + b.band, tid(b.bandTile || (masonry ? 'WALL_TOP_LIT' : 'LOG_WALL'), wallKey));
 
   // --- the facade ---------------------------------------------------------
   const win = tid(b.lit ? 'WINDOW_LIT' : 'WINDOW', 'WINDOW');
@@ -400,11 +419,31 @@ export function building(map, b, res) {
   }
   if (wallTop < gy) for (const dx of upper || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, wallTop, win);
   for (const dx of b.shutters || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, tid('SHUTTER', 'WINDOW'));
-  // A wagon door in the base course, for a shed you back a cart up to.
-  for (const dx of b.loading || []) if (dx >= 0 && dx < w) dset(map, x + dx, fy, tid('SHUTTER', 'DOOR_CLOSED'));
+  // Buttresses between the bays of a masonry front, every wall row but the
+  // footing, wherever the wall is still plain wall.
+  for (const dx of b.buttress || []) {
+    if (dx <= 0 || dx >= w - 1) continue;
+    for (let yy = wallTop; yy < fy; yy++) if (map.deco[yy * map.w + x + dx] === wall || map.deco[yy * map.w + x + dx] === tid('WALL_TOP_LIT', wallKey)) dset(map, x + dx, yy, tid('BUTTRESS', wallKey));
+  }
+  // Lancets of stained glass, for a temple (stone walls: they paint STONE_WALL).
+  const glass = tid(b.lit ? 'WINDOW_STAINED_LIT' : 'WINDOW_STAINED', 'WINDOW');
+  for (const dx of b.stained || []) if (dx > 0 && dx < w - 1) { dset(map, x + dx, gy, glass); if (wallTop < gy && (b.upper == null)) dset(map, x + dx, wallTop, glass); }
+  // Tall lancets: one window through two storeys, head above and foot below.
+  const tallT = tid(b.lit ? 'WINDOW_STAINED_LIT_T' : 'WINDOW_STAINED_T', 'WINDOW_STAINED');
+  const tallB = tid(b.lit ? 'WINDOW_STAINED_LIT_B' : 'WINDOW_STAINED_B', 'WINDOW_STAINED');
+  if (gy - 1 >= wallTop) for (const dx of b.tall || []) if (dx > 0 && dx < w - 1) { dset(map, x + dx, gy - 1, tallT); dset(map, x + dx, gy, tallB); }
+  // A rose window, over the door on the row above the door head.
+  if (b.rose != null && gy - 1 >= wallTop) dset(map, x + b.rose, gy - 1, tid(b.lit ? 'WINDOW_ROSE_LIT' : 'WINDOW_ROSE', 'WINDOW_STAINED'));
+  // A barn's wagon doors in the base course, for a shed you back a cart up to,
+  // and a stable's half-doors, one to a stall.
+  for (const dx of b.loading || []) if (dx >= 0 && dx < w) dset(map, x + dx, fy, tid('BARN_DOOR', 'SHUTTER'));
+  for (const dx of b.stalls || []) if (dx >= 0 && dx < w) dset(map, x + dx, fy, tid('STABLE_DOOR', 'SHUTTER'));
   // A shop sign HANGS on the wall. SIGN is a signpost whose post runs to the
   // ground, so putting it on the facade drove a post through the plaster.
-  if (b.sign != null) oset(map, x + b.sign, gy, tid('SHOP_SIGN', 'SIGN'));
+  // `trade` paints the board with the trade's device (render/tiles_arch.js
+  // TRADES: INN SMITH GOODS ARMS COIN POTION BOOK BREAD STABLE).
+  const signKey = b.trade ? `SHOP_SIGN_${String(b.trade).toUpperCase()}` : 'SHOP_SIGN';
+  if (b.sign != null) oset(map, x + b.sign, gy, tid(signKey, 'SHOP_SIGN'));
 
   let door = null, front = null;
   if (b.door != null) {
@@ -570,6 +609,116 @@ export function shell(map, b, res) {
   const out = building(map, { ...b, door: null, windows: [], shutters: b.windows || [] }, res);
   if (b.door != null) dset(map, b.x + b.door, b.y + b.h - 1, tid((b.ironDoor || b.iron) ? 'IRON_DOOR' : 'SHUTTER', 'WINDOW'));
   return out;
+}
+
+/**
+ * A tower under a pyramid roof: a bell tower, a steeple beside a nave, a
+ * turret on a manor, a watchtower on a wall. 2 or 3 wide. The roof takes the
+ * top two rows of the footprint and its tip rises into the row ABOVE the
+ * footprint on the `over` plane (not solid, so the street behind stays
+ * walkable). Everything below the roof is wall: windows on the rows between,
+ * a footing, and an optional door on the bottom row, as in building().
+ *
+ * b: { x, y, w:2|3, h, wall, roof:'slate'|'tile', windows:[dy], door:dx, lit,
+ *      base, iron, stained }   windows are ROWS (dy) with one light centred
+ * Returns { door, front, rect }.
+ */
+export function tower(map, b, res) {
+  const { x, y, h } = b;
+  const w = b.w === 2 ? 2 : 3;
+  const wallKey = b.wall || 'STONE_WALL';
+  const out = building(map, {
+    x, y, w, h, wall: wallKey, base: b.base || 'GRAVEL', roofRows: 2, door: b.door,
+    windows: [], upper: [], approach: b.approach != null ? b.approach : 1, step: b.step, iron: b.iron,
+    course: b.course,
+  }, res);
+  pyramidRoof(map, x, y, w, b.roof);
+  const cx = x + (w >> 1);
+  const glass = b.stained ? (b.lit ? 'WINDOW_STAINED_LIT' : 'WINDOW_STAINED') : (b.lit ? 'WINDOW_LIT' : 'WINDOW');
+  for (const dy of b.windows || [2]) if (dy >= 2 && dy < h - 1) dset(map, w === 2 ? x + 1 : cx, y + dy, tid(glass, 'WINDOW'));
+  return out;
+}
+
+/**
+ * A temple or chapel: a nave under its roof with lancets of stained glass,
+ * and a tower with a spire at one end — the one silhouette in a town that
+ * says "god" from across the square. The nave carries the door (building()'s
+ * contract: one door, on the bottom row).
+ *
+ * b: { x, y, w, h, wall, roof, spire:'slate'|'tile', tower:'W'|'E', tw:2|3,
+ *      th (tower height, default h+1), door:dx (into the nave), lit, base,
+ *      stained:[dx] (nave-relative), buttress:[dx], chimney, interior, porch, lantern }
+ * Returns building()'s result for the nave.
+ */
+export function temple(map, b, res) {
+  const tw = b.tw === 3 ? 3 : 2;
+  const east = b.tower === 'E';
+  const nx = east ? b.x : b.x + tw, nw = b.w - tw;
+  const th = b.th || b.h + 1;
+  const out = building(map, {
+    x: nx, y: b.y, w: nw, h: b.h, wall: b.wall || 'STONE_WALL', roof: b.roof || 'slate', base: b.base || 'FLAGSTONE',
+    roofRows: b.roofRows || 2, door: b.door, windows: [], upper: b.upper, stained: b.stained || [1, nw - 2],
+    lit: b.lit, chimney: b.chimney, approach: b.approach != null ? b.approach : 1, step: b.step || 'FLAGSTONE',
+    interior: b.interior, porch: b.porch, lantern: b.lantern, band: b.band, buttress: b.buttress, tall: b.tall,
+    rose: b.rose,
+  }, res);
+  tower(map, {
+    x: east ? b.x + nw : b.x, y: b.y + b.h - th, w: tw, h: th, wall: b.wall || 'STONE_WALL',
+    roof: b.spire === 'tile' ? 'tile' : 'slate', windows: [2, 4].filter((d) => d < th - 1), base: b.base || 'FLAGSTONE',
+    stained: true, lit: b.lit,
+  }, res);
+  return out;
+}
+
+/**
+ * A pyramid roof — SPIRE (3 wide) or TURRET (2 wide), slate or 'tile' — laid
+ * over the two rows at (x, y), with its tip on the `over` plane of the row
+ * above (not solid). tower() uses it; so can a hall that wants a bell turret
+ * rising out of one end of its own roof.
+ */
+export function pyramidRoof(map, x, y, w, roof) {
+  const pre = (w === 2 ? 'TURRET' : 'SPIRE') + (roof === 'tile' ? '_TILE' : '');
+  for (let r = 1; r <= 2; r++) for (let q = 0; q < w; q++) {
+    const id = tid(`${pre}_${r}${q}`, 'SLATE_M');
+    oset(map, x + q, y + r - 1, id); dset(map, x + q, y + r - 1, id);
+  }
+  if (y > 0) for (let q = 0; q < w; q++) oset(map, x + q, y - 1, tid(`${pre}_0${q}`, 0));
+}
+
+/**
+ * A tower windmill: a 3x5 body under a thatched cap, its door on the
+ * bottom row, and four sails turning on the over plane round a hub on the
+ * cap's face — a 5x5 wheel, so it sweeps the ground around the mill (you walk
+ * under the sails) and never touches another over tile: where one is already
+ * there (a tree's crown) that part of the wheel is left out.
+ * b: { x, y, wall, roof, door:dx, base } -> building()'s result
+ */
+export function windmill(map, b, res) {
+  const out = building(map, {
+    x: b.x, y: b.y, w: 3, h: 5, wall: b.wall || 'PLASTER_WALL', roof: b.roof || 'thatch', roofRows: 2,
+    door: b.door != null ? b.door : 1, windows: [], upper: [1], base: b.base || 'DIRT', approach: 2,
+  }, res);
+  const hx = b.x + 1, hy = b.y + 1;
+  for (let by = 0; by < 5; by++) for (let bx = 0; bx < 5; bx++) {
+    const px = hx - 2 + bx, py = hy - 2 + by;
+    if (!map.inBounds(px, py)) continue;
+    const inside = px >= b.x && px < b.x + 3 && py >= b.y && py < b.y + 5;
+    if (!inside && map.over[py * map.w + px]) continue;
+    oset(map, px, py, tid(`MILL_SAIL_${by}${bx}`, 0));
+  }
+  return out;
+}
+
+/**
+ * The town notice board: the tile world/sites.js stages the director's board
+ * on (the first NOTICE_BOARD on a town map). Stand it where the square is:
+ * the tile south of it must be open ground, because that is where a reader
+ * stands to face it.
+ */
+export function noticeBoard(map, x, y, res) {
+  prop(map, x, y, tid('NOTICE_BOARD', 'SIGN'), res);
+  if (res) res.add(KEY(x, y + 1));
+  return { x, y };
 }
 
 /**
@@ -959,7 +1108,9 @@ export function curtain(map, x, y, w, h, o = {}) {
   // three courses of itself.
   const masonry = key === 'STONE_WALL' || key === 'BRICK_WALL' || key === 'RUINED_WALL';
   const face = tid(key, 'STONE_WALL');
-  const crown = tid(o.crown || (masonry ? 'WALL_TOP_LIT' : key), key);
+  // A masonry curtain is crowned with its battlements: merlons against the
+  // drop and the wall-walk in front of them (render/tiles_arch.js).
+  const crown = tid(o.crown || (masonry ? 'BATTLEMENT' : key), key);
   const plinth = tid(o.plinth || (masonry ? 'WALL_TOP_SHADE' : key), key);
   const post = tid(o.post || 'PILLAR', 'STONE_WALL');
   const base = tid(o.base || 'GRAVEL', 'DIRT');
@@ -1030,13 +1181,19 @@ export function gateway(map, cx, y0, y1, roadId, o = {}) {
   for (let y = y0; y <= y1; y++) {
     for (let x = cx - halfW; x <= cx + halfW; x++) floor(map, x, y, roadId);
   }
+  // Dressed piers either side of the passage, not a stack of columns.
   for (let y = y0; y <= y1; y++) {
-    dset(map, cx - halfW - 1, y, tid('PILLAR', 'STONE_WALL'));
-    dset(map, cx + halfW + 1, y, tid('PILLAR', 'STONE_WALL'));
+    dset(map, cx - halfW - 1, y, tid('GATE_PIER_L', 'PILLAR'));
+    dset(map, cx + halfW + 1, y, tid('GATE_PIER_R', 'PILLAR'));
   }
   if (o.gate !== false) {
+    // The gate row: a flagged passage under the arch, the arch itself and its
+    // raised portcullis on the over plane so you pass beneath them.
     const gy = o.gateRow != null ? o.gateRow : y0;
-    for (let x = cx - halfW; x <= cx + halfW; x++) dset(map, x, gy, tid('GATE', 'DOOR_OPEN'));
+    for (let x = cx - halfW; x <= cx + halfW; x++) {
+      dset(map, x, gy, tid('GATEWAY', 'GATE'));
+      oset(map, x, gy, tid(`GATE_ARCH_${x === cx - halfW ? 'L' : x === cx + halfW ? 'R' : 'M'}`, 0));
+    }
   }
   if (o.torch !== false) {
     dset(map, cx - halfW - 1, o.torchRow != null ? o.torchRow : y1, tid('TORCH', 'PILLAR'));
@@ -1375,7 +1532,7 @@ export function dressStreets(map, r, rect, o = {}) {
   ]);
   // Doorsteps and the tile in front of them are sacred.
   const forbidden = new Set(o.avoid || []);
-  const doorIds = new Set([tid('DOOR_CLOSED'), tid('DOOR_OPEN'), tid('IRON_DOOR'), tid('GATE'), tid('STAIRS_UP'), tid('STAIRS_DOWN')].filter((v) => v != null));
+  const doorIds = new Set([tid('DOOR_CLOSED'), tid('DOOR_OPEN'), tid('IRON_DOOR'), tid('GATE'), tid('GATEWAY'), tid('STAIRS_UP'), tid('STAIRS_DOWN')].filter((v) => v != null));
   for (let j = 0; j < map.h; j++) {
     for (let i = 0; i < map.w; i++) {
       const k = j * map.w + i;

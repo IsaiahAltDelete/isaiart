@@ -421,6 +421,8 @@ export const SETTING_SPEC = Object.freeze({
   volMusic: { kind: 'range', def: 0.6, min: 0, max: 1, step: 0.05, name: 'Music Volume', group: 'audio' },
   volSfx: { kind: 'range', def: 0.8, min: 0, max: 1, step: 0.05, name: 'Effects Volume', group: 'audio' },
   muted: { kind: 'bool', def: false, name: 'Mute All', group: 'audio' },
+  // Track ids the player starred in the Minstrel's Songbook (Options > Songbook).
+  musicFavorites: { kind: 'custom', def: null, name: 'Favourite Songs', group: 'audio' },
 
   textSpeed: { kind: 'enum', def: 'normal', options: ['slow', 'normal', 'fast', 'instant'], name: 'Text Speed', group: 'display' },
   scale: { kind: 'enum', def: 'auto', options: ['auto', 1, 2, 3, 4, 5], name: 'Window Scale', group: 'display' },
@@ -432,6 +434,19 @@ export const SETTING_SPEC = Object.freeze({
   showEdges: { kind: 'bool', def: true, name: 'Path Edges', group: 'display' },
   showExits: { kind: 'bool', def: true, name: 'Exit Markers', group: 'display' },
   colorblind: { kind: 'enum', def: 'none', options: ['none', 'protanopia', 'deuteranopia', 'tritanopia'], name: 'Colour Filter', group: 'display' },
+  // Read by render/stage.js (Stage.applySettings): a colour grade over the
+  // world only, and a fine scanline mask over the whole screen.
+  pixelFilter: { kind: 'enum', def: 'none', options: ['none', 'warm', 'tapestry', 'gloom', 'vivid'], name: 'Pixel Filter', group: 'display' },
+  scanlines: { kind: 'bool', def: false, name: 'Scanlines', group: 'display' },
+  // Where the player has moved each HUD widget (ui/layout.js): { id: { dx, dy, hidden } }.
+  hudLayout: { kind: 'custom', def: null, name: 'HUD Layout', group: 'display' },
+  // Which HUD preset is in force (ui/layout.js; ui/hud.js defines classic,
+  // minimal and cinematic). Choosing one lays the widgets out by it.
+  hudPreset: { kind: 'enum', def: 'default', options: ['default', 'classic', 'minimal', 'cinematic', 'mirrored'], name: 'HUD Preset', group: 'display' },
+  // Logical px per tile on the overworld minimap; clicking the roundel cycles it.
+  minimapZoom: { kind: 'enum', def: 1, options: [0.5, 1, 2], name: 'Minimap Zoom', group: 'display' },
+  // The interface skin (ui/kit.js THEMES); the kit applies it at load and on every save.
+  uiTheme: { kind: 'enum', def: 'folio', options: ['folio', 'timber', 'iron', 'parchment'], name: 'Interface Theme', group: 'display' },
 
   autoEndTurn: { kind: 'bool', def: true, name: 'Auto End Turn', group: 'combat' },
   battleSpeed: { kind: 'enum', def: 1, options: [0.5, 1, 1.5, 2, 3], name: 'Battle Speed', group: 'combat' },
@@ -444,6 +459,9 @@ export const SETTING_SPEC = Object.freeze({
     name: 'Random Ambushes', group: 'combat',
   },
   roamingMonsters: { kind: 'bool', def: true, name: 'Visible Wandering Foes', group: 'combat' },
+  // How eventful the open road is (rules/encounters.js PACING): how many groups
+  // are out, how fast tension builds, how long the quiet lasts after trouble.
+  encounterPacing: { kind: 'enum', def: 'normal', options: ['calm', 'normal', 'perilous'], name: 'Encounter Pacing', group: 'combat' },
   battleZoom: { kind: 'enum', def: 'fit', options: ['fit', 'close'], name: 'Battle Camera', group: 'combat' },
 
   bindings: { kind: 'custom', def: null, name: 'Key Bindings', group: 'controls' },
@@ -493,6 +511,26 @@ function sanitizeBindings(b) {
   return Object.keys(out).length ? out : null;
 }
 
+/** HUD offsets must be { widgetId: { dx, dy, hidden } } with small whole numbers, or null. */
+function sanitizeHudLayout(h) {
+  if (!h || typeof h !== 'object' || Array.isArray(h)) return null;
+  const out = {};
+  for (const [id, o] of Object.entries(h)) {
+    if (!o || typeof o !== 'object' || id.length > 64) continue;
+    const dx = clamp(Math.round(Number(o.dx) || 0), -800, 800);
+    const dy = clamp(Math.round(Number(o.dy) || 0), -480, 480);
+    if (dx || dy || o.hidden === true) out[id] = { dx, dy, ...(o.hidden === true ? { hidden: true } : {}) };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/** Favourite track ids must be a short list of distinct short strings, or null. */
+function sanitizeFavorites(f) {
+  if (!Array.isArray(f)) return null;
+  const out = [...new Set(f.filter((id) => typeof id === 'string' && id && id.length <= 64))].slice(0, 200);
+  return out.length ? out : null;
+}
+
 /** Merge stored settings onto defaults, dropping anything unrecognised or invalid. */
 function sanitizeSettings(raw) {
   const out = { ...DEFAULT_SETTINGS };
@@ -504,6 +542,8 @@ function sanitizeSettings(raw) {
     }
   }
   out.bindings = sanitizeBindings(out.bindings);
+  out.hudLayout = sanitizeHudLayout(out.hudLayout);
+  out.musicFavorites = sanitizeFavorites(out.musicFavorites);
   return out;
 }
 

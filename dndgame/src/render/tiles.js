@@ -584,6 +584,14 @@ function outline(c, col, x, y, rows) {
 function outlineBox(c, col, x, y, bx, by, w, h) { R(c, col, x + bx - 1, y + by - 1, w + 2, h + 2); }
 
 // --- shared terrain bases --------------------------------------------------
+//
+// The natural world's painters live in render/tiles_terrain.js; the bases
+// below are the ones the ISLE patches and the earth verges still build on.
+import * as TR from './tiles_terrain.js';
+// Buildings, interiors and their furniture are painted in render/tiles_arch.js,
+// which also owns the map-load pass that tells each of them where it stands.
+import * as AR from './tiles_arch.js';
+import { paintProp } from './prop-art.js';
 
 /**
  * Grass. The old version put 7 two-pixel `grassD` dashes (-9 L*) and 3 two-pixel
@@ -902,654 +910,102 @@ function buildTiles() {
   });
 
   // --- 4.2 grass & meadow --------------------------------------------------
-  def('GRASS', 'Grass', 0, { group: 'grass', biomes: ['plains', 'forest', 'road', 'hills'], variants: 4 },
-    (c, x, y, v) => { grassBase(c, x, y, sr(v)); });
+  // Painted by render/tiles_terrain.js (section 3 there): tufts, clover heads,
+  // wildflowers and a tall-grass stand over one shared sward. Eight variants a
+  // type so a meadow never falls into a 16px rhythm.
+  def('GRASS', 'Grass', 0, { group: 'grass', biomes: ['plains', 'forest', 'road', 'hills'], variants: 8 }, TR.paintGrass);
+  def('GRASS_2', 'Grass', 0, { group: 'grass', biomes: ['plains', 'forest'], variants: 8 }, TR.paintGrassLush);
+  def('GRASS_3', 'Grass', 0, { group: 'grass', biomes: ['plains', 'hills'], variants: 8 }, TR.paintGrassSun);
+  def('GRASS_4', 'Dry Grass', 0, { group: 'grass', biomes: ['plains', 'road', 'coast'], variants: 8 }, TR.paintGrassDry);
+  def('GRASS_TALL', 'Tall Grass', ENCOUNTER | SLOW, { group: 'grass', biomes: ['plains', 'forest', 'marsh'], variants: 8 }, TR.paintTallGrass);
 
-  def('GRASS_2', 'Grass', 0, { group: 'grass', biomes: ['plains', 'forest'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v); grassBase(c, x, y, r);
-    bladesI(c, PAL.grassL, x, y, 4, r, 3);
-    speck(c, PAL.grassH, x, y, 3, r);
-    dashesI(c, PAL.grassS, x, y, 3, r, 3);
-  });
-
-  // Was `grassBase(..., PAL.grassL)` — a WHOLE value step up on the base, which
-  // is why a mixed grass field read as a patchwork quilt of bright 16px squares
-  // (ΔL* +7.4, ΔE 7.9 from GRASS). `grassM` is a 1.5 L* step: variation, not a
-  // different material.
-  def('GRASS_3', 'Grass', 0, { group: 'grass', biomes: ['plains', 'hills'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v); grassBase(c, x, y, r, PAL.grassM);
-    dashesI(c, PAL.grass, x, y, 4, r, 3);
-    speck(c, PAL.grassL, x, y, 6, r);
-  });
-
-  // `speck(PAL.dirtL, ...)` scattered ORANGE on green — rust confetti, ΔE ~40.
-  // Dry grass should be dry grass.
-  def('GRASS_4', 'Dry Grass', 0, { group: 'grass', biomes: ['plains', 'road', 'coast'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v); grassBase(c, x, y, r);
-    dashesI(c, PAL.grassDry, x, y, 4, r, 2);
-    speck(c, PAL.grassDry, x, y, 6, r);
-    speck(c, PAL.grassS, x, y, 12, r);
-  });
-
-  // The encounter tile: darker ground, blades that break the top edge.
-  def('GRASS_TALL', 'Tall Grass', ENCOUNTER | SLOW, { group: 'grass', biomes: ['plains', 'forest', 'marsh'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      R(c, PAL.tallD, x, y, 16, 16);
-      dashesI(c, PAL.tall, x, y, 8, r, 3);
-      for (let i = 0; i < 12; i++) {
-        const hgt = 4 + Math.floor(r() * 3);
-        const bx = x + 1 + Math.floor(r() * 14), by = y + 1 + Math.floor(r() * (14 - hgt));
-        R(c, PAL.tall, bx, by, 1, hgt);
-        P(c, PAL.tallL, bx, by);
-      }
-      for (let i = 0; i < 4; i++) {
-        const bx = x + 1 + Math.floor(r() * 14);
-        R(c, PAL.tallL, bx, y + 1 + Math.floor(r() * 3), 1, 6);
-      }
-      seam(c, x, y, SEAM.tall, SEAM_TONE.tall, 8, 4, 3);
-    });
-
-  const flower = (key, label, petal, petalD, core) => def(key, label, 0, { group: 'grass', biomes: ['plains', 'forest'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v); grassBase(c, x, y, r);
-      for (let i = 0; i < 4; i++) {
-        const fx = x + 2 + Math.floor(r() * 12), fy = y + 3 + Math.floor(r() * 10);
-        V(c, PAL.grassD, fx, fy + 2, 2);
-        P(c, petalD, fx - 1, fy + 1); P(c, petal, fx, fy + 1); P(c, petal, fx + 1, fy + 1);
-        P(c, petal, fx, fy); P(c, core, fx, fy + 1);
-      }
-    });
+  const flower = (key, label, petal, petalD, core) => def(key, label, 0, { group: 'grass', biomes: ['plains', 'forest'], variants: 6 },
+    (c, x, y, v) => TR.paintFlowers(c, x, y, v, petal, petalD, core));
   flower('FLOWERS_RED', 'Wildflowers', '#d24a44', '#a02f2b', '#f2d67a');
   flower('FLOWERS_YELLOW', 'Wildflowers', '#e8c451', '#b6913a', '#fff0b8');
   flower('FLOWERS_BLUE', 'Wildflowers', '#6d8fd6', '#43629f', '#e6eeff');
 
-  def('CLOVER', 'Clover', 0, { group: 'grass', biomes: ['plains', 'forest'], variants: 3 }, (c, x, y, v) => {
-    const r = sr(v); grassBase(c, x, y, r);
-    for (let i = 0; i < 6; i++) {
-      const fx = x + 1 + Math.floor(r() * 13), fy = y + 1 + Math.floor(r() * 13);
-      P(c, PAL.clover, fx, fy); P(c, PAL.clover, fx + 1, fy); P(c, PAL.clover, fx, fy + 1);
-      P(c, PAL.grassH, fx + 1, fy + 1);
-    }
-  });
+  def('CLOVER', 'Clover', 0, { group: 'grass', biomes: ['plains', 'forest'], variants: 6 }, TR.paintClover);
 
   // --- 4.3 bare ground -----------------------------------------------------
-  def('DIRT', 'Dirt', 0, { group: 'dirt', biomes: ['plains', 'road', 'cave', 'ruins'], variants: 4 },
-    (c, x, y, v) => { const r = sr(v); dirtBase(c, x, y, r); for (let i = 0; i < 3; i++) R(c, PAL.dirtD, x + inX(r, 2), y + inY(r, 2), 2, 2); });
+  // Painted by render/tiles_terrain.js section 6. Dirt is cloddy and a path is
+  // worn smooth — the two sit ~4 L* apart and are told apart by SURFACE.
+  def('DIRT', 'Dirt', 0, { group: 'dirt', biomes: ['plains', 'road', 'cave', 'ruins'], variants: 8 }, TR.paintDirt);
+  def('DIRT_PATH', 'Path', 0, { group: 'dirt', biomes: ['road', 'plains', 'city'], variants: 8 }, TR.paintPath);
 
-  /**
-   * THE ROAD. Three faults, all fixed here.
-   *  1. `H(pathD, y+0)` and `H(pathD, y+15)` painted a -25 Y line on the two
-   *     rows that touch when tiles stack: a 2px dark band every 16 pixels, i.e.
-   *     the "blocky road" the whole art pass exists to kill. Gone.
-   *  2. It had no form. A worn track is lighter and smoother where feet fall
-   *     and darker and coarser where it is compacted at the sides, so the tile
-   *     now carries a soft `pathW` wear patch and `pathD` shoulders that are
-   *     placed by the hash, not by the tile grid.
-   *  3. The embedded stones were `stoneL`/`stoneD` — COOL GREY chips on a warm
-   *     path, which read as blue-grey litter. They are `pebble` now.
-   *  4. (2026-08) It out-valued plain DIRT by 9.6 L*, so a road crossing bare
-   *     earth was a brown checkerboard. `path` dropped 2.6 L* and lost 10% of
-   *     its chroma; everything the tile gave up in raw value came back as
-   *     SURFACE, which is what actually distinguishes a road from the soil it
-   *     is cut into: a broad COMPACTED PAN of smooth wear that straddles the
-   *     tile border, a scatter of embedded GRIT sitting proud of it, and short
-   *     CART SCUFFS — a rut fragment with a lit lip and a dark trough. None of
-   *     it is aligned to the 16px grid: every mark is placed by the variant
-   *     hash and allowed to be clipped by the tile box, so the surface carries
-   *     across seams.
-   */
-  def('DIRT_PATH', 'Path', 0, { group: 'dirt', biomes: ['road', 'plains', 'city'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.path, x, y, 16, 16);
-    // THE COMPACTED PAN — two broad, soft, overlapping slabs of smoothed wear.
-    // These used to be started off-tile so the pan "never had a visible 16px
-    // boundary"; what that actually did was end the pan in a straight line
-    // wherever the tile box sliced it, which is the boundary it was trying to
-    // avoid. The pan is inboard now and `seam` carries the same tone onto the
-    // ring, wrapped, so it does cross the border — for real this time.
-    for (let i = 0; i < 2; i++) {
-      const pw = 8 + Math.floor(r() * 7), ph = 6 + Math.floor(r() * 6);
-      mark(c, PAL.pathW, x, y, inX(r, pw), inY(r, ph), pw, ph);
-    }
-    // worn, smoother patches — irregular, small, never aligned to the tile
-    for (let i = 0; i < 5; i++) {
-      const pw = 3 + Math.floor(r() * 4), ph = 2 + Math.floor(r() * 2);
-      mark(c, i < 3 ? PAL.pathW : PAL.pathM, x, y, inX(r, pw), inY(r, ph), pw, ph);
-    }
-    speck(c, PAL.pathL, x, y, 7, r);
-    // compacted grit: mostly a 2 L* step, a few 4 L* steps
-    speck(c, PAL.pathM, x, y, 12, r);
-    dashesI(c, PAL.pathD, x, y, 5, r, 2);
-    speck(c, PAL.pathD, x, y, 6, r);
-    // CART SCUFFS — a worn groove, not a drawn line. Most of the run is
-    // `pathM` (a 3 L* step, barely a mark); only a short bite goes to `pathD`,
-    // and a `pathW` lip catches the light on the upper-left side. Count,
-    // ORIENTATION, length and position all come from the variant hash, so a
-    // stretch of road never builds a corduroy of parallel dashes — which is
-    // what a fixed pair of horizontal ruts did when this was first tried.
-    const scuffs = 1 + (r() < 0.4 ? 1 : 0);
-    for (let i = 0; i < scuffs; i++) {
-      const horiz = r() < 0.6, len = 5 + Math.floor(r() * 7);
-      // inboard: a rut that stops dead on a tile border is the tile border
-      const u = 1 + Math.floor(r() * (15 - len)), w0 = 2 + Math.floor(r() * 12);
-      const put = (col, du, dw, l) => {
-        if (horiz) mark(c, col, x, y, u + du, w0 + dw, l, 1);
-        else mark(c, col, x, y, w0 + dw, u + du, 1, l);
-      };
-      put(PAL.pathW, 1, -1, len - 2);
-      put(PAL.pathM, 0, 0, len);
-      put(PAL.pathD, 2 + Math.floor(r() * 4), 0, 2 + Math.floor(r() * 3));
-    }
-    // stones trodden into the surface, lit from the upper-left
-    for (let i = 0; i < 4; i++) {
-      const px = x + inX(r, 2), py = y + inY(r, 2);
-      R(c, PAL.pebble, px, py, 2, 1); P(c, PAL.pathXD, px + 1, py + 1);
-    }
-    seam(c, x, y, SEAM.path, SEAM_TONE.path, 15, 3, 3);
-  });
-
-  /**
-   * COBBLE. Was 63% non-base coverage across an 86 Y range — every single cobble
-   * got a full-width `stoneH` cap, which is why a street read as a loud grey
-   * checkerboard. Fixed by giving it a warm `cobble` family of its own (dungeon
-   * stone is cool, a town street should relate to the dirt around it) and a
-   * highlight on only a third of the stones.
-   *
-   * What was still wrong: the course phase and the stone jitter came from the
-   * VARIANT rng and the pitch was 5px, which divides neither 16 nor anything
-   * else useful. So every stone that met a tile border was sliced at a random
-   * place and met a completely different lattice on the other side — the two
-   * columns either side of a seam measured 1.5x the contrast of the paving
-   * itself, and the courses visibly restarted every 16px.
-   *
-   * The lattice is 16-PERIODIC now: four courses of 3px stones, and four stones
-   * per course whose widths and mortar joints sum to exactly 16 columns, so the
-   * paving simply carries on into the next tile. The top course sits at y = -1
-   * and is drawn again at y = 15, which puts the horizontal border INSIDE a
-   * stone rather than on the loudest pair in the cycle (a mortar row abutting a
-   * lit stone top measured 14.3 dL* against a 6.4 interior mean). Two courses
-   * are offset so a STONE lies across the vertical border and two so a JOINT
-   * does — the same mix an interior column sees. Each stone also gets a 1px
-   * vertical jitter, which stops the mortar bands being ruler-straight and, at
-   * the top course, leaves some of row 15 as joint and some as stone so the
-   * border ring is made of the same stuff as the tile middle.
-   *
-   * Anything that crosses a seam — the whole top course, and the one stone per
-   * course that straddles the vertical border — takes its tone, its highlight
-   * and its jitter from `fr`, the family-fixed generator, so both tiles paint it
-   * identically. The ten stones wholly inside the tile still vary per variant,
-   * which is what keeps a street from being one stamp repeated.
-   */
-  const COBBLE_COURSE = [
-    { y: -3, x: -1, w: [3, 4, 3, 2] },   // drawn again at y+16: straddles the horizontal seam
-    { y: 3, x: 0, w: [4, 3, 2, 3] },     // a joint lies across the vertical seam
-    { y: 7, x: -2, w: [3, 3, 4, 2] },    // a stone does
-    { y: 11, x: 1, w: [2, 4, 3, 3] },    // a joint does
-  ];
-  /**
-   * The paving itself, factored out so PATH_ISLE (a pothole of bare earth in a
-   * city street) can lay down the SAME lattice from the SAME family-fixed
-   * generator and slot into a run of cobbles with no seam of its own.
-   */
-  const cobbleBase = (c, x, y, r) => {
-    const f = fr(SEAM.cobble);
-    R(c, PAL.cobbleD, x, y, 16, 16);                 // the mortar bed
-    for (let j = 0; j < 4; j++) {
-      const co = COBBLE_COURSE[j];
-      let sx = co.x;
-      for (let k = 0; k < 4; k++) {
-        const w = co.w[k];
-        const wrapX = sx < 0 ? 16 : (sx + w > 16 ? -16 : 0);
-        const g = (wrapX || j === 0) ? f : r;        // does this stone cross a seam?
-        // The top course rides a 0-3px jitter rather than 0-1: that is what puts
-        // mortar on SOME of row 15 and some of row 0 instead of a solid band of
-        // stone tops on both, which is the only way the border ring can carry
-        // the same 75% stone / 25% joint mix the rest of the tile does.
-        const q = g(), lit = g() < 0.34, qj = g();
-        const jit = j === 0 ? Math.floor(qj * 4) : (qj < 0.45 ? 1 : 0);
-        const tone = q < 0.28 ? PAL.cobbleL : (q < 0.5 ? PAL.gravel : PAL.cobble);
-        for (let a = 0; a < 2; a++) {
-          if (a === 1 && wrapX === 0) break;
-          const px = sx + (a ? wrapX : 0);
-          for (let b = 0; b < 2; b++) {
-            if (b === 1 && j !== 0) break;
-            const py = co.y + jit + (b ? 16 : 0);
-            mark(c, tone, x, y, px, py, w, 3);
-            if (lit) mark(c, PAL.cobbleH, x, y, px, py, 2, 1);
-            mark(c, PAL.cobbleD, x, y, px + w - 1, py + 2, 1, 1);
-          }
-        }
-        sx += w + 1;
-      }
-    }
-    // grit and damp in the joints — 1px only, so it has no shape to slice
-    speck(c, PAL.pebble, x, y, 5, r);
-    speck(c, PAL.cobbleD, x, y, 6, r);
-  };
-  def('COBBLE', 'Cobblestone', 0, { group: 'road', biomes: ['city', 'road', 'ruins'], variants: 4 },
-    (c, x, y, v) => { cobbleBase(c, x, y, sr(v)); });
+  // COBBLE is edge-variant: the setts that straddle a border take their tone
+  // from that border's shared bit, so the paving's ring differs border to
+  // border and still matches on both sides (tiles_terrain.js `cobbleBody`).
+  def('COBBLE', 'Cobblestone', 0, { group: 'road', biomes: ['city', 'road', 'ruins'], variants: 64, edgeVariant: true }, TR.paintCobble);
 
   def('FLAGSTONE', 'Flagstone', 0, { group: 'road', biomes: ['city', 'ruins', 'dungeon'], variants: 3 },
     (c, x, y, v) => { const r = sr(v); stoneSlabs(c, x, y, PAL.stone, PAL.stoneG, PAL.stoneL); speck(c, PAL.stoneM, x, y, 4, r); });
 
-  // Was TV static: 22 pebbles, each with a `stoneH` pixel on a `stoneD` base —
-  // an 86 Y internal range at busyness 13. Fewer, quieter, warmer pebbles.
-  def('GRAVEL', 'Gravel', SLOW, { group: 'dirt', biomes: ['mountain', 'hills', 'mine', 'coast'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.scree, x, y, 16, 16);
-    // one chip: a 2x1 stone, sometimes a lit crown, and the pixel of shade it
-    // casts into the joint below-right
-    const chip = (px, py, pale, crown) => {
-      mark(c, pale ? PAL.screeL : PAL.screeM, x, y, px, py, 2, 1);
-      if (crown) mark(c, PAL.pebble, x, y, px, py, 1, 1);
-      mark(c, PAL.screeD, x, y, px + 1, py + 1, 1, 1);
-    };
-    for (let i = 0; i < 14; i++) chip(inX(r, 2), inY(r, 2), r() < 0.35, r() < 0.4);
-    // The chips on the border are the SAME chips the neighbour draws: taken from
-    // the family-fixed generator and painted twice, 16px apart, so each one is
-    // half on either tile. Their coverage has to match the interior's or the
-    // ring becomes a lattice in its own right — with a generic `seam` band here
-    // the ring measured 4.35 L* brighter than the middle of the tile.
-    const f = fr(SEAM.gravel);
-    for (let i = 0; i < 6; i++) {
-      const t = Math.floor(f() * 15), pale = f() < 0.2, crown = f() < 0.3;
-      if (i & 1) { chip(15, t, pale, crown); chip(-1, t, pale, crown); }
-      else { chip(t, 15, pale, crown); chip(t, -1, pale, crown); }
-    }
-  });
-
-  def('SAND', 'Sand', 0, { group: 'sand', biomes: ['coast', 'ruins'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.sand, x, y, 16, 16);
-    for (let i = 0; i < 4; i++) {
-      const lw = 7 + Math.floor(r() * 6);
-      mark(c, PAL.sandM, x, y, inX(r, lw), inY(r, 1), lw, 1);
-    }
-    for (let i = 0; i < 2; i++) { const lw = 6 + Math.floor(r() * 5); mark(c, PAL.sandD, x, y, inX(r, lw), inY(r, 1), lw, 1); }
-    speck(c, PAL.sandL, x, y, 6, r);
-    seam(c, x, y, SEAM.sand, SEAM_TONE.sand, 6, 2, 3);
-  });
-
-  def('MUD', 'Mud', SLOW, { group: 'dirt', biomes: ['marsh', 'road', 'plains'], variants: 3 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.mud, x, y, 16, 16);
-    for (let i = 0; i < 5; i++) mark(c, PAL.mudD, x, y, inX(r, 4), inY(r, 3), 4, 3);
-    speck(c, PAL.mudL, x, y, 5, r);
-    P(c, PAL.waterL, x + 4 + Math.floor(r() * 8), y + 4 + Math.floor(r() * 8));
-    seam(c, x, y, SEAM.mud, SEAM_TONE.mud, 11, 3, 3);
-  });
+  def('GRAVEL', 'Gravel', SLOW, { group: 'dirt', biomes: ['mountain', 'hills', 'mine', 'coast'], variants: 8 }, TR.paintGravel);
+  def('SAND', 'Sand', 0, { group: 'sand', biomes: ['coast', 'ruins'], variants: 8 }, TR.paintSand);
+  def('MUD', 'Mud', SLOW, { group: 'dirt', biomes: ['marsh', 'road', 'plains'], variants: 12 }, TR.paintMud);
 
   // --- 4.4 farmland --------------------------------------------------------
-  // `i*4` put a full-width `dirtL` line on row 0, so every tile boundary got a
-  // bright hairline. Offset by 1 and the furrows never touch a tile edge.
-  //
-  // The furrow cycle is 4 rows, which divides 16 exactly, so the furrows do run
-  // on across a horizontal seam — but the PHASE decided which of the four row
-  // pairs the seam landed on, and it landed on the trough's dark shoulder, the
-  // highest-contrast pair in the cycle (5.7 dL* against an interior mean of
-  // 4.2). Swapping the two tones puts the seam on the crest's shoulder instead:
-  // same furrows, and the border pair is now the QUIETEST pair in the cycle
-  // rather than the loudest.
-  def('FARMLAND', 'Furrows', 0, { group: 'dirt', biomes: ['plains'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.dirt, x, y, 16, 16);
-    for (let i = 0; i < 4; i++) { H(c, PAL.dirtD, x, y + i * 4 + 1, 16); H(c, PAL.dirtM, x, y + i * 4 + 2, 16); }
-    speck(c, PAL.dirtD, x, y, 6, r);
-    speck(c, PAL.dirtL, x, y, 4, r);
-  });
-
-  def('CROP_WHEAT', 'Wheat', SLOW, { group: 'crop', biomes: ['plains'], variants: 2, animFrames: 3, fps: 2 }, (c, x, y, v, w, f) => {
-    const r = sr(v);
-    R(c, PAL.dirt, x, y, 16, 16);
-    for (let i = 0; i < 4; i++) H(c, PAL.dirtD, x, y + i * 4 + 2, 16);
-    const sway = [0, 1, 0, -1][f % 4] || 0;
-    for (let i = 0; i < 6; i++) {
-      const sx = x + 1 + Math.floor(r() * 14), sy = y + 3 + Math.floor(r() * 5);
-      R(c, PAL.grassDry, sx, sy, 1, 16 - (sy - y) - 1);
-      const hx = sx + sway;
-      R(c, '#d9c26a', hx, sy - 2, 2, 3); P(c, '#f0e0a4', hx, sy - 2);
-    }
-  });
-
-  def('CROP_CABBAGE', 'Cabbages', SLOW, { group: 'crop', biomes: ['plains'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.dirt, x, y, 16, 16);
-    for (let i = 0; i < 4; i++) H(c, PAL.dirtD, x, y + i * 4 + 2, 16);
-    for (let i = 0; i < 4; i++) {
-      const cx = x + 1 + Math.floor(r() * 11), cy = y + 1 + Math.floor(r() * 11);
-      blob(c, PAL.leaf, cx, cy, [[0, 1, 2], [1, 0, 4], [2, 0, 4], [3, 1, 2]]);
-      P(c, PAL.leafH, cx + 1, cy + 1); P(c, PAL.leafD, cx + 2, cy + 2);
-    }
-  });
+  // Furrows on a 4-row cycle, which divides 16, so they run on across seams.
+  def('FARMLAND', 'Furrows', 0, { group: 'dirt', biomes: ['plains'], variants: 8 }, TR.paintFarmland);
+  def('CROP_WHEAT', 'Wheat', SLOW, { group: 'crop', biomes: ['plains'], variants: 4, animFrames: 3, fps: 2 },
+    (c, x, y, v, w, f) => TR.paintWheat(c, x, y, v, f));
+  def('CROP_CABBAGE', 'Cabbages', SLOW, { group: 'crop', biomes: ['plains'], variants: 4 }, TR.paintCabbage);
 
   // --- 4.5 water -----------------------------------------------------------
-  /**
-   * OPEN WATER. Two faults, both of them 16px-grid faults.
-   *
-   *  1. the swell shadows started at column 0-5 and ran 5-9px, so the LEFT edge
-   *     of every water tile carried a dark bar and the right edge never did.
-   *     They are inboard now, and the swell that crosses a seam comes from
-   *     `seam`, which draws it on both sides of the tile — one wave, not two
-   *     halves that do not meet;
-   *  2. two variants, with the crest line and both foam flecks at positions
-   *     fixed in tile space, is a stamp. A lake was a visible chequer of the
-   *     same two tiles. Four variants now, and the crest, its second run and
-   *     the loose fleck are all placed from the variant hash.
-   */
-  //  3. (2026-08b) FOUR variants is not enough. The ring is family-fixed by
-  //     design — it has to be, or the seam steps — so the only thing that can
-  //     break the 16px rhythm is the interior, and four interiors repeat often
-  //     enough that a lake read as a stamp at 1x. Eight now.
-  //  4. …and the crest was still being CLIPPED by the tile box. `c1` ran to
-  //     column 12 with a width of 4, so the brightest mark on the tile (waterL,
-  //     +9 L*) could end dead on column 15 with nothing on the other side —
-  //     which is the exact defect section 2a exists to kill, and it is what
-  //     made the water's border contrast jump the moment the variant count
-  //     rose. Both crest runs are inboard now, like every other mark wider
-  //     than a pixel; the ring's own wave still comes from `seam`, wrapped.
+  // Painted by render/tiles_terrain.js section 5: one water body shared by open
+  // water, deep water and every bank member, so a tile drawn as two clipped
+  // members has no seam of its own down the middle.
   def('WATER', 'Water', WATER | SLOW, { group: 'water', biomes: ['coast', 'plains', 'marsh'], variants: 8, animFrames: 4, fps: 3 },
-    (c, x, y, v, w, f) => {
-      const r = sr(v);
-      R(c, PAL.water, x, y, 16, 16);
-      for (let i = 0; i < 6; i++) { const lw = 5 + Math.floor(r() * 5); mark(c, PAL.waterD, x, y, inX(r, lw), inY(r, 1), lw, 1); }
-      seam(c, x, y, SEAM.water, SEAM_TONE.water, 10, 3, 3);
-      // the crest line drifts down the tile and wraps; where it starts, how long
-      // it is and where its echo sits are all per-variant
-      const cl = 4 + Math.floor(r() * 4), c0 = inX(r, cl + 1);
-      const c1 = inX(r, 5), phase = Math.floor(r() * 16);
-      const gx = 1 + Math.floor(r() * 13), gy = 1 + Math.floor(r() * 13);
-      // …and it drifts through rows 1-13 rather than 0-15, for the same reason:
-      // the crest is the brightest mark on the tile, and on row 0 or row 15 it
-      // was a 4-7px bar of +9 L* ending dead at a seam with nothing on the
-      // other side of it.
-      const cy = y + 1 + ((f * 4 + phase) % 13);
-      mark(c, PAL.waterL, x, y, c0, cy - y, cl, 1);
-      mark(c, PAL.waterL, x, y, c1, cy - y + 1, 4, 1);
-      mark(c, PAL.foam, x, y, c0 + 1, cy - y, 3, 1);
-      P(c, PAL.foam, x + ((f * 5 + gx) % 15), y + ((f * 7 + gy) % 15));
-    });
+    (c, x, y, v, w, f) => TR.paintWater(c, x, y, v, f, false));
 
-  def('WATER_DEEP', 'Deep Water', WATER | SOLID, { group: 'water', biomes: ['coast'], variants: 2, animFrames: 4, fps: 2 },
-    (c, x, y, v, w, f) => {
-      const r = sr(v);
-      R(c, PAL.deep, x, y, 16, 16);
-      for (let i = 0; i < 6; i++) H(c, PAL.deepD, x + Math.floor(r() * 8), y + Math.floor(r() * 15), 4 + Math.floor(r() * 6));
-      const cy = y + ((f * 4 + 6) % 16);
-      H(c, PAL.deepL, x + 3, cy, 7); P(c, PAL.waterL, x + 4, cy);
-    });
+  def('WATER_DEEP', 'Deep Water', WATER | SOLID, { group: 'water', biomes: ['coast'], variants: 6, animFrames: 4, fps: 2 },
+    (c, x, y, v, w, f) => TR.paintWater(c, x, y, v, f, true));
 
   /**
-   * ============================ THE WATERLINE ============================
+   * THE WATERLINE — eight shore cases. A shore tile IS A WATER TILE:
+   * `autotileEdges(map, x, y, T.WATER)` sets a bit for each side whose neighbour
+   * is not water and the suffix names those sides, so SHORE_N is water with LAND
+   * TO THE NORTH and the bank on its top edge.
    *
-   * Eight shore cases. READ THIS BEFORE WIRING THEM UP.
+   * The margin is a WET one — damp earth, wet earth, a dark lip, foam, then a band
+   * of shallows — sitting a few L* BELOW whatever ground it meets and inside the
+   * water's own value range. (The first version was a sand beach at L* 80 and
+   * took the mean |dL*| across Neverwinter's waterline from 5.42 to 34.15; no map
+   * in the game puts water beside sand, which is why that was backed out.)
    *
-   * WHAT THE SUFFIX MEANS. A shore tile IS A WATER TILE. `autotileEdges(map, x,
-   * y, T.WATER)` sets a bit for each side whose neighbour is NOT water, and the
-   * suffix names those sides — so SHORE_N is water with LAND TO THE NORTH, and
-   * the bank belongs on the tile's TOP edge with open water below it. The old
-   * draw had this exactly backwards (it painted the water strip on the named
-   * side and filled the rest with sand), which is one reason nothing ever
-   * placed one: SHORE_* has 0 uses in map data and 0 at draw time.
-   *
-   * WHY THE PREVIOUS ATTEMPT WAS BACKED OUT, CORRECTLY. The tile used to be a
-   * whole 16x16 of `sand` (L* 79.9) with a 2-8px strip of water cut into it. No
-   * map in this game puts water next to sand: Neverwinter's waterline meets a
-   * cobble quay at L* 48.2 and the Neverwinter Wood river runs through grass at
-   * L* 47.3. Wiring it up therefore laid a bright yellow rectangle over both,
-   * taking the mean |dL*| across the waterline from 5.42 to 34.15 in
-   * Neverwinter and 7.92 to 27.76 in the Wood; and because the sand covered
-   * 10 of the tile's 16 pixels, the Wood's 1-2 tile wide river broke into
-   * disconnected blue pools sitting inside yellow squares.
-   *
-   * WHAT IT IS NOW. The tile is WATER, all the way across, and only a 2-6px
-   * margin along each named side is bank. That margin is a WET one — `silt`
-   * (41.6), `siltM` (34.2), `siltD` (30.4) — sitting a few L* BELOW whatever
-   * ground it meets and inside the water's own value range, so a river through
-   * grass gets a dark damp bank instead of a beach, and a river that is one
-   * tile wide still has 10-12 pixels of water down the middle of it.
-   *
-   * WHY THE LINE DOES NOT STEP AT A TILE BORDER. The margin's depth is
-   *     base + A1 sin(pi i/15) + A2 sin(2 pi i/15) + jag[i]
-   * Both sines are zero at i = 0 and i = 15, so the only thing that decides the
-   * depth at the two pixels a neighbour can see is `jag`, which comes from the
-   * FAMILY-fixed generator, plus a 0/1 lift taken from the SHARED-EDGE VARIANT
-   * (see `edgeVariantAt`): tile A's right-hand end and tile B's left-hand end
-   * hash the SAME border coordinate, so they compute the same depth without
-   * either tile ever looking at the other. The line is continuous across every
-   * seam and still moves from seam to seam.
-   *
-   * Every r() call happens before anything reads `f`, so the coastline is
-   * identical in all four wave frames and cannot shimmer.
-   *
-   * The variant is the four edge codes, so `v` is NOT a free parameter here —
-   * `sr(v)` still gives a stable per-tile speckle, it just happens to be shared
-   * by tiles whose four borders hash alike.
+   * The line cannot step at a tile border: its depth is a sine series that
+   * vanishes at both ends plus a jag keyed to the SHARED-EDGE VARIANT (see
+   * `edgeVariantAt`), so two neighbours compute the same depth where they meet
+   * without either looking at the other. tiles_terrain.js `bank()` holds the
+   * geometry and the paint.
    */
-  /**
-   * ONE PROFILE PER SHARED-EDGE VARIANT, not one per family.
-   *
-   * The first version of this built a SINGLE 16-entry jag and gave the two sine
-   * terms an amplitude of 1, whose `Math.round` is zero everywhere except the
-   * middle third. The result measured exactly what that predicts: the quay's
-   * edge depth autocorrelated 0.49 at lag 16 and 0.48 at lag 32, per-tile depth
-   * SD was 0.00 at pixels 1 and 14 across all 36 shore tiles, and because the
-   * foam index was `(i * 16 + d)` with d identical, even the foam pixels were
-   * the same 36 times. One scallop, stamped.
-   *
-   * There are sixteen of everything now, indexed by the tile's shared-edge
-   * variant — the one piece of per-position information a tile cached by
-   * (id, variant, frame) is allowed to have. Continuity is untouched because
-   * every term still VANISHES at i = 0 and i = 15:
-   *
-   *   * each jag profile is zero at both ends by construction;
-   *   * the wander is a sine SERIES, sin(k*pi*i/15) for k = 1, 2, 3, which is
-   *     zero at both ends for every integer k — so a per-variant amplitude on
-   *     each harmonic buys three independent degrees of shape freedom without
-   *     moving the two pixels the neighbour can see. Rounding the SUM rather
-   *     than each term is what lets an amplitude below 1 still change the line;
-   *   * the foam and grit indices carry the variant in the middle of the run,
-   *     but at i = 0 and i = 15 they are drawn from the SHARED border bit, which
-   *     both neighbours hash identically.
-   */
-  const BANK_JAG = [], BANK_AMP = [];
-  for (let vi = 0; vi < 16; vi++) {
-    const f = fr(SEAM.bank + vi * 37);
-    const row = new Int8Array(16);
-    // ends stay 0: they belong to the shared edge, not to this tile's variant
-    for (let i = 1; i < 15; i++) row[i] = f() < 0.34 ? 1 : 0;
-    BANK_JAG.push(row);
-    BANK_AMP.push([(f() * 2 - 1), (f() * 2 - 1) * 0.7, (f() * 2 - 1) * 0.5]);
-  }
-  const BANK_RIP = []; { const f = fr(SEAM.bank + 1); for (let i = 0; i < 256; i++) BANK_RIP.push(f() < 0.24); }
-
-  /**
-   * One bank margin along one side.
-   *   vi     the tile's 4-bit shared-edge variant (see edgeVariantAt)
-   *   horiz  true for the N/S sides (the margin runs left-to-right)
-   *   far    true for the S/E sides (the margin hugs row/col 15)
-   *   tone   [outer damp, wet, lip, shallow, grit] — silt for a natural bank,
-   *          the quay tones for a built one
-   *   base   how deep the margin is at its shallowest
-   *   amp    how far it is allowed to wander
-   */
-  function bank(c, x, y, vi, horiz, far, tone, base, amp) {
-    // The two ends: one bit each from the borders this side actually touches.
-    const e0 = (vi >> (horiz ? 0 : 2)) & 1, e1 = (vi >> (horiz ? 1 : 3)) & 1;
-    // …and everything between them from this tile's own variant.
-    const jag = BANK_JAG[vi], am = BANK_AMP[vi];
-    const a1 = am[0] * amp, a2 = am[1] * amp, a3 = am[2] * amp;
-    for (let i = 0; i < 16; i++) {
-      const end = i === 0 ? e0 : (i === 15 ? e1 : 0);
-      let d = base + end + jag[i]
-        + Math.round(a1 * Math.sin(Math.PI * i / 15)
-          + a2 * Math.sin(2 * Math.PI * i / 15)
-          + a3 * Math.sin(3 * Math.PI * i / 15));
-      if (d < 2) d = 2; if (d > 7) d = 7;
-      for (let k = 0; k < d + 2; k++) {
-        // k counts INWARD from the land: damp, wet, the dark lip at the
-        // waterline, then two rows of silty shallow before open water
-        const col = k < d - 2 ? tone[0] : (k === d - 2 ? tone[1] : (k === d - 1 ? tone[2] : tone[3]));
-        const px = horiz ? i : (far ? 15 - k : k), py = horiz ? (far ? 15 - k : k) : i;
-        mark(c, col, x, y, px, py, 1, 1);
-      }
-      // A foam fleck where the water laps, and grit in the damp. Both indices
-      // carry the variant so 36 shore tiles are not 36 identical sets of
-      // flecks — except on the two end columns, which the neighbour also
-      // paints and which therefore key off the shared border bit instead.
-      const es = i === 0 ? e0 : e1;
-      const fs = (i === 0 || i === 15) ? es * 83 + 41 : vi * 53 + i * 16;
-      const gs = (i === 0 || i === 15) ? es * 61 + 19 : vi * 29 + i * 7;
-      if (BANK_RIP[(fs + d) & 255]) {
-        const fx = horiz ? i : (far ? 15 - d : d), fy = horiz ? (far ? 15 - d : d) : i;
-        mark(c, PAL.foam, x, y, fx, fy, 1, 1);
-      }
-      if (BANK_RIP[(gs + 3) & 255] && d > 2) {
-        const gx = horiz ? i : (far ? 15 : 0), gy = horiz ? (far ? 15 : 0) : i;
-        mark(c, tone[4], x, y, gx, gy, 1, 1);
-      }
-    }
-  }
-
-  const SILT_BANK = [PAL.silt, PAL.siltM, PAL.siltD, PAL.shallowD, PAL.siltM];
-  const QUAY_BANK = [PAL.quay, PAL.quayD, PAL.deepD, PAL.shallowD, PAL.quayL];
-
-  const shoreFamily = (prefix, label, tone, base, amp) => {
+  const shoreFamily = (prefix, label, quay) => {
     const one = (key, sides) => def(key, label, WATER | SLOW,
       { group: 'water', biomes: ['coast', 'plains'], variants: 16, edgeVariant: true, animFrames: 4, fps: 3 },
-      (c, x, y, v, vi, f) => {
-        // Seeded from the VARIANT, not from the tile id: a water tile that needs
-        // banks on three sides is drawn as two members clipped to two halves of
-        // the tile, and if SHORE_N and SHORE_S speckled their open water
-        // differently the clip line would itself be a seam. Every member of every
-        // shore family paints the same water for the same edge variant.
-        const r = fr(0x51 + vi);
-        R(c, PAL.water, x, y, 16, 16);
-        for (let i = 0; i < 5; i++) { const lw = 4 + Math.floor(r() * 5); mark(c, PAL.waterD, x, y, inX(r, lw), inY(r, 1), lw, 1); }
-        // The drifting crest goes on BEFORE the banks, so a wave never rides up
-        // over the silt on a tile whose margin runs deep. Its geometry used to
-        // be four literals — the same two dashes at the same two tile
-        // coordinates on all 36 shore tiles, which is a stamp however the
-        // frames animate it. Everything but the frame offset now comes from the
-        // variant, and every r() call still happens before `f` is read, so the
-        // waterline cannot shimmer between wave frames.
-        const cy0 = 3 + Math.floor(r() * 6), cw = 4 + Math.floor(r() * 3);
-        const cx0 = 2 + Math.floor(r() * 7), cx1 = 1 + Math.floor(r() * 8), cgap = 2 + Math.floor(r() * 3);
-        const cy = cy0 + ((f * 3) % 7);
-        mark(c, PAL.waterL, x, y, cx0, cy, cw, 1);
-        mark(c, PAL.waterL, x, y, cx1, cy + cgap, cw - 1, 1);
-        if (sides.includes('N')) bank(c, x, y, vi, true, false, tone, base, amp);
-        if (sides.includes('S')) bank(c, x, y, vi, true, true, tone, base, amp);
-        if (sides.includes('W')) bank(c, x, y, vi, false, false, tone, base, amp);
-        if (sides.includes('E')) bank(c, x, y, vi, false, true, tone, base, amp);
-      });
+      (c, x, y, v, vi, f) => TR.paintShore(c, x, y, vi, f, sides, quay));
     one(`${prefix}_N`, ['N']); one(`${prefix}_E`, ['E']); one(`${prefix}_S`, ['S']); one(`${prefix}_W`, ['W']);
     one(`${prefix}_NE`, ['N', 'E']); one(`${prefix}_SE`, ['S', 'E']);
     one(`${prefix}_SW`, ['S', 'W']); one(`${prefix}_NW`, ['N', 'W']);
   };
   // SHORE_* — the natural bank. Silt and soaked earth: use it wherever the
   // water meets grass, dirt, mud, sand, gravel or farmland.
-  shoreFamily('SHORE', 'Shore', SILT_BANK, 4, 2);
+  shoreFamily('SHORE', 'Shore', false);
 
+  // A hand-drawn river corner with its own bank sweeping through the lower left
+  // (no map places it; the waterline pass draws bends from SHORE_* instead).
   def('RIVER_BEND', 'River Bend', WATER | SLOW, { group: 'water', biomes: ['plains', 'forest'], variants: 1, animFrames: 4, fps: 3 },
-    (c, x, y, v, w, f) => {
-      const r = sr(v);
-      R(c, PAL.water, x, y, 16, 16);
-      // a bank sweeping through the lower-left corner
-      blob(c, PAL.sand, x, y, [[9, 0, 3], [10, 0, 5], [11, 0, 7], [12, 0, 9], [13, 0, 11], [14, 0, 13], [15, 0, 16]]);
-      blob(c, PAL.foam, x, y, [[9, 3, 1], [10, 5, 1], [11, 7, 1], [12, 9, 1], [13, 11, 1], [14, 13, 1]]);
-      for (let i = 0; i < 4; i++) H(c, PAL.waterD, x + Math.floor(r() * 8), y + Math.floor(r() * 9), 5);
-      H(c, PAL.waterL, x + 4, y + ((f * 3 + 1) % 8), 7);
-    });
+    (c, x, y, v, w, f) => TR.paintRiverBend(c, x, y, v, f));
 
-  /**
-   * ICE. Three variants, and both glints written as literal tile coordinates —
-   * `H(iceL, x+2, y+3, 6)` and `H(iceL, x+8, y+10, 5)` — which is a stamp by
-   * construction: every third tile of a frozen lake was pixel-identical and the
-   * two bright dashes recurred on the same rows forever (per-column mean L*
-   * autocorrelated 0.38 at lag 16, and by eye it was worse than that number).
-   * Six variants now, and the cracks, the glints and the frost are all placed
-   * by the hash; the cracks are kept inboard so one never ends dead on a tile
-   * border, and `seam` supplies the ring's own frost, wrapped, so the border
-   * carries ice rather than a clean line.
-   */
-  def('ICE', 'Ice', SLOW, { group: 'ice', biomes: ['tundra', 'mountain'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.ice, x, y, 16, 16);
-    for (let i = 0; i < 3; i++) {
-      let cx = 1 + Math.floor(r() * 13), cy = 1 + Math.floor(r() * 7);
-      const len = 4 + Math.floor(r() * 6);
-      for (let s = 0; s < len; s++) { mark(c, PAL.iceD, x, y, cx, cy, 1, 1); cx += r() < 0.5 ? 1 : 0; cy += 1; if (cy > 14) break; }
-    }
-    for (let i = 0; i < 3; i++) { const lw = 4 + Math.floor(r() * 4); mark(c, PAL.iceL, x, y, inX(r, lw), inY(r, 1), lw, 1); }
-    speck(c, PAL.iceL, x, y, 5, r);
-    speck(c, PAL.iceD, x, y, 3, r);
-    // No `seam` here, deliberately. Ice's border ring already measured QUIETER
-    // than its interior (grid-visibility 0.24), so the ring needs nothing — and
-    // a family-fixed ring is by construction identical on every tile, which on a
-    // surface this flat is itself a 16px rhythm: adding one took the per-column
-    // autocorrelation at lag 16 from 0.38 to 0.80. Variants and hashed placement
-    // are the whole fix here.
-  });
+  // --- snow and ice: tiles_terrain.js section 8 ------------------------------
+  def('ICE', 'Ice', SLOW, { group: 'ice', biomes: ['tundra', 'mountain'], variants: 6 }, TR.paintIce);
+  def('SNOW', 'Snow', SLOW, { group: 'snow', biomes: ['tundra', 'mountain'], variants: 8 }, TR.paintSnow);
+  def('SNOW_GRASS', 'Snowy Grass', 0, { group: 'snow', biomes: ['tundra', 'pine-forest'], variants: 6 }, TR.paintSnowGrass);
 
-  def('SNOW', 'Snow', SLOW, { group: 'snow', biomes: ['tundra', 'mountain'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.snow, x, y, 16, 16);
-    speck(c, PAL.snowD, x, y, 10, r);
-    for (let i = 0; i < 3; i++) mark(c, PAL.snowS, x, y, inX(r, 5), inY(r, 1), 5, 1);
-    seam(c, x, y, SEAM.snow, SEAM_TONE.snow, 5, 4, 3);
-  });
+  def('SWAMP_WATER', 'Bog Water', WATER | SLOW | ENCOUNTER, { group: 'water', biomes: ['marsh'], variants: 6, animFrames: 2, fps: 1.5 },
+    (c, x, y, v, w, f) => TR.paintBog(c, x, y, v, f));
 
-  /**
-   * SNOWY GRASS. Every blade used to be drawn as `16 - (by - y)` tall — i.e.
-   * from wherever it started down to the tile's LAST ROW and no further. So the
-   * bottom row of every tile was a picket of dark grass and the top row of the
-   * tile below was clean snow: a 15.9 mean |dL*| line, by a distance the worst
-   * horizontal seam in the tileset (interior 7.2, ratio 2.20). The blades are
-   * inboard now, and `seam` grows a family-fixed set that really does cross the
-   * border, half on each tile.
-   */
-  def('SNOW_GRASS', 'Snowy Grass', 0, { group: 'snow', biomes: ['tundra', 'pine-forest'], variants: 3 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.snow, x, y, 16, 16);
-    speck(c, PAL.snowD, x, y, 6, r);
-    for (let i = 0; i < 8; i++) {
-      const bh = 2 + Math.floor(r() * 4);
-      const bx = x + 1 + Math.floor(r() * 14), by = y + 1 + Math.floor(r() * (14 - bh));
-      R(c, PAL.grassD, bx, by, 1, bh); P(c, PAL.grass, bx, by);
-    }
-    // the tufts that cross the seam: one 1px column, family-fixed, drawn on
-    // both sides of the tile so the blade continues onto the neighbour
-    const f = fr(SEAM.snowGrass);
-    for (let i = 0; i < 5; i++) {
-      const t = 1 + Math.floor(f() * 13), bh = 2 + Math.floor(f() * 3), k = 1 + Math.floor(f() * (bh - 1));
-      if (i & 1) { mark(c, PAL.grassD, x, y, 16 - k, t, bh, 1); mark(c, PAL.grassD, x, y, -k, t, bh, 1); }
-      else { mark(c, PAL.grassD, x, y, t, 16 - k, 1, bh); mark(c, PAL.grassD, x, y, t, -k, 1, bh); }
-    }
-    seam(c, x, y, SEAM.snow, SEAM_TONE.snow, 4, 3, 3);
-  });
-
-  def('SWAMP_WATER', 'Bog Water', WATER | SLOW | ENCOUNTER, { group: 'water', biomes: ['marsh'], variants: 2, animFrames: 2, fps: 1.5 },
-    (c, x, y, v, w, f) => {
-      const r = sr(v);
-      R(c, PAL.swamp, x, y, 16, 16);
-      for (let i = 0; i < 7; i++) R(c, PAL.swampD, x + Math.floor(r() * 12), y + Math.floor(r() * 14), 4, 2);
-      for (let i = 0; i < 6; i++) P(c, PAL.scum, x + ((Math.floor(r() * 16) + f) % 16), y + Math.floor(r() * 16));
-      H(c, PAL.swampL, x + 2 + f, y + 5, 5); H(c, PAL.swampL, x + 8 - f, y + 11, 4);
-    });
-
-  def('LILY_PAD', 'Lily Pad', 0, { layer: 'deco', group: 'plant', biomes: ['marsh'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    const ox = Math.floor(r() * 4), oy = Math.floor(r() * 4);
-    const pad = [[0, 3, 5], [1, 1, 9], [2, 0, 11], [3, 0, 11], [4, 1, 9], [5, 3, 5]];
-    foot(c, x + ox, y + oy, 0, 11, 5, 0.8);          // the pad darkens the water it floats on
-    outline(c, PAL.leafXD, x + ox, y + oy, pad);
-    blob(c, PAL.leaf, x + ox, y + oy, pad);
-    blob(c, PAL.leafD, x + ox, y + oy, [[3, 5, 6], [4, 5, 5], [5, 5, 3]]);
-    H(c, PAL.leafL, x + ox + 3, y + oy + 1, 4);
-    V(c, PAL.swampD, x + ox + 5, y + oy + 2, 3);
-    if (r() < 0.5) { P(c, '#e8a8c8', x + ox + 8, y + oy + 2); P(c, '#f4d0e0', x + ox + 8, y + oy + 1); }
-  });
+  def('LILY_PAD', 'Lily Pad', 0, { layer: 'deco', group: 'plant', biomes: ['marsh'], variants: 5 }, TR.paintLilies);
 
   // --- 4.6 volcanic --------------------------------------------------------
   def('LAVA', 'Lava', SOLID | DAMAGE, { group: 'lava', biomes: ['ash-waste', 'underdark', 'cave'], variants: 2, animFrames: 4, fps: 4 },
@@ -1589,27 +1045,17 @@ function buildTiles() {
   });
 
   // --- 4.7 built floors ----------------------------------------------------
-  def('STONE_FLOOR', 'Stone Floor', 0, { group: 'floor', biomes: ['dungeon', 'ruins', 'city', 'crypt'], variants: 3 },
-    (c, x, y, v) => { const r = sr(v); stoneSlabs(c, x, y, PAL.stone, PAL.stoneG, PAL.stoneL); speck(c, PAL.stoneM, x, y, 3, r); });
-
-  def('STONE_FLOOR_CRACKED', 'Cracked Floor', 0, { group: 'floor', biomes: ['dungeon', 'ruins', 'crypt'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v); stoneSlabs(c, x, y, PAL.stone, PAL.stoneG, PAL.stoneL);
-      for (let i = 0; i < 2; i++) {
-        let cx = x + 2 + Math.floor(r() * 11), cy = y + 1 + Math.floor(r() * 5);
-        for (let s = 0; s < 8; s++) { P(c, PAL.stoneD, cx, cy); cx += r() < 0.5 ? 1 : (r() < 0.5 ? -1 : 0); cy++; if (cy > y + 15 || cx < x || cx > x + 15) break; }
-      }
-      speck(c, PAL.stoneD, x, y, 5, r);
-    });
-
-  def('CAVE_FLOOR', 'Cave Floor', 0, { group: 'floor', biomes: ['cave', 'mine', 'underdark'], variants: 4 },
-    (c, x, y, v) => { caveBase(c, x, y, sr(v)); });
-
-  def('CAVE_FLOOR_RUBBLE', 'Rubbled Floor', SLOW, { group: 'floor', biomes: ['cave', 'mine', 'underdark'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v); caveBase(c, x, y, r);
-      for (let i = 0; i < 9; i++) { const px = x + Math.floor(r() * 14), py = y + Math.floor(r() * 15); R(c, PAL.stone, px, py, 2, 1); P(c, PAL.stoneL, px, py); }
-    });
+  // Cave and dungeon floors are painted by render/tiles_terrain.js section 11:
+  // bedded stones, cracks, puddles and moss underground; flagstone and stone
+  // brick in one cool stone for dungeons. The flagstones are cut per variant
+  // (the variant index picks the cut); the brick is edge-variant so a brick
+  // that straddles a border is one brick on both sides.
+  def('STONE_FLOOR', 'Stone Floor', 0, { group: 'floor', biomes: ['dungeon', 'ruins', 'city', 'crypt'], variants: 16 },
+    (c, x, y, v, vi) => TR.paintFlagstones(c, x, y, v, vi, false));
+  def('STONE_FLOOR_CRACKED', 'Cracked Floor', 0, { group: 'floor', biomes: ['dungeon', 'ruins', 'crypt'], variants: 16 },
+    (c, x, y, v, vi) => TR.paintFlagstones(c, x, y, v, vi, true));
+  def('CAVE_FLOOR', 'Cave Floor', 0, { group: 'floor', biomes: ['cave', 'mine', 'underdark'], variants: 8 }, TR.paintCaveFloor);
+  def('CAVE_FLOOR_RUBBLE', 'Rubbled Floor', SLOW, { group: 'floor', biomes: ['cave', 'mine', 'underdark'], variants: 6 }, TR.paintCaveRubble);
 
   def('WOOD_FLOOR', 'Wood Floor', 0, { group: 'floor', biomes: ['city'], variants: 3 }, (c, x, y, v) => {
     const r = sr(v); plankRun(c, x, y, true, PAL.wood, PAL.woodD, PAL.woodL);
@@ -1623,64 +1069,15 @@ function buildTiles() {
     P(c, PAL.ink, x + 3, y + 1); P(c, PAL.ink, x + 12, y + 9);
   });
 
-  const carpet = (key, label, base, dark, light) => def(key, label, 0, { group: 'floor', biomes: ['city', 'dungeon'], variants: 2 },
-    (c, x, y) => {
-      R(c, base, x, y, 16, 16);
-      O(c, PAL.gold, x, y, 16, 16); O(c, dark, x + 1, y + 1, 14, 14);
-      R(c, light, x + 7, y + 5, 2, 2); R(c, light, x + 3, y + 9, 2, 2); R(c, light, x + 11, y + 9, 2, 2);
-      P(c, PAL.goldL, x + 7, y + 5); P(c, PAL.goldL, x + 3, y + 9); P(c, PAL.goldL, x + 11, y + 9);
-    });
-  carpet('CARPET_RED', 'Red Carpet', PAL.red, PAL.redD, PAL.redL);
-  carpet('CARPET_BLUE', 'Blue Carpet', PAL.blue, PAL.blueD, PAL.blueL);
+  // Rugs: the authored key is the middle of a rug; resolveArch() gives every
+  // tile on its edge the member with the border on that side (tiles_arch.js 6).
+  def('CARPET_RED', 'Red Carpet', 0, { group: 'floor', biomes: ['city', 'dungeon'], variants: 1 }, (c, x, y, v) => AR.paintRug(c, x, y, v, 15, 'red'));
+  def('CARPET_BLUE', 'Blue Carpet', 0, { group: 'floor', biomes: ['city', 'dungeon'], variants: 1 }, (c, x, y, v) => AR.paintRug(c, x, y, v, 15, 'blue'));
 
-  def('MOSAIC', 'Mosaic', 0, { group: 'floor', biomes: ['city', 'ruins', 'dungeon'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.stoneL, x, y, 16, 16);
-    O(c, PAL.stoneD, x, y, 16, 16);
-    blob(c, PAL.blue, x, y, [[3, 7, 2], [4, 6, 4], [5, 5, 6], [6, 4, 8], [7, 3, 10], [8, 4, 8], [9, 5, 6], [10, 6, 4], [11, 7, 2]]);
-    blob(c, PAL.gold, x, y, [[5, 7, 2], [6, 6, 4], [7, 5, 6], [8, 6, 4], [9, 7, 2]]);
-    P(c, PAL.goldL, x + 7, y + 7);
-    if (r() < 0.5) { P(c, PAL.redD, x + 1, y + 1); P(c, PAL.redD, x + 14, y + 14); }
-  });
+  def('MOSAIC', 'Mosaic', 0, { group: 'floor', biomes: ['city', 'ruins', 'dungeon'], variants: 16, edgeVariant: true }, AR.paintMosaic);
 
-  // Course rows offset by 1 so neither the dark mortar nor the lit brick-top
-  // lands on a tile border (they used to abut across every seam). The HEAD
-  // joints had the same fault in the other axis: `off + i*8` put a dark vertical
-  // joint on column 0 of every other course and none on column 15, so the
-  // vertical seam was dark|light where an interior joint is light|dark|light.
-  // `+2` walks them to columns 2/10 and 6/14, clear of the border.
-  def('DUNGEON_FLOOR', 'Dungeon Brick', 0, { group: 'floor', biomes: ['dungeon', 'crypt', 'underdark'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      R(c, PAL.dgn, x, y, 16, 16);
-      // The course cycle is 4 rows — base, lit brick top, base, dark bed — so
-      // whichever phase the tile border lands on is the phase it lands on
-      // everywhere. It used to land on (dark bed | base), the loudest pair in
-      // the cycle. Starting the run at row -1 puts the LIT top on row 15 and
-      // base on row 0, the quietest pair, and `mark` clips the two courses that
-      // now hang off the ends.
-      for (let row = -1; row < 4; row++) {
-        const oy = row * 4 + 3, off = (row % 2) ? 4 : 0;
-        mark(c, PAL.dgnD, x, y, 0, oy + 2, 16, 1);
-        for (let i = -1; i < 3; i++) mark(c, PAL.dgnD, x, y, off + i * 8 + 7, oy, 1, 2);
-        mark(c, PAL.dgnM, x, y, 0, oy, 16, 1);
-      }
-      speck(c, PAL.dgnL, x, y, 5, r);
-    });
-
-  def('BONE_FLOOR', 'Bone-strewn Floor', SLOW, { group: 'floor', biomes: ['crypt', 'dungeon', 'cave'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      R(c, PAL.dgn, x, y, 16, 16);
-      for (let row = 0; row < 4; row++) H(c, PAL.dgnD, x, y + row * 4 + 3, 16);
-      for (let i = 0; i < 3; i++) {
-        const bx = x + Math.floor(r() * 11), by = y + Math.floor(r() * 14);
-        R(c, PAL.bone, bx, by, 4, 1); P(c, PAL.boneL, bx, by); P(c, PAL.boneD, bx + 3, by + 1);
-      }
-      // a small skull
-      const sx = x + 2 + Math.floor(r() * 9), sy = y + 3 + Math.floor(r() * 8);
-      R(c, PAL.bone, sx, sy, 4, 3); P(c, PAL.ink, sx + 1, sy + 1); P(c, PAL.ink, sx + 2, sy + 1);
-    });
+  def('DUNGEON_FLOOR', 'Dungeon Brick', 0, { group: 'floor', biomes: ['dungeon', 'crypt', 'underdark'], variants: 16, edgeVariant: true }, TR.paintDungeonFloor);
+  def('BONE_FLOOR', 'Bone-strewn Floor', SLOW, { group: 'floor', biomes: ['crypt', 'dungeon', 'cave'], variants: 16, edgeVariant: true }, TR.paintBoneFloor);
 
   // --- 4.8 walls -----------------------------------------------------------
   //
@@ -1857,60 +1254,12 @@ function buildTiles() {
       seam(c, x, y, SEAM.brick, SEAM_TONE.brick, 7, 3, 3);
     });
 
-  // Phandalin's houses: fieldstone footing, lime plaster, dark timber framing.
-  //
-  // This was the single worst thing in `phandalin-facade-8x.png`. It put a 2px
-  // `woodD` post at BOTH edges of every tile, so a facade grew a 4px black bar
-  // every 16 pixels; it put a head beam on rows 0-1 and a sill on rows 13-15,
-  // so a two-storey wall grew a 5px black bar at its own middle; and its two
-  // declared variants differed on 1.6% of their pixels at mean dE 0.20 — 36
-  // byte-identical panels in `field-wattle_wall.png`.
-  //
-  // Half-timbering really does have a rail at every storey and a post every few
-  // feet. The rail is now at rows 7-8, in the MIDDLE of the tile, so a stack of
-  // storeys gets one rail per storey and the tile border falls in the middle of
-  // a plaster panel instead of inside a beam. The post is 2px at columns 0-1
-  // only, gated on the shared left-border bit — the tile to the left reads the
-  // same bit as its right border and knows not to draw one, so a post is never
-  // doubled and never lands on every seam.
-  def('WATTLE_WALL', 'Timber Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 16, edgeVariant: true },
-    (c, x, y, v, vi) => {
-      const r = sr(v);
-      R(c, PAL.plaster, x, y, 16, 16);
-      // the panel is very slightly darker toward the foot, which is the only
-      // vertical modelling a flat lime panel can carry without banding
-      R(c, PAL.plasterM, x, y + 9, 16, 6);
-      // 1px speckle over the WHOLE tile, ring included — lime render weathers,
-      // and without it rows 0/15 were flat `plaster` and the border measured
-      // |dL*| 0.60 against an interior of 9.59, which is a picture frame, not a
-      // matched seam (see the ground pass's note two sections up).
-      speck(c, PAL.plasterD, x, y, 12, r);
-      speck(c, PAL.plasterM, x, y, 10, r);
-      speck(c, PAL.plasterG, x, y, 5, r);
-      dashesI(c, PAL.plasterM, x, y, 4, r, 3);
-      // The frame. POSTS stand between the rails, so one post spans rows 9-15 of
-      // this tile and rows 0-6 of the tile below — and its column comes from the
-      // SHARED horizontal border (bit 3 here is bit 2 there), so the two halves
-      // are the same post and a two-storey facade has continuous framing. The
-      // rail is the only member on the tile's own border-free middle, and
-      // nothing touches row 0 or row 15, which is the whole reason the plaster
-      // now runs on into the storey above instead of hitting a 5px beam.
-      const pT = 3 + ((vi >> 2) & 1) * 8, pB = 3 + ((vi >> 3) & 1) * 8;
-      const post = (px, y0, h) => { mark(c, PAL.woodD, x, y, px, y0, 2, h); mark(c, PAL.wood, x, y, px, y0, 1, h); };
-      post(pT, 0, 7); post(pB, 9, 7);
-      R(c, PAL.woodD, x, y + 7, 16, 2);
-      H(c, PAL.wood, x, y + 7, 16);
-      H(c, PAL.plasterG, x, y + 9, 16);
-      // Braces spring from the rail and lean away from the post. Mirrored on the
-      // odd variants: every brace in the game used to run the same way, which is
-      // half of why a street read as one stamp repeated.
-      const dir = (vi & 1) ? 1 : -1, o = dir < 0 ? -2 : 2;
-      for (let i = 0; i < 5; i++) {
-        mark(c, PAL.woodD, x, y, pT + o + dir * i, 5 - i, 2, 1);
-        mark(c, PAL.woodD, x, y, pB + o + dir * i, 10 + i, 2, 1);
-      }
-      seam(c, x, y, SEAM.plaster, SEAM_TONE.plaster, 8, 3, 3);
-    });
+  // Phandalin's houses: fieldstone footing, cream lime panels, dark oak framing.
+  // Painted by render/tiles_arch.js paintWattle, which keeps this pass's post
+  // and rail rules (rail mid-tile, posts agreed through the shared border bits)
+  // and drops the brace from every tile to one in five, which was what made a
+  // street of these read as one K-shaped stamp.
+  def('WATTLE_WALL', 'Timber Wall', SOLID, AR.WALL_OPTS, AR.paintWattle);
 
   // Logs run horizontally, so a log IS a course: lit upper lip, body, shaded
   // underside. It was drawn on a 4px grid aligned to the tile, so the tile
@@ -2009,16 +1358,7 @@ function buildTiles() {
   // The old `contact()` here was painted over immediately by the base plinth, so
   // it never rendered. A pillar fills the tile top to bottom, so it gets a
   // keyline and an occlusion row instead of a cast shadow.
-  def('PILLAR', 'Pillar', SOLID, { layer: 'deco', group: 'wall', biomes: ['dungeon', 'ruins', 'city', 'crypt'], variants: 1 },
-    (c, x, y) => {
-      outlineBox(c, PAL.stoneXD, x, y, 2, 0, 12, 16);
-      R(c, PAL.stoneL, x + 2, y, 12, 3); H(c, PAL.stoneH, x + 2, y, 12); H(c, PAL.stoneD, x + 2, y + 3, 12);
-      R(c, PAL.stone, x + 4, y + 3, 8, 10);
-      V(c, PAL.stoneL, x + 4, y + 3, 10); V(c, PAL.stoneH, x + 5, y + 3, 10);
-      V(c, PAL.stoneD, x + 9, y + 3, 10); V(c, PAL.stoneXD, x + 11, y + 3, 10);
-      R(c, PAL.stoneL, x + 2, y + 12, 12, 3); H(c, PAL.stoneH, x + 2, y + 12, 12);
-      R(c, PAL.stoneXD, x + 1, y + 15, 14, 1);
-    });
+  def('PILLAR', 'Pillar', SOLID, { layer: 'deco', group: 'wall', biomes: ['dungeon', 'ruins', 'city', 'crypt'], variants: 1 }, (c,x,y,v)=>paintProp(c,x,y,'pillar',v));
 
   def('TIMBER_SUPPORT', 'Mine Support', SOLID, { layer: 'deco', group: 'wall', biomes: ['mine', 'cave'], variants: 1 },
     (c, x, y) => {
@@ -2029,70 +1369,20 @@ function buildTiles() {
     });
 
   /**
-   * CAVE WALL. It used to be the same 3x2-blob noise as CAVE_FLOOR painted on
-   * `caveD` instead of `cave` — ΔE 5.0 from the floor, which is at the just-
-   * noticeable difference for two large adjacent patches. In a cave you
-   * genuinely could not tell floor from wall. The wall now has its own family
-   * (`caveWD` base, a full step below the floor's darkest speckle), a lit
-   * upper-left, a shaded lower-right, and a 2px occlusion band along the south
-   * face so it reads as an extruded mass rather than a texture swap.
-   * `lit` names the sides that face open floor.
+   * CAVE WALL and CLIFF — rock masses (tiles_terrain.js section 10). The bare
+   * key is the interior of a mass: broken plates on a torus tessellation, so a
+   * mass has no 16px lattice. The eight members carry the mass's form: a lit
+   * rim where its top breaks away to the north and west, a shaded rim east, and
+   * on the south a real face — lit lip, columnar fractures, talus at the foot.
+   * `lit` names the sides that face open ground; `resolveTileMasses()` (section
+   * 7) bakes the right member onto every edge of a mass when a map is built.
+   *
+   * All are edge-variant: a plate that crosses a border takes its tone from
+   * that border's shared bit, and the south face's lip height meets its
+   * neighbour's exactly.
    */
-  const caveWall = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['cave', 'mine', 'underdark'], variants: lit ? 6 : 10 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      R(c, PAL.caveWD, x, y, 16, 16);
-      // The blobs used to run `px` to x+11 with `w` to 5 and `py` to y+11 with
-      // `h` to 4 — so a third of them were sliced by the tile box and ended in
-      // mid-air at the seam. Inboard, exactly as the eleven ground families do,
-      // and the ring is put back by `seam()` from the family-fixed generator so
-      // the two halves of a mark really are one mark.
-      for (let i = 0; i < 10; i++) {
-        const w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3);
-        const px = inX(r, w), py = inY(r, h);
-        // the higher a boss of rock sits on the face the more of the light it
-        // catches — a grade spent entirely on rows 1-14, so rows 0 and 15 stay
-        // the tone both neighbours agree on and the mass has no 16px sawtooth
-        const hi = py < 7;
-        mark(c, r() < 0.45 ? PAL.caveWM : PAL.caveW, x, y, px, py, w, h);
-        mark(c, r() < (hi ? 0.85 : 0.35) ? PAL.caveWL : PAL.caveW, x, y, px, py, w, 1);
-        mark(c, PAL.caveWG, x, y, px + 1, py + h, w - 1, 1);              // and its underside
-      }
-      for (let i = 0; i < 3; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.caveWG, x, y, inX(r, w), inY(r, 3), w, 3); }
-      // 1px grit over the WHOLE tile, ring included: the blobs are inboard now,
-      // so without this the outer ring would be flat `caveWD` in every variant
-      // and a wall of them would still correlate at lag 16.
-      speck(c, PAL.caveWL, x, y, 8, r);
-      speck(c, PAL.caveWG, x, y, 10, r);
-      speck(c, PAL.caveWM, x, y, 8, r);
-      speck(c, PAL.caveW, x, y, 8, r);
-      seam(c, x, y, SEAM.caveWall, SEAM_TONE.caveWall, 10, 4, 3);
-      // Height cues go on the `lit` cases only. A CAVE_WALL with no lit side is
-      // the INTERIOR of a rock mass — ringing it would just put the 16px grid
-      // back, which is the thing this pass exists to remove. This was already
-      // true here and it is why CAVE_WALL, at 0.71, was the ONLY wall in the
-      // file that passed the ground's grid-visibility test; every other family
-      // has now been rebuilt to match it. What the members lacked was contrast
-      // BETWEEN themselves — nine near-copies of the base plus a 1-2px rim —
-      // so each named side now carries an irregular 2-4px lip rather than a
-      // ruler-straight one, and the tones are pulled in to the cave-rock ramp
-      // instead of reaching for the floor family's highlights.
-      if (lit.includes('N')) {
-        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 5 + v) % 3); mark(c, PAL.caveWL, x, y, i, 0, 2, d); mark(c, PAL.caveM, x, y, i, 0, 2, 1); }
-      }
-      if (lit.includes('S')) {
-        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 3 + v) % 3); mark(c, PAL.caveWG, x, y, i, 16 - d - 1, 2, d + 1); }
-        R(c, '#1d1913', x, y + 15, 16, 1);
-      }
-      if (lit.includes('W')) {
-        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 7 + v) % 3); mark(c, PAL.caveWL, x, y, 0, i, d, 2); }
-        V(c, PAL.caveL, x, y, 16);
-      }
-      if (lit.includes('E')) {
-        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 11 + v) % 3); mark(c, PAL.caveWG, x, y, 16 - d, i, d, 2); }
-        V(c, '#1d1913', x + 15, y, 16);
-      }
-    });
+  const caveWall = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['cave', 'mine', 'underdark'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => TR.paintCaveWall(c, x, y, v, vi, lit));
   caveWall('CAVE_WALL', 'Cave Wall', '');
   caveWall('CAVE_WALL_N', 'Cave Wall', 'N');
   caveWall('CAVE_WALL_E', 'Cave Wall', 'E');
@@ -2103,123 +1393,8 @@ function buildTiles() {
   caveWall('CAVE_WALL_SW', 'Cave Wall', 'SW');
   caveWall('CAVE_WALL_NW', 'Cave Wall', 'NW');
 
-  /**
-   * ROCK STRATA — the natural-stone analogue of `coursed`, and built on the
-   * same two ideas. Beds sit on a 4px grid offset by half a bed, so the tile
-   * border falls through the MIDDLE of a stratum instead of on the join between
-   * two, and the stratum that straddles the border is drawn from the
-   * family-fixed generator `fr()` so the tile above and the tile below paint
-   * the two halves of one bed. Nothing is a ruler line: each bed's lit upper
-   * lip is a run of 2-5px dashes that steps a pixel up and down, which is what
-   * a bedding plane in greywacke actually looks like and what the old
-   * `H(c, stoneD, x + r()*6, ly, 6 + r()*5)` — reaching x+15 and getting sliced
-   * — was trying and failing to be.
-   */
-  const strata = (c, x, y, vi, salt, faces, lits, shadeCol) => {
-    const last = faces.length - 1;
-    R(c, faces[last], x, y, 16, 16);
-    for (let k = -1; k < 4; k++) {
-      const top = k * 4 + 2;
-      const straddle = (top < 0 || top + 4 > 16);
-      const i = straddle ? last : k;
-      const rr = straddle ? fr(salt)
-        : sr((salt ^ Math.imul(k + 3, 0x27D4EB2D) ^ Math.imul(vi + 1, 0x165667B1)) >>> 0);
-      mark(c, faces[i], x, y, 0, top, 16, 4);
-      // A bedding plane is a BROKEN line. Drawing it whole, every four rows,
-      // turned the face into corduroy — the first attempt at this measured a
-      // perfect 0.31 grid ratio and still looked like a woven mat, because the
-      // metric only ever asked about the 16px border. Two fifths of each bed is
-      // missing and the rest steps up to two pixels, which is what leaves the
-      // face reading as rock that has been broken rather than laid.
-      let px = 0;
-      while (px < 16) {
-        const w = 3 + Math.floor(rr() * 5);
-        const roll = rr();
-        const j = Math.floor(rr() * 3);
-        if (roll > 0.62) {
-          mark(c, lits[i], x, y, px, top + j, w, 1);
-          if (roll > 0.86) mark(c, shadeCol, x, y, px, top + j + 1, w, 1);
-        }
-        px += w;
-      }
-    }
-  };
-
-  // CLIFFS. 429 tiles on wave-echo-cave-entrance, 1,418 more on the world map,
-  // and the worst measurement in the file: grid-visibility ratio 8.84, border
-  // |dL*| 34.54, row-mean profile 67 -> 16 inside ONE tile. It painted the full
-  // `stone` ramp — stoneH crown, stoneL/stoneD side pinstripes, stoneD+stoneXD
-  // foot band — on every tile, and 399 of the 429 on wave-echo have another
-  // cliff directly below them. `wave-echo-cave-entrance-cliffzoom-8x.png` was a
-  // lattice of grey plaques with a black bar every 16 rows.
-  //
-  // The body is now a continuous strata face on the new warm `rock` ramp — the
-  // old one measured dE76 1.37 from dressed STONE_WALL and 2.42 from a BOULDER,
-  // so a natural rock face, a masonry wall and a granite erratic were one
-  // material — and the crown, the foot and the flanks belong to the eight
-  // members, exactly as they already did for CAVE_WALL.
-  const cliff = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain', 'hills', 'coast'], variants: lit ? 6 : 12 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      strata(c, x, y, v, SEAM.cliff,
-        [PAL.rockL, PAL.rock, PAL.rock, PAL.rock],
-        [PAL.rockH, PAL.rockL, PAL.rockL, PAL.rock], PAL.rockM);
-      // ONE bedding plane per tile, at a row the variant chooses, dividing the
-      // face into big angular plates. This is where the mass gets its form now
-      // that the tile no longer paints a crown and a foot of its own: the light
-      // is committed at the 5-9px scale of the ROCK, not at the 16px scale of
-      // the grid, so it survives being tiled 1,418 times on the world map.
-      //
-      // The plane's own lip and shadow are the only strong horizontal lines in
-      // the tile and they are strictly inboard (rows 2-13), which is the whole
-      // difference between a bedding plane and the black bar the old code put
-      // on rows 14-15 of all 4,520 wall tiles.
-      const hy0 = 4 + Math.floor(r() * 8);
-      const up = [PAL.rockH, PAL.rockL, PAL.rockL, PAL.rock];
-      const lo = [PAL.rockL, PAL.rock, PAL.rock, PAL.rockM];
-      let px = 0;
-      while (px < 16) {
-        const w = 5 + Math.floor(r() * 6);
-        // the bedding plane STEPS from plate to plate. Held flat it read as a
-        // course of masonry, which is the one thing a cliff must not look like
-        // when CLIFF and STONE_WALL already measured dE76 1.37 apart.
-        const hy = Math.max(3, Math.min(13, hy0 + Math.floor(r() * 5) - 2));
-        mark(c, up[Math.floor(r() * 4)], x, y, px, 1, w, hy - 1);
-        mark(c, lo[Math.floor(r() * 4)], x, y, px, hy, w, 15 - hy);
-        if (r() < 0.85) { mark(c, PAL.rockG, x, y, px, hy - 1, w, 1); mark(c, r() < 0.6 ? PAL.rockH : PAL.rockL, x, y, px, hy, w, 1); }
-        if (px > 0) {                                  // the joint, jogged at the bed
-          const j = Math.floor(r() * 3) - 1;
-          mark(c, PAL.rockG, x, y, px, 1, 1, hy - 1);
-          mark(c, PAL.rockG, x, y, px + j, hy, 1, 14 - hy);
-        }
-        px += w;
-      }
-      for (let i = 0; i < 2; i++) { const h = 3 + Math.floor(r() * 6); mark(c, PAL.rockD, x, y, inX(r, 1), inY(r, h), 1, h); }
-      speck(c, PAL.rockD, x, y, 7, r);
-      speck(c, PAL.rockH, x, y, 5, r);
-      speck(c, PAL.rockG, x, y, 6, r);
-      seam(c, x, y, SEAM.cliff, SEAM_TONE.cliff, 9, 4, 3);
-      // The eight members were near-copies of the base plus a 1-2px rim — the
-      // closest pair measured dE 2.90 — so a mass drawn from them read as one
-      // tile repeated. Each named side now carries an IRREGULAR 2-4px lip, and
-      // the south side spills talus onto the ground below it.
-      if (lit.includes('N')) {
-        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 5 + v) % 3); mark(c, PAL.rockH, x, y, i, 0, 2, d); }
-        H(c, PAL.rockL, x, y + 1, 16);
-      }
-      if (lit.includes('S')) {
-        for (let i = 0; i < 16; i += 2) { const d = 2 + ((i * 3 + v) % 3); mark(c, PAL.rockD, x, y, i, 16 - d, 2, d); }
-        for (let i = 0; i < 5; i++) { const w = 1 + Math.floor(r() * 3); mark(c, PAL.rockXD, x, y, 1 + Math.floor(r() * 13), 13 + Math.floor(r() * 3), w, 1); }
-        H(c, PAL.rockXD, x, y + 15, 16);
-      }
-      if (lit.includes('W')) {
-        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 7 + v) % 3); mark(c, PAL.rockH, x, y, 0, i, d, 2); }
-      }
-      if (lit.includes('E')) {
-        for (let i = 0; i < 16; i += 2) { const d = 2 + ((i * 11 + v) % 3); mark(c, PAL.rockD, x, y, 16 - d, i, d, 2); }
-        V(c, PAL.rockXD, x + 15, y, 16);
-      }
-    });
+  const cliff = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain', 'hills', 'coast'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => TR.paintCliff(c, x, y, v, vi, lit));
   cliff('CLIFF', 'Cliff', '');
   cliff('CLIFF_N', 'Cliff', 'N');
   cliff('CLIFF_E', 'Cliff', 'E');
@@ -2230,186 +1405,31 @@ function buildTiles() {
   cliff('CLIFF_SW', 'Cliff', 'SW');
   cliff('CLIFF_NW', 'Cliff', 'NW');
 
-  def('CLIFF_TOP', 'Clifftop', 0, { group: 'cliff-top', biomes: ['mountain', 'hills'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.rockL, x, y, 16, 16);
-    for (let i = 0; i < 9; i++) { const w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3); const px = inX(r, w), py = inY(r, h); mark(c, PAL.rock, x, y, px, py, w, h); mark(c, PAL.rockH, x, y, px, py, w, 1); }
-    // heavy 1px grit over the whole tile — the marks above are inboard, so this
-    // is the only thing that stops columns 0 and 15 being identical in every
-    // variant (colmean lag-16 was 0.85 with a third of this)
-    speck(c, PAL.rockM, x, y, 26, r);
-    speck(c, PAL.rockG, x, y, 18, r);
-    speck(c, PAL.rockH, x, y, 14, r);
-    speck(c, PAL.rock, x, y, 14, r);
-    seam(c, x, y, SEAM.cliffTop, SEAM_TONE.cliff, 10, 4, 3);
-  });
+  def('CLIFF_TOP', 'Clifftop', 0, { group: 'cliff-top', biomes: ['mountain', 'hills'], variants: 16, edgeVariant: true }, TR.paintCliffTop);
 
   /**
-   * MOUNTAIN. 671 tiles on the world map, 1,418 more places where CLIFF and
-   * MOUNTAIN sit side by side, and it was an ICON, not a tile: a hard-coded
-   * triangle with a `#f0f4f8` cap at the same three pixels every time, 90 of
-   * its 256 pixels transparent, its two declared variants differing on 12.9% of
-   * pixels, colmean lag-16 0.950. `field-mountain.png` was 36 identical
-   * pyramids and `world-cliffs-3x.png` a diamond lattice.
-   *
-   * Every MOUNTAIN on every map has a MOUNTAIN to its left and to its right —
-   * they are laid in horizontal ranges — so the thing that matters is that two
-   * neighbours agree about the skirt height where they meet. `edgeVariantAt`
-   * bit 0 is this tile's left border and bit 1 its right, and the tile to the
-   * left reads the SAME bit for that border, so the ridge line runs on
-   * unbroken. Bits 2-3 move the peak, so a range has four summits, not one
-   * repeated.
+   * MOUNTAIN — a range seen from the lowlands, laid in horizontal runs. A
+   * silhouette with transparent sky, so it carries no `seam()` ring; instead
+   * edge bits 0/1 fix the skirt height at each shared border (the tile to the
+   * left reads the same bit), so a ridge line runs on unbroken, and bits 2-3
+   * move the summit so a range has four summits, not one repeated.
    */
-  def('MOUNTAIN', 'Mountain', SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain'], variants: 16, edgeVariant: true },
-    (c, x, y, v, vi) => {
-      const r = sr(v);
-      const hL = (vi & 1) ? 3 : 7, hR = (vi & 2) ? 3 : 7;      // skirt height at each shared border
-      const pk = 3 + ((vi >> 2) & 3) * 3;                       // where the summit stands
-      const pkH = ((vi >> 3) & 1) ? 0 : 2;                      // and how high it reaches
-      const sky = new Array(16);
-      for (let i = 0; i < 16; i++) {
-        const t = i <= pk ? (pk ? i / pk : 1) : (15 - i) / Math.max(1, 15 - pk);
-        const base = (i <= pk ? hL : hR);
-        sky[i] = Math.max(0, Math.round(base + (pkH - base) * t) + (r() < 0.3 ? 1 : 0));
-      }
-      sky[0] = hL; sky[15] = hR;                                // the two shared borders are exact
-      for (let i = 0; i < 16; i++) {
-        const h0 = sky[i];
-        R(c, PAL.rock, x + i, y + h0, 1, 16 - h0);
-        P(c, PAL.rockH, x + i, y + h0);
-        // the lit western flank and the shaded eastern one, per column
-        if (i < pk) R(c, PAL.rockL, x + i, y + h0 + 1, 1, Math.min(4, 15 - h0));
-        else R(c, PAL.rockM, x + i, y + h0 + 1, 1, Math.min(4, 15 - h0));
-      }
-      // snowline: only the columns within two of the summit, and only when the
-      // summit is actually high enough to hold snow
-      if (pkH === 0) for (let i = Math.max(0, pk - 2); i <= Math.min(15, pk + 2); i++) R(c, '#e6ecf2', x + i, y + sky[i], 1, 1 + (Math.abs(i - pk) < 2 ? 1 : 0));
-      // Texture stays strictly BELOW the lowest possible skyline (8), because a
-      // MOUNTAIN is a silhouette with 90 transparent pixels and a mark in the
-      // sky is a floating speck. For the same reason there is no `seam()` ring
-      // here: the two shared borders are made to agree exactly instead, above.
-      for (let i = 0; i < 6; i++) { const w = 3 + Math.floor(r() * 4); mark(c, PAL.rockG, x, y, inX(r, w), 9 + Math.floor(r() * 6), w, 1); }
-      for (let i = 0; i < 4; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.rockL, x, y, inX(r, w), 9 + Math.floor(r() * 6), w, 1); }
-      speck(c, PAL.rockD, x, y + 9, 5, r, 16, 7);
-    });
+  def('MOUNTAIN', 'Mountain', SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain'], variants: 16, edgeVariant: true }, TR.paintMountain);
 
   // --- 4.9 roofs -----------------------------------------------------------
   //
-  // A roof is the largest flat area on any building in Phandalin, and THATCH_M
-  // measured topMinusBot = -2.1: a perfectly uniform gold slab with no pitch,
-  // no light direction and no overhang. Every roof family now ramps from a lit
-  // ridge to a dark eave and ends in a 2px `*XD` overhang shadow, which is the
-  // single cue that turns a flat sticker into a thing standing on the ground.
-
-  /**
-   * One course of thatch: a ridge-to-eave value ramp, straw strokes that follow
-   * the pitch, and a hard 2px `thatchXD` overhang at the bottom. Stacked, the
-   * ramp reads as successive courses of straw; alone, it reads as a pitched
-   * surface. Either way it is no longer the uniform gold slab that measured
-   * topMinusBot = -2.1.
-   */
-  // 2026-08c. `thatchRow` painted BOTH `R(thatchXD, y+14, w, 2)` and
-  // `H(thatchXD, y+13, w)` — a 3px near-black eave — and buildings stack two or
-  // three roof rows (`maps.js:257`, `roofRows = min(3, h-3)`), so 486 of the
-  // game's 869 roof tiles drew an eave part-way down their own pitch. The eave
-  // is deleted from the tile: `_drawOverhangs` already ramps a five-row cast
-  // from an `over` tile onto whatever is below it, and it deliberately skips a
-  // tile that casts in its turn, so the shadow lands on the ground under the
-  // bottom course and nowhere else — which is what an eave is.
-  //
-  // What replaces it is the material's own structure: thatch is laid in
-  // overlapping courses, and a lap is put at rows 4 and 11 — INSIDE the tile,
-  // never on row 15 — so a pitch reads as courses of straw and the tile border
-  // falls through the middle of a course.
-  const thatchRow = (c, x, y, r, x0, w) => {
-    R(c, PAL.thatch, x + x0, y, w, 16);
-    R(c, PAL.thatchL, x + x0, y + 1, w, 3);
-    R(c, PAL.thatchM, x + x0, y + 8, w, 3);
-    H(c, PAL.thatchD, x + x0, y + 4, w);            // the lap of one course over the next
-    H(c, PAL.thatchD, x + x0, y + 11, w);
-    H(c, PAL.thatchL, x + x0, y + 5, w); H(c, PAL.thatchL, x + x0, y + 12, w);
-    // straw strokes, always running down the pitch, darker the lower they start
-    for (let i = 0; i < 12; i++) {
-      const px = x0 + 1 + Math.floor(r() * Math.max(1, w - 2));
-      const py = 1 + Math.floor(r() * 12);
-      mark(c, py < 5 ? PAL.thatch : (py < 9 ? PAL.thatchM : PAL.thatchD), x, y, px, py, 1, 2 + Math.floor(r() * 2));
-    }
-    for (let i = 0; i < 5; i++) mark(c, PAL.thatchL, x, y, x0 + 1 + Math.floor(r() * Math.max(1, w - 2)), 1 + Math.floor(r() * 11), 1, 2);
-    for (let i = 0; i < 4; i++) mark(c, PAL.thatchG, x, y, x0 + 1 + Math.floor(r() * Math.max(1, w - 3)), 1 + Math.floor(r() * 12), 2, 1);
-    // 1px speckle over the WHOLE tile, ring included. Without it every row 0 and
-    // row 15 was the same flat `thatch` and the border measured |dL*| 0.00 —
-    // which is not a matched seam, it is a 1px picture frame every 16 pixels,
-    // the exact failure the ground pass warns about two sections up.
-    for (let i = 0; i < 10; i++) mark(c, i % 3 ? PAL.thatchM : PAL.thatchL, x, y, x0 + Math.floor(r() * w), Math.floor(r() * 16), 1, 1);
-    for (let i = 0; i < 5; i++) mark(c, PAL.thatchD, x, y, x0 + Math.floor(r() * w), Math.floor(r() * 16), 1, 1);
-  };
-  def('THATCH_L', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v); thatchRow(c, x, y, r, 2, 14);
-    seam(c, x, y, SEAM.thatch, SEAM_TONE.thatch, 5, 3, 3);
-    for (let i = 0; i < 16; i++) P(c, PAL.thatchD, x + 2, y + i);
-    blob(c, PAL.thatchL, x, y, [[0, 2, 3], [1, 2, 2]]);
-    V(c, PAL.ink, x + 1, y, 16);
-  });
-  def('THATCH_M', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v); thatchRow(c, x, y, r, 0, 16);
-    seam(c, x, y, SEAM.thatch, SEAM_TONE.thatch, 7, 3, 3);
-  });
-  def('THATCH_R', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v); thatchRow(c, x, y, r, 0, 14);
-    seam(c, x, y, SEAM.thatch, SEAM_TONE.thatch, 5, 3, 3);
-    for (let i = 0; i < 16; i++) P(c, PAL.thatchG, x + 13, y + i);
-    V(c, PAL.ink, x + 14, y, 16);
-  });
-  // The capping bundle along the ridge line: a dark roll of straw with a lit
-  // crown, then the pitch falling away below it.
-  def('THATCH_RIDGE', 'Roof Ridge', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
-    const r = sr(v); thatchRow(c, x, y, r, 0, 16);
-    seam(c, x, y, SEAM.ridge, SEAM_TONE.thatch, 5, 3, 3);
-    R(c, PAL.thatchD, x, y + 1, 16, 4);
-    H(c, PAL.thatchL, x, y + 1, 16); H(c, PAL.thatch, x, y + 2, 16);
-    H(c, PAL.ink, x, y, 16);
-    for (let i = 0; i < 7; i++) mark(c, PAL.thatchG, x, y, 1 + Math.floor(r() * 14), 3, 1, 2);
-    H(c, PAL.thatchG, x, y + 5, 16);               // the ridge roll casts down the pitch
-  });
-
-  def('SHINGLE_ROOF', 'Shingle Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 16, edgeVariant: true }, (c, x, y, v, vi) => {
-    const r = sr(v);
-    // Shingles ARE a coursed material, so they get the masonry treatment: the
-    // course grid offset half a course so the tile border falls through the
-    // middle of one, the vertical butt joints laid from random widths with the
-    // joint that lands on the shared border settled by `edgeVariantAt`, and the
-    // eave deleted (see the note above `thatchRow`).
-    coursed(c, x, y, vi, SEAM.shingle, 4, 3, 5,
-      [PAL.shingleL, PAL.shingle, PAL.shingle, PAL.shingle],
-      [PAL.shingleL, PAL.shingleL, PAL.shingle, PAL.shingleM], PAL.shingleD, PAL.shingleG);
-    patchBlock(c, PAL.shingleM, x, y, r, 4, 3, 5, 2);
-    patchBlock(c, PAL.shingleL, x, y, r, 4, 3, 4, 1);
-    speck(c, PAL.shingleD, x, y, 5, r);
-    seam(c, x, y, SEAM.shingle, SEAM_TONE.shingle, 7, 3, 3);
-  });
-
-  // TILE_ROOF declared two variants and its draw signature was `(c, x, y)` — no
-  // `v` at all, so its two rasters were byte identical: 355 tiles of one stamp.
-  // Pantiles run DOWN the pitch, so the ribs stay on their 4px period (which is
-  // continuous through a 16px border by construction); what moves per variant
-  // is the weathering, the moss and which pans are cracked.
-  def('TILE_ROOF', 'Tile Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 8 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.tileRoofD, x, y, 16, 16);
-    for (let i = 0; i < 4; i++) {
-      const px = x + i * 4;
-      R(c, PAL.tileRoof, px, y, 3, 16);
-      V(c, PAL.tileRoofL, px, y, 16);
-      V(c, PAL.tileRoofM, px + 2, y, 16);
-    }
-    // the horizontal laps sit at rows 1/5/9/13 — never on row 15, where they
-    // used to meet the next tile's lit ridge row and make a 41.5 L* bar
-    for (let i = 0; i < 4; i++) { H(c, PAL.tileRoofG, x, y + i * 4 + 1, 16); H(c, PAL.tileRoofL, x, y + i * 4 + 2, 16); }
-    for (let i = 0; i < 5; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.tileRoofG, x, y, inX(r, w), inY(r, 2), w, 2); }
-    for (let i = 0; i < 3; i++) mark(c, PAL.moss, x, y, inX(r, 2), inY(r, 2), 2, 2);
-    speck(c, PAL.tileRoofL, x, y, 4, r);
-    seam(c, x, y, SEAM.tileRoof, SEAM_TONE.tileRoof, 6, 3, 3);
-  });
+  // Painted by render/tiles_arch.js section 2. These four keys per material are
+  // what building() AUTHORS (ridge row, then L / M / R for the rows below);
+  // resolveArch() swaps each for the member its neighbours call for — a ridge
+  // end, an eave, a one-row roof — so the roof reads ridge, pitch, eave and
+  // verge. Unresolved (a battle arena), each still draws a plausible body.
+  def('THATCH_L', 'Thatch Roof', SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, 'thatch', 'B', 'L'));
+  def('THATCH_M', 'Thatch Roof', SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, 'thatch', 'B', 'M'));
+  def('THATCH_R', 'Thatch Roof', SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, 'thatch', 'B', 'R'));
+  def('THATCH_RIDGE', 'Roof Ridge', SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, 'thatch', 'R', 'M'));
+  // The old single-tile roofs, kept as the body of their material.
+  def('SHINGLE_ROOF', 'Shingle Roof', SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, 'shingle', 'B', 'M'));
+  def('TILE_ROOF', 'Tile Roof', SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, 'pantile', 'B', 'M'));
 
   def('ROOF_PEAK', 'Roof Peak', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 1 }, (c, x, y) => {
     blob(c, PAL.thatchD, x, y, [[1, 7, 2], [2, 6, 4], [3, 5, 6], [4, 4, 8], [5, 3, 10], [6, 2, 12], [7, 1, 14], [8, 0, 16], [9, 0, 16], [10, 0, 16], [11, 0, 16], [12, 0, 16], [13, 0, 16], [14, 0, 16], [15, 0, 16]]);
@@ -2419,91 +1439,29 @@ function buildTiles() {
     blob(c, PAL.thatchL, x, y, [[3, 6, 3], [4, 5, 4], [5, 4, 4], [6, 3, 4], [7, 2, 4]]);  // lit upper-left slope
   });
 
-  def('CHIMNEY', 'Chimney', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 1, animFrames: 4, fps: 3 },
-    (c, x, y, v, w, f) => {
-      R(c, PAL.brickD, x + 5, y + 7, 8, 9);
-      R(c, PAL.brick, x + 5, y + 7, 5, 8);
-      for (let row = 0; row < 3; row++) {
-        const oy = y + 8 + row * 3;
-        H(c, PAL.brickD, x + 5, oy, 7);
-        P(c, PAL.brickD, x + (row % 2 ? 7 : 9), oy - 1);
-      }
-      R(c, PAL.stoneD, x + 4, y + 6, 10, 2);
-      H(c, PAL.stoneL, x + 4, y + 6, 10);
-      H(c, PAL.ink, x + 7, y + 6, 4);
-      // Stepped pixel clusters drift upward; the chimney remains fixed.
-      R(c, '#928d91', x + 8 + [0, 1, 0, -1][f], y + 4, 3, 2);
-      R(c, '#b0abad', x + 7 + [0, 0, 1, 2][f], y + 2, 4, 2);
-      R(c, '#c5bfba', x + 8 + [0, 1, 2, 1][f], y, 3, 1);
-    });
+  // The stack alone: its smoke is the SMOKE tile resolveArch() lays on the open
+  // tile above it, so the plume can rise clear of the roof it comes out of.
+  def('CHIMNEY', 'Chimney', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 3 }, (c, x, y, v, vi) => AR.paintChimney(c, x, y, vi));
 
   // --- 4.10 doors, windows, signs ------------------------------------------
-  def('DOOR_CLOSED', 'Door', SOLID | DOOR | TRIGGER, { layer: 'deco', group: 'door', biomes: ['city', 'dungeon'], variants: 1 }, (c, x, y) => {
-    R(c, PAL.stoneD, x, y, 16, 16);
-    R(c, PAL.wood, x + 2, y + 1, 12, 15);
-    for (let i = 0; i < 3; i++) V(c, PAL.woodD, x + 5 + i * 3, y + 1, 15);
-    H(c, PAL.woodL, x + 2, y + 1, 12);
-    R(c, PAL.iron, x + 2, y + 3, 12, 1); R(c, PAL.iron, x + 2, y + 12, 12, 1);
-    P(c, PAL.gold, x + 11, y + 8); P(c, PAL.goldD, x + 11, y + 9);
-    O(c, PAL.ink, x + 1, y, 14, 16);
-  });
+  // Painted by render/tiles_arch.js section 4. The authored door is timber in a
+  // stone footing; resolveArch() gives a door in masonry a stone frame and lays
+  // the head of the doorway (DOOR_HEAD_*) into the wall above it, and gives a
+  // window or shutter the wall it actually sits in (WINDOW_STONE, ...). The
+  // authored WINDOW / WINDOW_LIT / SHUTTER are the ones in a framed wall.
+  def('DOOR_CLOSED', 'Door', SOLID | DOOR | TRIGGER, { layer: 'deco', group: 'door', biomes: ['city', 'dungeon'], variants: 12 },
+    (c, x, y, v, vi) => AR.paintDoor(c, x, y, v, vi, 'closed', 'timber'));
+  def('DOOR_OPEN', 'Open Door', DOOR | TRIGGER, { layer: 'deco', group: 'door', biomes: ['city', 'dungeon'], variants: 12 },
+    (c, x, y, v, vi) => AR.paintDoor(c, x, y, v, vi, 'open', 'timber'));
+  def('IRON_DOOR', 'Iron Door', SOLID | DOOR | TRIGGER, { layer: 'deco', group: 'door', biomes: ['dungeon', 'crypt', 'mine'], variants: 1 },
+    (c, x, y, v, vi) => AR.paintDoor(c, x, y, v, vi, 'iron', 'stone'));
 
-  def('DOOR_OPEN', 'Open Door', DOOR | TRIGGER, { layer: 'deco', group: 'door', biomes: ['city', 'dungeon'], variants: 1 }, (c, x, y) => {
-    R(c, PAL.stoneD, x, y, 16, 16);
-    R(c, '#181410', x + 3, y + 1, 11, 15);           // the dark interior beyond
-    R(c, PAL.wood, x + 1, y + 1, 3, 15);             // the leaf swung aside
-    V(c, PAL.woodL, x + 1, y + 1, 15); V(c, PAL.woodD, x + 3, y + 1, 15);
-    O(c, PAL.ink, x + 1, y, 14, 16);
-  });
-
-  def('IRON_DOOR', 'Iron Door', SOLID | DOOR | TRIGGER, { layer: 'deco', group: 'door', biomes: ['dungeon', 'crypt', 'mine'], variants: 1 }, (c, x, y) => {
-    R(c, PAL.dgnD, x, y, 16, 16);
-    R(c, PAL.iron, x + 2, y + 1, 12, 15);
-    H(c, PAL.metal, x + 2, y + 1, 12); H(c, PAL.metalD, x + 2, y + 15, 12);
-    R(c, PAL.metalD, x + 2, y + 4, 12, 1); R(c, PAL.metalD, x + 2, y + 11, 12, 1);
-    for (let i = 0; i < 4; i++) { P(c, PAL.metalL, x + 3 + i * 3, y + 3); P(c, PAL.metalL, x + 3 + i * 3, y + 13); }
-    R(c, PAL.ink, x + 6, y + 7, 4, 2); H(c, PAL.metalL, x + 6, y + 7, 4);
-    O(c, PAL.ink, x + 1, y, 14, 16);
-  });
-
-  // Deep-set panes, painted shutters and planted sills make each facade inhabited.
-  function windowFace(c, x, y, v, lit, f = 0) {
-    R(c, PAL.plaster, x, y, 16, 16);
-    H(c, PAL.plasterD, x, y, 16);
-    R(c, PAL.plasterM, x, y + 11, 16, 5);
-    R(c, PAL.woodD, x + 2, y + 2, 12, 11);
-    R(c, lit ? '#e4aa53' : '#283c49', x + 3, y + 3, 10, 9);
-    R(c, lit ? (f === 1 ? '#ffe8a1' : '#f6d17e') : '#59818c', x + 3, y + 3, 4, 3);
-    R(c, lit ? '#be793e' : '#3b586a', x + 8, y + 8, 5, 4);
-    P(c, lit ? '#fff2bd' : '#a0b7ac', x + 4, y + 4);
-    V(c, PAL.woodD, x + 7, y + 3, 9); H(c, PAL.woodD, x + 3, y + 7, 10);
-    H(c, PAL.woodL, x + 2, y + 2, 12);
-    const shutter = ['#426b66', '#775064', '#5e7045', '#855437'][v % 4];
-    R(c, shutter, x, y + 4, 2, 8); R(c, shutter, x + 14, y + 4, 2, 8);
-    H(c, PAL.woodD, x, y + 8, 2); H(c, PAL.woodD, x + 14, y + 8, 2);
-    R(c, PAL.woodD, x + 1, y + 13, 14, 3); H(c, PAL.woodL, x + 1, y + 13, 14);
-    if (v % 3 !== 0) {
-      R(c, '#52734a', x + 3, y + 12, 10, 2);
-      for (let i = 0; i < 3; i++) {
-        const dx = 4 + i * 3;
-        P(c, '#8fa35e', x + dx, y + 11);
-        P(c, v % 2 ? '#e9ae8b' : '#c9b0d5', x + dx + 1, y + 12);
-      }
-    }
-  }
-  def('WINDOW', 'Window', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 6 },
-    (c, x, y, v) => windowFace(c, x, y, v, false));
-  def('WINDOW_LIT', 'Lit Window', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 6, animFrames: 3, fps: 2 },
-    (c, x, y, v, w, f) => windowFace(c, x, y, v, true, f));
-
-  def('SHUTTER', 'Shutters', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 1 }, (c, x, y) => {
-    R(c, PAL.plaster, x, y, 16, 16);
-    R(c, PAL.woodD, x + 1, y + 3, 14, 10);
-    R(c, PAL.wood, x + 2, y + 4, 6, 8); R(c, PAL.wood, x + 8, y + 4, 6, 8);
-    for (let i = 0; i < 4; i++) { H(c, PAL.woodD, x + 2, y + 5 + i * 2, 6); H(c, PAL.woodD, x + 8, y + 5 + i * 2, 6); }
-    V(c, PAL.ink, x + 8, y + 4, 8);
-    R(c, PAL.wood, x + 1, y + 13, 14, 2);
-  });
+  def('WINDOW', 'Window', SOLID, AR.WALL_OPTS,
+    (c, x, y, v, vi) => { AR.paintWattle(c, x, y, v, vi); AR.paintWindow(c, x, y, v, vi, 'wattle', false, 0); });
+  def('WINDOW_LIT', 'Lit Window', SOLID, { ...AR.WALL_OPTS, animFrames: 3, fps: 2 },
+    (c, x, y, v, vi, f) => { AR.paintWattle(c, x, y, v, vi); AR.paintWindow(c, x, y, v, vi, 'wattle', true, f); });
+  def('SHUTTER', 'Shutters', SOLID, AR.WALL_OPTS,
+    (c, x, y, v, vi) => { AR.paintWattle(c, x, y, v, vi); AR.paintShutters(c, x, y, v, vi, 'wattle'); });
 
   def('SIGN', 'Signpost', SOLID | TRIGGER, { layer: 'deco', group: 'prop', biomes: ['city', 'road'], variants: 1 }, (c, x, y) => {
     contact(c, x, y, 7, 15);
@@ -2580,67 +1538,10 @@ function buildTiles() {
     V(c, PAL.cloth, x + 8, y + 2, 5); R(c, PAL.wood, x + 7, y + 6, 3, 2);
   });
 
-  // A cask seen from the game's three-quarter angle: you look slightly DOWN on
-  // it, so you see the lid as a squashed ellipse and the staves below it. The
-  // old barrel was a flat front elevation with a straight line for a top, which
-  // is why a row of them read as planks lying in the road. Rows 2-5 are the
-  // lid, 5-13 the belly, and the hoops bow a pixel at the ends to follow it.
-  const BARREL_ROWS = [[2, 5, 6], [3, 4, 8], [4, 3, 10], [5, 3, 10], [6, 3, 10], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 4, 8], [13, 5, 6]];
-  const LID_ROWS = [[2, 5, 6], [3, 4, 8], [4, 4, 8]];
-  def('BARREL', 'Barrel', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    shadowUnder(c, x, y, 10, 13);
-    outline(c, PAL.barkXD, x, y, BARREL_ROWS);
-    blob(c, PAL.wood, x, y, BARREL_ROWS);
+  // Authored material silhouettes, rasterized into the ordinary tile cache.
+  def('BARREL', 'Barrel', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c,x,y,v)=>paintProp(c,x,y,'barrel',v));
 
-    // --- the lid, catching the light -------------------------------------
-    blob(c, PAL.woodL, x, y, LID_ROWS);
-    H(c, PAL.woodH || PAL.canvasL, x + 5, y + 2, 6);          // the lit front lip
-    H(c, PAL.woodD, x + 4, y + 5, 8);                          // rim: lid meets belly
-    P(c, PAL.woodD, x + 3, y + 4); P(c, PAL.woodD, x + 12, y + 4);
-    // the two boards the head is made of
-    V(c, PAL.woodD, x + 7, y + 3, 2); V(c, PAL.woodD, x + 9, y + 2, 3);
-
-    // --- the belly --------------------------------------------------------
-    // Hoops sit a pixel lower at the ends, which is what makes a cylinder read
-    // as round rather than as a box with stripes on it.
-    for (const hy of [7, 11]) {
-      H(c, PAL.iron, x + 4, y + hy, 8);
-      P(c, PAL.ironD, x + 3, y + hy + 1); P(c, PAL.ironD, x + 12, y + hy + 1);
-      H(c, PAL.ironD, x + 4, y + hy + 1, 8);
-    }
-    V(c, PAL.woodL, x + 4, y + 6, 7);                          // lit stave, left
-    V(c, PAL.woodD, x + 10, y + 6, 7);                         // shaded stave
-    V(c, PAL.barkD, x + 11, y + 6, 7);                         // the turn away from the light
-    P(c, PAL.barkXD, x + 12, y + 9);
-    if (r() < 0.5) P(c, PAL.woodD, x + 6, y + 9);
-  });
-
-  // A crate is a box, so it gets a lid you can see and a front you cannot see
-  // through: the top face is inset and lighter, and the front carries the
-  // bracing. Without the lid it was a square with an X on it — a sign lying
-  // face-up in the street.
-  def('CRATE', 'Crate', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    shadowUnder(c, x, y, 12, 13);
-    outlineBox(c, PAL.barkXD, x, y, 2, 2, 12, 12);
-
-    // --- the lid ----------------------------------------------------------
-    // Narrower than the body and shifted up: the eye reads the offset as depth.
-    R(c, PAL.woodL, x + 3, y + 2, 10, 3);
-    H(c, PAL.woodH || PAL.canvasL, x + 3, y + 2, 10);
-    V(c, PAL.woodD, x + 8, y + 2, 3);                          // the seam between two boards
-    H(c, PAL.woodD, x + 2, y + 5, 12);                         // the hard edge: lid over front
-
-    // --- the front face ---------------------------------------------------
-    R(c, PAL.wood, x + 2, y + 6, 12, 8);
-    O(c, PAL.woodD, x + 2, y + 6, 12, 8);
-    for (let i = 0; i < 7; i++) { P(c, PAL.woodD, x + 3 + i, y + 7 + i); P(c, PAL.woodD, x + 12 - i, y + 7 + i); }
-    H(c, PAL.woodD, x + 2, y + 10, 12);                        // the middle batten
-    V(c, PAL.woodL, x + 3, y + 6, 8);                          // lit left edge
-    V(c, PAL.barkD, x + 12, y + 6, 8);                         // shaded right edge
-    if (r() < 0.5) { P(c, PAL.ironD, x + 4, y + 12); P(c, PAL.ironD, x + 11, y + 12); }   // corner nails
-  });
+  def('CRATE', 'Crate', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c,x,y,v)=>paintProp(c,x,y,'crate',v));
 
   // A full sack is a heavy, sagging thing: wide at the bottom where the grain
   // has settled, gathered at a tied neck, and lit down one side. The old one
@@ -2696,19 +1597,7 @@ function buildTiles() {
   });
 
   def('FORGE', 'Forge', SOLID, { layer: 'deco', group: 'prop', biomes: ['city'], variants: 1, animFrames: 3, fps: 6 },
-    (c, x, y, v, w, f) => {
-      foot(c, x, y, 0, 16, 13, 1.15);                // the forge stands on rows 14-15
-      R(c, PAL.stone, x, y + 2, 16, 12);
-      O(c, PAL.stoneD, x, y + 2, 16, 12); H(c, PAL.stoneH, x, y + 2, 16);
-      for (let i = 0; i < 3; i++) H(c, PAL.stoneD, x, y + 6 + i * 3, 16);
-      R(c, '#1a1210', x + 4, y + 7, 8, 6);
-      const h = [4, 5, 3][f % 3];
-      R(c, PAL.ember, x + 4, y + 13 - h, 8, h);
-      R(c, PAL.fireD, x + 5, y + 13 - h + 1, 6, h - 1);
-      R(c, PAL.fire, x + 6, y + 12 - (f % 3), 4, 2);
-      P(c, PAL.fireHot, x + 7 + (f % 2), y + 11 - (f % 2));
-      R(c, PAL.iron, x + 1, y, 4, 3);
-    });
+    (c, x, y, v, vi, f) => AR.paintForge(c, x, y, v, f));
 
   def('GRINDSTONE', 'Grindstone', SOLID, { layer: 'deco', group: 'prop', biomes: ['city'], variants: 1 }, (c, x, y) => {
     contact(c, x, y, 12, 14);
@@ -2720,38 +1609,14 @@ function buildTiles() {
   });
 
   // --- 4.13 furniture ------------------------------------------------------
-  def('TABLE', 'Table', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city', 'dungeon'], variants: 1 }, (c, x, y) => {
-    contact(c, x, y, 14, 14);
-    R(c, PAL.wood, x + 1, y + 3, 14, 8);
-    H(c, PAL.woodL, x + 1, y + 3, 14); H(c, PAL.woodD, x + 1, y + 10, 14);
-    for (let i = 0; i < 3; i++) H(c, PAL.woodD, x + 1, y + 5 + i * 2, 14);
-    R(c, PAL.woodD, x + 2, y + 11, 2, 4); R(c, PAL.woodD, x + 12, y + 11, 2, 4);
-  });
+  // Painted in render/tiles_arch.js section 6c: a lit top, a keyline, a contact shadow.
+  def('TABLE', 'Table', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city', 'dungeon'], variants: 4 }, (c, x, y, v, vi) => AR.paintTable(c, x, y, vi));
 
-  def('CHAIR', 'Chair', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city'], variants: 1 }, (c, x, y) => {
-    contact(c, x, y, 10, 14);
-    R(c, PAL.wood, x + 4, y + 2, 8, 6); V(c, PAL.woodD, x + 7, y + 2, 6); H(c, PAL.woodL, x + 4, y + 2, 8);
-    R(c, PAL.woodL, x + 3, y + 8, 10, 3); H(c, PAL.woodD, x + 3, y + 10, 10);
-    R(c, PAL.woodD, x + 3, y + 11, 2, 4); R(c, PAL.woodD, x + 11, y + 11, 2, 4);
-  });
+  def('CHAIR', 'Chair', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city'], variants: 1 }, (c, x, y) => AR.paintChair(c, x, y));
 
-  def('BENCH', 'Bench', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city'], variants: 1 }, (c, x, y) => {
-    contact(c, x, y, 16, 14);
-    R(c, PAL.wood, x, y + 6, 16, 4);
-    H(c, PAL.woodL, x, y + 6, 16); H(c, PAL.woodD, x, y + 9, 16);
-    R(c, PAL.woodD, x + 1, y + 10, 2, 5); R(c, PAL.woodD, x + 13, y + 10, 2, 5);
-  });
+  def('BENCH', 'Bench', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city'], variants: 1 }, (c, x, y) => AR.paintBench(c, x, y));
 
-  def('BED', 'Bed', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city'], variants: 1 }, (c, x, y) => {
-    foot(c, x, y, 1, 14, 14, 1.0);                  // footboard at row 14, floor at 15
-    R(c, PAL.woodD, x + 1, y, 14, 15);
-    R(c, PAL.cloth, x + 2, y + 1, 12, 5);           // pillow end
-    R(c, PAL.blue, x + 2, y + 6, 12, 8);            // blanket
-    H(c, PAL.blueL, x + 2, y + 6, 12); H(c, PAL.blueD, x + 2, y + 13, 12);
-    H(c, '#e2d8bc', x + 3, y + 2, 10);
-    R(c, PAL.wood, x + 1, y, 14, 1); R(c, PAL.wood, x + 1, y + 14, 14, 1);
-    for (let i = 0; i < 3; i++) V(c, PAL.blueD, x + 5 + i * 3, y + 7, 6);
-  });
+  def('BED', 'Bed', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city'], variants: 4 }, (c, x, y, v, vi) => AR.paintBed(c, x, y, vi));
 
   def('BOOKSHELF', 'Bookshelf', SOLID, { layer: 'deco', group: 'furniture', biomes: ['city', 'dungeon'], variants: 2 },
     (c, x, y, v) => {
@@ -2823,18 +1688,7 @@ function buildTiles() {
     });
 
   def('HEARTH', 'Hearth', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon'], variants: 1, animFrames: 3, fps: 6 },
-    (c, x, y, v, w, f) => {
-      foot(c, x, y, 0, 16, 14, 1.1);                 // the surround stops at 14
-      R(c, PAL.stone, x, y, 16, 15);
-      for (let row = 0; row < 3; row++) { H(c, PAL.stoneD, x, y + row * 4 + 3, 16); V(c, PAL.stoneD, x + ((row % 2) ? 5 : 11), y + row * 4, 3); }
-      R(c, '#140e0a', x + 3, y + 5, 10, 10);
-      const h = [6, 8, 7][f % 3];
-      blob(c, PAL.ember, x, y, [[14, 4, 8], [13, 4, 8], [12, 5, 6]]);
-      R(c, PAL.fireD, x + 5, y + 15 - h, 6, h - 1);
-      R(c, PAL.fire, x + 6, y + 17 - h, 4, h - 3);
-      P(c, PAL.fireHot, x + 7 + (f % 2), y + 16 - h);
-      R(c, PAL.wood, x + 4, y + 13, 8, 1);
-    });
+    (c, x, y, v, vi, f) => AR.paintHearth(c, x, y, v, f));
 
   def('CANDLE', 'Candle', 0, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'crypt'], variants: 1, animFrames: 2, fps: 4 },
     (c, x, y, v, w, f) => {
@@ -3054,32 +1908,9 @@ function buildTiles() {
       P(c, PAL.glow, x + 5, y + 6); P(c, PAL.glow, x + 10, y + 9);
     });
 
-  def('STALAGMITE', 'Stalagmite', SOLID, { layer: 'deco', group: 'prop', biomes: ['cave', 'underdark', 'mine'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      contact(c, x, y, 12, 14);
-      // Stalagmites are painted in the cave palette on a cave floor, so they
-      // measured 21% of their rim under threshold. A `caveWD` keyline plus a
-      // committed upper-left light fixes both at once — but the keyline goes on
-      // the SHADED side only. Ringing a thin cone in near-black dragged the
-      // whole prop's mean down to ΔE76 1.8 from the floor; on the lit side the
-      // `caveH` edge does the separating.
-      const cone = (sx, top) => {
-        const h = 16 - top;
-        for (let i = 0; i < h; i++) {
-          const ww = 1 + Math.floor(i * 5 / h);
-          R(c, PAL.caveWD, sx - (ww >> 1), y + top + i, ww + 1, 1);
-        }
-        for (let i = 0; i < h; i++) {
-          const ww = 1 + Math.floor(i * 5 / h);
-          R(c, PAL.caveL, sx - (ww >> 1), y + top + i, ww, 1);
-          P(c, PAL.caveH, sx - (ww >> 1), y + top + i);
-          if (ww >= 4) P(c, PAL.caveM, sx + ww - (ww >> 1) - 1, y + top + i);
-        }
-      };
-      cone(x + 5, 3 + Math.floor(r() * 3));
-      cone(x + 11, 7 + Math.floor(r() * 3));
-    });
+  // Loose stone is painted by render/tiles_terrain.js section 12: faceted
+  // granite lit flat, keylined only where the light cannot reach.
+  def('STALAGMITE', 'Stalagmite', SOLID, { layer: 'deco', group: 'prop', biomes: ['cave', 'underdark', 'mine'], variants: 5 }, TR.paintStalagmite);
 
   def('STALACTITE', 'Stalactite', 0, { layer: 'over', group: 'prop', biomes: ['cave', 'underdark', 'mine'], variants: 3 },
     (c, x, y, v) => {
@@ -3097,126 +1928,18 @@ function buildTiles() {
       H(c, PAL.caveD, x, y, 16);
     });
 
-  // Had no contact shadow at all, and every chip carried a `stoneH` cap, so a
-  // pile of rubble was a scatter of bright specks with no mass.
-  def('RUBBLE', 'Rubble', SLOW, { layer: 'deco', group: 'prop', biomes: ['cave', 'ruins', 'dungeon', 'mine'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      const chips = [];
-      for (let i = 0; i < 11; i++) chips.push([x + Math.floor(r() * 13), y + 3 + Math.floor(r() * 11), 2 + Math.floor(r() * 2)]);
-      for (const [px, py, w] of chips) foot(c, x, y, px - x, w, py - y + 1, 0.55);
-      // occlusion under and to the RIGHT of each chip — a full box of `stoneXD`
-      // around every 2-row chip made the pile average darker than cave floor
-      for (const [px, py, w] of chips) R(c, PAL.stoneXD, px, py + 1, w + 1, 2);
-      for (const [px, py, w] of chips) {
-        R(c, PAL.stone, px, py, w, 2);
-        H(c, PAL.stoneL, px, py, w); P(c, PAL.stoneD, px + w - 1, py + 1);
-      }
-    });
+  def('RUBBLE', 'Rubble', SLOW, { layer: 'deco', group: 'prop', biomes: ['cave', 'ruins', 'dungeon', 'mine'], variants: 5 }, (c,x,y,v)=>paintProp(c,x,y,'rubble',v));
+  // BOULDER and ROCK were repainted three times for the same fault: a dark
+  // body inside a black rim averages to the ground it sits on. They are pale
+  // faceted granite now, keylined on the shaded side only (section 12 there).
+  def('BOULDER', 'Boulder', SOLID, { layer: 'deco', group: 'prop', biomes: ['plains', 'hills', 'mountain', 'cave', 'coast'], variants: 6 }, TR.paintBoulder);
+  def('ROCK', 'Rock', 0, { layer: 'deco', group: 'prop', biomes: ['plains', 'hills', 'mountain', 'cave', 'coast'], variants: 6 }, TR.paintRock);
 
-  /**
-   * BOULDER. Measured topMinusBot 0.0 and leftMinusRight +1.8 — a flat grey
-   * blob with no form whatsoever, ΔE 5.6 from the cave floor it sits on with
-   * 90% of its silhouette below the contrast threshold. It got a keyline, a lit
-   * cap and a real shadow — and still measured ΔE76 5.9 / 1.19:1 in a cave,
-   * because a black rim around a `stoneD` body averages out to cave floor.
-   *
-   * Same correction as ROCK: the mass is `stone`, the rim is confined to the
-   * bottom and right where the upper-left light cannot reach, and the lit face
-   * separates itself from the ground by being lighter than it.
-   */
-  def('BOULDER', 'Boulder', SOLID, { layer: 'deco', group: 'prop', biomes: ['plains', 'hills', 'mountain', 'cave', 'coast'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      const body = [[2, 5, 7], [3, 3, 11], [4, 2, 12], [5, 1, 14], [6, 1, 14], [7, 0, 16], [8, 0, 16], [9, 0, 16], [10, 0, 16], [11, 1, 14], [12, 1, 14], [13, 2, 12], [14, 4, 8]];
-      foot(c, x, y, 2, 12, 14, 1.2);
-      for (const q of body) {                         // rim: bottom + right only
-        R(c, PAL.stoneXD, x + q[1] + q[2], y + q[0], 1, 1);
-        // ...but never onto row 15: that is the boulder's own cast shadow, and
-        // painting the rim over it left only 4 darkened ground pixels
-        if (q[0] < 14) R(c, PAL.stoneXD, x + q[1], y + q[0] + 1, q[2] + 1, 1);
-      }
-      blob(c, PAL.stone, x, y, body);
-      // The lit rim reaches the SILHOUETTE on the upper-left, so the boulder is
-      // separated from pale ground by a light edge and from dark ground by the
-      // `stoneXD` rim on the other side. With `stone` on that edge instead, 44%
-      // of the outline measured under 6 dL* against grass.
-      blob(c, PAL.stoneL, x, y, [[2, 5, 7], [3, 3, 11], [4, 2, 12], [5, 1, 12], [6, 1, 11], [7, 0, 11], [8, 0, 9], [9, 0, 7], [10, 1, 5]]);
-      // lit cap, upper-left
-      blob(c, PAL.stoneH, x, y, [[3, 5, 5], [4, 4, 5], [5, 3, 4], [6, 3, 3]]);
-      // shaded crescent, lower-right
-      blob(c, PAL.stoneD, x, y, [[9, 11, 4], [10, 10, 6], [11, 9, 6], [12, 7, 7], [13, 6, 8]]);
-      // the underside is in the boulder's own shadow — and it is the edge that
-      // has to separate from cave floor, which `stoneD` alone does not
-      blob(c, PAL.stoneXD, x, y, [[14, 4, 8]]);
-      speck(c, PAL.stoneM, x, y + 6, 4, r, 12, 6, 2, 0);
-    });
-
-  /**
-   * ROCK. The one the user actually complained about, twice.
-   *
-   * Round one fixed the floating shadow (`contact` was called with a fixed row
-   * while the body was offset by `oy = 4 + r()*4`) and gave the silhouette a
-   * `stoneXD` keyline. That was not enough: a full black rim around a `stoneD`
-   * body averages DARKER than cave floor, so the whole prop measured ΔE76 4.18
-   * / 1.06:1 against the ground and read only as an outline drawing.
-   *
-   * Round two changes what the rock IS. It is pale granite now — the body fills
-   * in `stoneL`, not `stoneD`, so it has value MASS against the (slightly
-   * darkened) cave floor rather than only an edge. The heavy keyline survives
-   * only where the light does not reach, on the bottom and the right; the lit
-   * upper-left edge is separated from the ground by its own brightness, which
-   * is how a lit object actually reads. On grass the value gap is smaller, but
-   * grey-on-green is carrying a huge hue difference there anyway.
-   */
-  def('ROCK', 'Rock', 0, { layer: 'deco', group: 'prop', biomes: ['plains', 'hills', 'mountain', 'cave', 'coast'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      const ox = Math.floor(r() * 4), oy = 4 + Math.floor(r() * 4);
-      const body = [[0, 2, 4], [1, 1, 6], [2, 0, 8], [3, 0, 8], [4, 1, 6]];
-      foot(c, x + ox, y + oy, 0, 8, 4, 0.95);
-      // ROUND THREE: it is GRANITE, not kerbstone. Rounds one and two fixed the
-      // floating shadow and gave the prop value mass, which took it from dE76
-      // 4.18 to 8.29 against cave floor — but against GRAVEL, which is grey
-      // chippings at almost the same value, it was still 4.18 at 1.14:1. The
-      // ground moved (gravel is warm scree now) and so does the rock: the
-      // `granite` ramp holds the same values as `stone` to within 2 L* and
-      // swings b* from +4 to -5, so the separation is carried by hue where
-      // value cannot carry it.
-      for (const q of body) {
-        R(c, PAL.graniteXD, x + ox + q[1] + q[2], y + oy + q[0], 1, 1);
-        R(c, PAL.graniteXD, x + ox + q[1], y + oy + q[0] + 1, q[2] + 1, 1);
-      }
-      blob(c, PAL.granite, x + ox, y + oy, body);
-      blob(c, PAL.graniteL, x + ox, y + oy, [[0, 2, 4], [1, 1, 5], [2, 0, 6], [3, 0, 4]]);
-      blob(c, PAL.graniteH, x + ox, y + oy, [[0, 3, 2], [1, 2, 3], [2, 1, 2]]);
-      // the shaded lower-right face
-      blob(c, PAL.graniteD, x + ox, y + oy, [[2, 6, 2], [3, 5, 3], [4, 3, 4]]);
-      P(c, PAL.graniteM, x + ox + 1, y + oy + 4);
-    });
-
-  // An ore vein is a patch of the CAVE WALL it is embedded in, not a patch of
-  // floor: this painted `caveD`/`cave`/`caveL` — the FLOOR family — inside a
-  // `caveW` wall, so a vein measured mean L* 28.7 against CAVE_WALL's 20.7 and
-  // read as a hole punched through the rock. Rebased on the wall's own ramp.
-  const ore = (key, label, gem, gemL) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['mine', 'cave', 'underdark'], variants: 4 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      R(c, PAL.caveWD, x, y, 16, 16);
-      for (let i = 0; i < 9; i++) {
-        const w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3);
-        const px = inX(r, w), py = inY(r, h);
-        mark(c, PAL.caveW, x, y, px, py, w, h);
-        mark(c, PAL.caveWL, x, y, px, py, w, 1);
-        mark(c, PAL.caveWG, x, y, px + 1, py + h, w - 1, 1);
-      }
-      speck(c, PAL.caveWG, x, y, 4, r);
-      for (let i = 0; i < 5; i++) {
-        const px = inX(r, 2), py = inY(r, 2);
-        mark(c, gem, x, y, px, py, 2, 2); P(c, gemL, x + px, y + py);
-      }
-      seam(c, x, y, SEAM.caveWall, SEAM_TONE.caveWall, 8, 4, 3);
-    });
+  // An ore seam is a patch of the CAVE WALL it runs through (same plates, same
+  // edge bits, so it sits in a wall mass with no seam), with a vein glinting
+  // across it.
+  const ore = (key, label, gem, gemL) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['mine', 'cave', 'underdark'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => TR.paintOre(c, x, y, v, vi, gem, gemL));
   ore('ORE_IRON', 'Iron Vein', '#8d8378', '#c3bdb2');
   ore('ORE_SILVER', 'Silver Vein', '#a8b4c0', '#e8f0f8');
   ore('ORE_GEM', 'Gem Vein', '#8a4fb0', '#e0b4ff');
@@ -3349,179 +2072,41 @@ function buildTiles() {
   });
 
   // --- 4.17 trees & foliage ------------------------------------------------
-  const OAK_ROWS = [[0, 5, 6], [1, 3, 10], [2, 2, 12], [3, 1, 14], [4, 1, 14], [5, 0, 16], [6, 0, 16], [7, 0, 16], [8, 1, 14], [9, 1, 14], [10, 2, 12], [11, 4, 8]];
-  def('TREE_OAK', 'Oak', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest', 'plains', 'hills'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      contact(c, x, y, 13, 14);                  // pools either side of the trunk
-      R(c, PAL.barkD, x + 5, y + 10, 6, 6);      // trunk keyline
-      R(c, PAL.bark, x + 6, y + 10, 4, 6); V(c, PAL.barkL, x + 6, y + 10, 6); V(c, PAL.barkD, x + 9, y + 10, 6);
-      outline(c, PAL.leafXD, x, y, OAK_ROWS);
-      blob(c, PAL.leafD, x, y, OAK_ROWS);
-      blob(c, PAL.leaf, x, y, OAK_ROWS.map((q) => [q[0], q[1] + 1, Math.max(1, q[2] - 2)]));
-      // canopy lit from the upper-left, shaded to the lower-right
-      blob(c, PAL.leafL, x, y, [[1, 4, 6], [2, 3, 7], [3, 2, 7], [4, 2, 6], [5, 1, 6], [6, 1, 4]]);
-      blob(c, PAL.leafD, x, y, [[8, 9, 6], [9, 8, 7], [10, 7, 7], [11, 6, 6]]);
-      speck(c, PAL.leafH, x + 2, y + 1, 5, r, 10, 6);
-      speck(c, PAL.leafD, x + 3, y + 6, 5, r, 11, 5);
-    });
+  // Clustered canopies from render/tiles_terrain.js section 4. The 2x2 trees
+  // render each quadrant from one fixed layout in tree space, so they declare a
+  // single variant: four tiles hashed independently could not agree on more.
+  def('TREE_OAK', 'Oak', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest', 'plains', 'hills'], variants: 8 }, TR.paintOak);
+  def('TREE_PINE', 'Pine', SOLID, { layer: 'deco', group: 'tree', biomes: ['pine-forest', 'mountain', 'tundra'], variants: 6 }, TR.paintPine);
 
-  def('TREE_PINE', 'Pine', SOLID, { layer: 'deco', group: 'tree', biomes: ['pine-forest', 'mountain', 'tundra'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      contact(c, x, y, 11, 14);
-      R(c, PAL.barkXD, x + 6, y + 12, 5, 4);
-      R(c, PAL.barkD, x + 7, y + 12, 3, 4);
-      const rows = [[0, 7, 2], [1, 6, 4], [2, 6, 4], [3, 5, 6], [4, 4, 8], [5, 6, 4], [6, 5, 6], [7, 4, 8], [8, 3, 10], [9, 5, 6], [10, 4, 8], [11, 3, 10], [12, 2, 12]];
-      outline(c, PAL.pineXD, x, y, rows);
-      blob(c, PAL.pineD, x, y, rows);
-      blob(c, PAL.pine, x, y, rows.map((q) => [q[0], q[1], Math.max(1, q[2] - 1)]));
-      blob(c, PAL.pineL, x, y, [[1, 7, 1], [3, 6, 2], [4, 5, 2], [6, 6, 2], [7, 5, 2], [8, 4, 2], [10, 5, 2], [11, 4, 2]]);
-      speck(c, PAL.pineD, x + 3, y + 6, 5, r, 10, 7);
-    });
+  def('OAK_TL', 'Oak', SOLID, { layer: 'over', group: 'tree', biomes: ['forest'], variants: 1 }, (c, x, y, v) => TR.paintBigOak(c, x, y, v, 0, 0));
+  def('OAK_TR', 'Oak', SOLID, { layer: 'over', group: 'tree', biomes: ['forest'], variants: 1 }, (c, x, y, v) => TR.paintBigOak(c, x, y, v, 1, 0));
+  def('OAK_BL', 'Oak', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest'], variants: 1 }, (c, x, y, v) => TR.paintBigOak(c, x, y, v, 0, 1));
+  def('OAK_BR', 'Oak', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest'], variants: 1 }, (c, x, y, v) => TR.paintBigOak(c, x, y, v, 1, 1));
 
-  // 2x2 oak — TL/TR/BL/BR assemble into one big canopy.
-  const oakTL = [[0, 10, 6], [1, 8, 8], [2, 6, 10], [3, 5, 11], [4, 4, 12], [5, 3, 13], [6, 2, 14], [7, 2, 14], [8, 1, 15], [9, 1, 15], [10, 0, 16], [11, 0, 16], [12, 0, 16], [13, 0, 16], [14, 0, 16], [15, 0, 16]];
-  const oakBL = [[0, 0, 16], [1, 0, 16], [2, 0, 16], [3, 0, 16], [4, 0, 16], [5, 0, 16], [6, 1, 15], [7, 3, 13], [8, 6, 10], [9, 10, 6]];
-  const canopy = (rows, trunkSide) => (c, x, y, v) => {
-    const r = sr(v);
-    const bottom = rows.reduce((m, q) => Math.max(m, q[0]), 0);
-    if (bottom < 14) shadowUnder(c, x, y, 12, bottom);   // the BL/BR halves had none
-    outline(c, PAL.leafXD, x, y, rows);
-    blob(c, PAL.leafD, x, y, rows);
-    blob(c, PAL.leaf, x, y, rows.map((q) => [q[0], q[1] + 1, Math.max(1, q[2] - 2)]));
-    speck(c, PAL.leafH, x, y, 7, r, 14, Math.min(12, bottom));
-    speck(c, PAL.leafD, x, y, 6, r, 16, bottom + 1);
-    if (trunkSide === 'L') { R(c, PAL.barkD, x + 13, y + 8, 3, 8); R(c, PAL.bark, x + 14, y + 8, 2, 8); V(c, PAL.barkL, x + 14, y + 8, 8); }
-    if (trunkSide === 'R') { R(c, PAL.barkD, x, y + 8, 3, 8); R(c, PAL.bark, x, y + 8, 2, 8); V(c, PAL.barkD, x + 1, y + 8, 8); }
-  };
-  def('OAK_TL', 'Oak', SOLID, { layer: 'over', group: 'tree', biomes: ['forest'], variants: 2 }, canopy(oakTL, null));
-  def('OAK_TR', 'Oak', SOLID, { layer: 'over', group: 'tree', biomes: ['forest'], variants: 2 }, canopy(mirror(oakTL), null));
-  def('OAK_BL', 'Oak', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest'], variants: 2 }, canopy(oakBL, 'L'));
-  def('OAK_BR', 'Oak', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest'], variants: 2 }, canopy(mirror(oakBL), 'R'));
+  def('PINE_TL', 'Pine', SOLID, { layer: 'over', group: 'tree', biomes: ['pine-forest'], variants: 1 }, (c, x, y, v) => TR.paintBigPine(c, x, y, v, 0, 0));
+  def('PINE_TR', 'Pine', SOLID, { layer: 'over', group: 'tree', biomes: ['pine-forest'], variants: 1 }, (c, x, y, v) => TR.paintBigPine(c, x, y, v, 1, 0));
+  def('PINE_BL', 'Pine', SOLID, { layer: 'deco', group: 'tree', biomes: ['pine-forest'], variants: 1 }, (c, x, y, v) => TR.paintBigPine(c, x, y, v, 0, 1));
+  def('PINE_BR', 'Pine', SOLID, { layer: 'deco', group: 'tree', biomes: ['pine-forest'], variants: 1 }, (c, x, y, v) => TR.paintBigPine(c, x, y, v, 1, 1));
 
-  const pineTL = [[0, 15, 1], [1, 15, 1], [2, 14, 2], [3, 13, 3], [4, 12, 4], [5, 14, 2], [6, 13, 3], [7, 12, 4], [8, 11, 5], [9, 10, 6], [10, 12, 4], [11, 11, 5], [12, 10, 6], [13, 9, 7], [14, 8, 8], [15, 7, 9]];
-  const pineBL = [[0, 8, 8], [1, 7, 9], [2, 6, 10], [3, 8, 8], [4, 7, 9], [5, 6, 10], [6, 5, 11], [7, 4, 12], [8, 3, 13], [9, 2, 14], [10, 5, 11], [11, 4, 12], [12, 3, 13]];
-  const conifer = (rows, trunkSide) => (c, x, y, v) => {
-    const r = sr(v);
-    const bottom = rows.reduce((m, q) => Math.max(m, q[0]), 0);
-    if (bottom < 14) shadowUnder(c, x, y, 12, bottom);
-    outline(c, PAL.pineXD, x, y, rows);
-    blob(c, PAL.pineD, x, y, rows);
-    blob(c, PAL.pine, x, y, rows.map((q) => [q[0], q[1] + 1, Math.max(1, q[2] - 1)]));
-    speck(c, PAL.pineL, x, y, 6, r, 16, bottom + 1);
-    if (trunkSide === 'L') { R(c, PAL.barkXD, x + 13, y + 13, 3, 3); R(c, PAL.barkD, x + 14, y + 13, 2, 3); }
-    if (trunkSide === 'R') { R(c, PAL.barkXD, x, y + 13, 3, 3); R(c, PAL.barkD, x, y + 13, 2, 3); }
-  };
-  def('PINE_TL', 'Pine', SOLID, { layer: 'over', group: 'tree', biomes: ['pine-forest'], variants: 2 }, conifer(pineTL, null));
-  def('PINE_TR', 'Pine', SOLID, { layer: 'over', group: 'tree', biomes: ['pine-forest'], variants: 2 }, conifer(mirror(pineTL), null));
-  def('PINE_BL', 'Pine', SOLID, { layer: 'deco', group: 'tree', biomes: ['pine-forest'], variants: 2 }, conifer(pineBL, 'L'));
-  def('PINE_BR', 'Pine', SOLID, { layer: 'deco', group: 'tree', biomes: ['pine-forest'], variants: 2 }, conifer(mirror(pineBL), 'R'));
+  // Grown limbs and a sawn stub: render/tiles_terrain.js section 4.
+  def('DEAD_TREE', 'Dead Tree', SOLID, { layer: 'deco', group: 'tree', biomes: ['marsh', 'ash-waste', 'ruins', 'tundra'], variants: 6 }, TR.paintDeadTree);
+  def('STUMP', 'Stump', SOLID, { layer: 'deco', group: 'prop', biomes: ['forest', 'pine-forest', 'plains'], variants: 4 }, TR.paintStump);
 
-  def('DEAD_TREE', 'Dead Tree', SOLID, { layer: 'deco', group: 'tree', biomes: ['marsh', 'ash-waste', 'ruins', 'tundra'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      contact(c, x, y, 9, 15);
-      R(c, PAL.barkXD, x + 6, y + 4, 5, 12);                // trunk keyline
-      R(c, PAL.barkD, x + 7, y + 5, 3, 11);
-      V(c, '#7a6248', x + 7, y + 5, 11);
-      // branches — a 1px shadow on the lower-right of each limb keeps the twigs
-      // thin (a full dilation turned them into 3px clubs) while still reading
-      // against any ground, since the light is committed to the upper-left
-      const branch = (bx, by, dx, len, up) => {
-        for (let i = 0; i < len; i++) { const py = by - (up ? i : Math.floor(i / 2)); R(c, PAL.barkXD, bx + dx * i, py, 2, 2); }
-        for (let i = 0; i < len; i++) { P(c, PAL.barkD, bx + dx * i, by - (up ? i : Math.floor(i / 2))); if (i % 2 === 0) P(c, '#7a6248', bx + dx * i, by - (up ? i : Math.floor(i / 2)) - 1); }
-      };
-      branch(x + 7, y + 7, -1, 5, true);
-      branch(x + 9, y + 5, 1, 5, true);
-      branch(x + 7, y + 11, -1, 4, false);
-      if (r() < 0.6) branch(x + 9, y + 10, 1, 3, true);
-      P(c, PAL.barkD, x + 2, y + 1); P(c, PAL.barkD, x + 13, y);
-    });
-
-  def('STUMP', 'Stump', SOLID, { layer: 'deco', group: 'prop', biomes: ['forest', 'pine-forest', 'plains'], variants: 2 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      const rows = [[5, 4, 8], [6, 3, 10], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 3, 10], [13, 4, 8]];
-      shadowUnder(c, x, y, 11, 13);
-      outline(c, PAL.barkXD, x, y, rows);
-      blob(c, PAL.bark, x, y, [[6, 4, 8], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 3, 10], [13, 4, 8]]);
-      blob(c, PAL.woodL, x, y, [[5, 4, 8], [6, 3, 10], [7, 3, 10]]);
-      V(c, PAL.barkD, x + 12, y + 8, 5);
-      O(c, PAL.barkD, x + 3, y + 5, 10, 4);
-      P(c, PAL.woodD, x + 7, y + 6); P(c, PAL.woodD, x + 8, y + 7);
-      V(c, PAL.barkD, x + 5, y + 8, 6); V(c, PAL.barkD, x + 10, y + 9, 5);
-      if (r() < 0.5) { P(c, PAL.moss, x + 3, y + 10); P(c, PAL.moss, x + 12, y + 11); }
-    });
-
-  // BUSH measured ΔE 3.7 against the grass it stood in (body colour) — it read
-  // as a hollow ring, because only the `leafD` rim survived. Darker leaf family
-  // plus a `leafXD` keyline plus a real shadow, and it becomes a solid mass.
-  const BUSH_ROWS = [[4, 5, 6], [5, 3, 10], [6, 2, 12], [7, 1, 14], [8, 1, 14], [9, 1, 14], [10, 2, 12], [11, 3, 10], [12, 4, 8], [13, 5, 6]];
-  def('BUSH', 'Bush', SOLID, { layer: 'deco', group: 'plant', biomes: ['forest', 'plains', 'hills'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      shadowUnder(c, x, y, 11, 13);
-      outline(c, PAL.leafXD, x, y, BUSH_ROWS);
-      blob(c, PAL.leafD, x, y, BUSH_ROWS);
-      blob(c, PAL.leaf, x, y, BUSH_ROWS.map((q) => [q[0], q[1] + 1, Math.max(1, q[2] - 2)]));
-      blob(c, PAL.leafL, x, y, [[5, 4, 5], [6, 3, 6], [7, 2, 6], [8, 2, 5]]);
-      speck(c, PAL.leafH, x + 2, y + 4, 5, r, 10, 5);
-      speck(c, PAL.leafD, x + 4, y + 9, 5, r, 10, 4);
-    });
-
-  def('BERRY_BUSH', 'Berry Bush', SOLID | TRIGGER, { layer: 'deco', group: 'plant', biomes: ['forest', 'plains'], variants: 3 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      shadowUnder(c, x, y, 11, 13);
-      outline(c, PAL.leafXD, x, y, BUSH_ROWS);
-      blob(c, PAL.leafD, x, y, BUSH_ROWS);
-      blob(c, PAL.leaf, x, y, BUSH_ROWS.map((q) => [q[0], q[1] + 1, Math.max(1, q[2] - 2)]));
-      blob(c, PAL.leafL, x, y, [[5, 4, 5], [6, 3, 6], [7, 2, 5]]);
-      for (let i = 0; i < 6; i++) {
-        const bx = x + 3 + Math.floor(r() * 10), by = y + 5 + Math.floor(r() * 8);
-        P(c, '#7d1c2a', bx, by + 1); P(c, '#a8283a', bx, by); P(c, '#d8586a', bx, by - 1);
-      }
-      speck(c, PAL.leafH, x + 2, y + 4, 4, r, 10, 5);
-    });
+  def('BUSH', 'Bush', SOLID, { layer: 'deco', group: 'plant', biomes: ['forest', 'plains', 'hills'], variants: 6 },
+    (c,x,y,v)=>paintProp(c,x,y,'bush',v));
+  def('BERRY_BUSH', 'Berry Bush', SOLID | TRIGGER, { layer: 'deco', group: 'plant', biomes: ['forest', 'plains'], variants: 4 },
+    (c,x,y,v)=>{paintProp(c,x,y,'bush',v);for(const [a,b] of [[4,7],[9,5],[11,9]]){R(c,'#6b3542',x+a,y+b,2,2);P(c,'#c67a73',x+a,y+b);}} );
 
   // Was the single worst prop in the set: ΔE 3.8 from grass with 52% of its rim
   // invisible, and no contact shadow anywhere. A hedge is a wall of leaves, so
   // it gets what a wall gets — lit crown, shaded face, occlusion at the foot.
-  def('HEDGE', 'Hedge', SOLID, { layer: 'deco', group: 'plant', biomes: ['city', 'plains'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    foot(c, x, y, 0, 16, 13, 1.2);                   // the hedge foot is row 13
-    R(c, PAL.leafXD, x, y + 1, 16, 13);
-    R(c, PAL.leafD, x, y + 2, 15, 12);
-    for (let i = 0; i < 15; i++) R(c, PAL.leaf, x + i, y + 3 + (i % 2), 1, 10);
-    speck(c, PAL.leafH, x, y + 3, 9, r, 15, 8);
-    speck(c, PAL.leafD, x, y + 7, 8, r, 15, 6);
-    H(c, PAL.leafL, x, y + 2, 15); H(c, PAL.leafH, x, y + 2, 10);   // clipped crown
-    V(c, PAL.leafL, x, y + 3, 10);
-    R(c, PAL.leafXD, x, y + 13, 16, 1);                              // sits on the ground
-  });
+  // A clipped hedge (render/tiles_arch.js 6d): a block, not a green square;
+  // resolveArch() gives each tile of a run the member for its neighbours.
+  def('HEDGE', 'Hedge', SOLID, { layer: 'deco', group: 'plant', biomes: ['city', 'plains'], variants: 2 }, (c, x, y, v, vi) => AR.paintHedge(c, x, y, vi, 0));
 
-  def('REEDS', 'Reeds', SLOW, { layer: 'deco', group: 'plant', biomes: ['marsh', 'coast'], variants: 3 }, (c, x, y, v) => {
-    const r = sr(v);
-    foot(c, x, y, 1, 14, 14, 0.6);                   // the mat of shade at the waterline
-    for (let i = 0; i < 10; i++) {
-      const bx = x + Math.floor(r() * 16), top = y + 2 + Math.floor(r() * 7);
-      R(c, PAL.swampL, bx, top, 1, 15 - (top - y));
-      P(c, '#86a86a', bx, top);
-      if (r() < 0.4) P(c, PAL.grassDry, bx, top + 1);
-    }
-  });
-
-  def('CATTAILS', 'Cattails', SLOW, { layer: 'deco', group: 'plant', biomes: ['marsh', 'coast'], variants: 3 }, (c, x, y, v) => {
-    const r = sr(v);
-    foot(c, x, y, 1, 14, 14, 0.6);
-    for (let i = 0; i < 6; i++) {
-      const bx = x + 1 + Math.floor(r() * 14), top = y + 3 + Math.floor(r() * 5);
-      R(c, PAL.swampL, bx, top, 1, 15 - (top - y));
-      R(c, '#6b4a2f', bx, top - 3, 1, 3); P(c, '#8a6240', bx, top - 3);
-      if (r() < 0.6) { for (let k = 0; k < 4; k++) P(c, PAL.swampD, bx + 1 + k, top + 2 + k); }
-    }
-  });
+  // Marsh margins: render/tiles_terrain.js section 13.
+  def('REEDS', 'Reeds', SLOW, { layer: 'deco', group: 'plant', biomes: ['marsh', 'coast'], variants: 6 }, (c, x, y, v) => TR.paintReeds(c, x, y, v, false));
+  def('CATTAILS', 'Cattails', SLOW, { layer: 'deco', group: 'plant', biomes: ['marsh', 'coast'], variants: 6 }, (c, x, y, v) => TR.paintReeds(c, x, y, v, true));
 
   def('CACTUS', 'Cactus', SOLID | DAMAGE, { layer: 'deco', group: 'plant', biomes: ['coast', 'ruins'], variants: 2 }, (c, x, y) => {
     contact(c, x, y, 8, 15);
@@ -3538,16 +2123,7 @@ function buildTiles() {
     H(c, '#5aa070', x + 6, y + 3, 4);
   });
 
-  def('DRIFTWOOD', 'Driftwood', 0, { layer: 'deco', group: 'prop', biomes: ['coast', 'marsh'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    const oy = 8 + Math.floor(r() * 3);
-    shadowUnder(c, x, y, 13, oy + 2);
-    R(c, '#26211a', x, y + oy - 1, 16, 5);                // keyline
-    R(c, '#a89a86', x + 1, y + oy, 14, 3);
-    H(c, '#c8bda8', x + 1, y + oy, 14); H(c, '#7d7364', x + 1, y + oy + 2, 14);
-    for (let i = 0; i < 5; i++) P(c, '#7d7364', x + 2 + Math.floor(r() * 12), y + oy + 1);
-    P(c, '#a89a86', x + 3, y + oy - 1); P(c, '#a89a86', x + 11, y + oy - 2); P(c, '#a89a86', x + 12, y + oy - 1);
-  });
+  def('DRIFTWOOD', 'Driftwood', 0, { layer: 'deco', group: 'prop', biomes: ['coast', 'marsh'], variants: 4 }, TR.paintDriftwood);
 
   // Register a light-void backdrop id last so map editors have a "clear" tile.
   def('BLACK', 'Darkness', SOLID, { layer: 'over', biomes: [] }, (c, x, y) => { R(c, '#000000', x, y, 16, 16); });
@@ -3561,74 +2137,20 @@ function buildTiles() {
   // =========================================================================
 
   /**
-   * ROAD FRINGE. The single loudest boundary in the game was a road meeting
-   * grass: measured "hardness" 8.9 (the seam was nine times more contrasty than
-   * anything inside either tile), because a straight blocky cut is the only
-   * thing two flat fills can make.
+   * ROAD FRINGE. A road meeting grass used to be a straight blocky cut — the
+   * loudest boundary in the game. These carry an irregular turf verge on the
+   * named sides, and are named DIRT_PATH_N … DIRT_PATH_NW / DIRT_N … DIRT_NW,
+   * exactly the family naming `autotileEdges()` resolves (`BASE_${suffix}`), so
+   * world/overworld.js section 4b finds and draws them with no list to keep.
+   * They stay in the `dirt` group so a path beside plain DIRT grows no edge.
    *
-   * These are named DIRT_PATH_N … DIRT_PATH_NW, which is exactly the family
-   * naming `autotileEdges()` already resolves (`BASE_${suffix}`) — so a caller
-   * that does
-   *
-   *     const e = autotileEdges(map, x, y, T.DIRT_PATH);
-   *     drawTile(ctx, e.tile, px, py, x, y, t);
-   *
-   * gets an irregular, dithered, grass-invaded verge with no change to the
-   * autotiler at all. They stay in the `dirt` group so a path next to plain
-   * DIRT is treated as the same material and grows no edge there.
-   *
-   * `sides` names the edges that face the OTHER material. Each one gets a
-   * ragged band: a 3px dither ramp of grass over the path, a scatter of tufts
-   * that break the line, and a `pathXD` scuff where wheels have cut the verge.
+   * The turf is the real sward (tiles_terrain.js section 7 composites the two
+   * painters through a wandering mask), so it joins the GRASS tile next door as
+   * another grass tile would; the turf shades the soil just past its edge on
+   * the sides the light comes from, and lit blades lean out over the rest.
    */
-  /**
-   * One verge. `side` is the edge that faces the turf; the depth WANDERS — a
-   * running value that steps by a pixel now and then — rather than being random
-   * per column, which gives lobes of grass pushing into the bare ground instead
-   * of a stippled ruler line. `soil`/`soilD` are the ground being invaded.
-   */
-  const verge = (c, x, y, r, side, soil, soilD) => {
-    // `at(col, d, t)` maps (depth into the tile, distance along the edge)
-    const at = (col, d, t, len = 1) => {
-      if (side === 'N') mark(c, col, x, y, t, d, len, 1);
-      else if (side === 'S') mark(c, col, x, y, t, 15 - d, len, 1);
-      else if (side === 'W') mark(c, col, x, y, d, t, 1, len);
-      else mark(c, col, x, y, 15 - d, t, 1, len);
-    };
-    let d0 = 3 + Math.floor(r() * 3);
-    for (let t = 0; t < 16; t++) {
-      if (r() < 0.38) d0 += (r() < 0.5 ? 1 : -1);
-      d0 = Math.max(1, Math.min(7, d0));
-      for (let d = 0; d < d0; d++) {
-        // turf, textured like the GRASS tile it has to blend into
-        const q = r();
-        if (d < d0 - 2) at(q < 0.16 ? PAL.grassD : (q < 0.34 ? PAL.grassM : PAL.grass), d, t);
-        else if (d === d0 - 2) at(q < 0.55 ? PAL.grassD : soil, d, t);          // 50% dither
-        else at(q < 0.3 ? PAL.grassD : soil, d, t);                             // 30% dither
-      }
-      if (r() < 0.20) at(PAL.grassD, d0 + Math.floor(r() * 2), t);              // a tuft reaching in
-      if (r() < 0.12) at(soilD, d0, t);                                         // a scuff
-      if (r() < 0.10) at(soil, Math.max(0, d0 - 3), t);                         // bare earth at the kerb
-    }
-  };
-
-  const pathEdge = (key, sides) => def(key, 'Path', 0, { group: 'dirt', biomes: ['road', 'plains', 'city'], variants: 4 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      // the road surface itself, same recipe as DIRT_PATH
-      R(c, PAL.path, x, y, 16, 16);
-      for (let i = 0; i < 2; i++) mark(c, PAL.pathW, x, y, Math.floor(r() * 10) - 1, Math.floor(r() * 12) - 1, 5 + Math.floor(r() * 4), 3 + Math.floor(r() * 2));
-      speck(c, PAL.pathL, x, y, 5, r);
-      speck(c, PAL.pathM, x, y, 9, r);
-      speck(c, PAL.pathD, x, y, 5, r);
-      for (let i = 0; i < 2; i++) { const px = x + Math.floor(r() * 14), py = y + 1 + Math.floor(r() * 13); R(c, PAL.pebble, px, py, 2, 1); P(c, PAL.pathXD, px + 1, py + 1); }
-      for (const s of sides) verge(c, x, y, r, s, PAL.pathD, PAL.pathXD);
-      // corners where two verges meet get an extra bite of turf
-      if (sides.length > 1) {
-        const cx = sides.includes('W') ? 0 : 13, cy = sides.includes('N') ? 0 : 13;
-        for (let i = 0; i < 5; i++) mark(c, r() < 0.6 ? PAL.grass : PAL.grassD, x, y, cx + Math.floor(r() * 4), cy + Math.floor(r() * 4), 1 + Math.floor(r() * 2), 1);
-      }
-    });
+  const pathEdge = (key, sides) => def(key, 'Path', 0, { group: 'dirt', biomes: ['road', 'plains', 'city'], variants: 6 },
+    (c, x, y, v) => TR.paintPathEdge(c, x, y, v, sides));
   pathEdge('DIRT_PATH_N', ['N']);
   pathEdge('DIRT_PATH_E', ['E']);
   pathEdge('DIRT_PATH_S', ['S']);
@@ -3638,23 +2160,8 @@ function buildTiles() {
   pathEdge('DIRT_PATH_SW', ['S', 'W']);
   pathEdge('DIRT_PATH_NW', ['N', 'W']);
 
-  /**
-   * The same verge for bare DIRT, which measured the second-hardest boundary in
-   * the set (ΔE 37.5 at ΔL* 1.2 — maximum hue change, zero value change, which
-   * is the definition of a cut-out sticker edge). Named DIRT_N … DIRT_NW so
-   * `autotileEdges(map, x, y, T.DIRT)` resolves them with no autotiler change.
-   */
-  const dirtEdge = (key, sides) => def(key, 'Dirt', 0, { group: 'dirt', biomes: ['plains', 'road', 'ruins'], variants: 4 },
-    (c, x, y, v) => {
-      const r = sr(v);
-      dirtBase(c, x, y, r);
-      for (let i = 0; i < 3; i++) R(c, PAL.dirtD, x + Math.floor(r() * 14), y + Math.floor(r() * 15), 2, 2);
-      for (const s of sides) verge(c, x, y, r, s, PAL.dirtD, PAL.mudD);
-      if (sides.length > 1) {
-        const cx = sides.includes('W') ? 0 : 13, cy = sides.includes('N') ? 0 : 13;
-        for (let i = 0; i < 5; i++) mark(c, r() < 0.6 ? PAL.grass : PAL.grassD, x, y, cx + Math.floor(r() * 4), cy + Math.floor(r() * 4), 1 + Math.floor(r() * 2), 1);
-      }
-    });
+  const dirtEdge = (key, sides) => def(key, 'Dirt', 0, { group: 'dirt', biomes: ['plains', 'road', 'ruins'], variants: 6 },
+    (c, x, y, v) => TR.paintDirtEdge(c, x, y, v, sides));
   dirtEdge('DIRT_N', ['N']);
   dirtEdge('DIRT_E', ['E']);
   dirtEdge('DIRT_S', ['S']);
@@ -3664,28 +2171,8 @@ function buildTiles() {
   dirtEdge('DIRT_SW', ['S', 'W']);
   dirtEdge('DIRT_NW', ['N', 'W']);
 
-  /** A worn wheel-rutted road centre, for long straight stretches of highway. */
-  def('DIRT_PATH_RUT', 'Rutted Road', 0, { group: 'dirt', biomes: ['road', 'plains'], variants: 4 }, (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.path, x, y, 16, 16);
-    for (let i = 0; i < 2; i++) mark(c, PAL.pathW, x, y, inX(r, 6), inY(r, 4), 6, 4);
-    // Two wheel ruts running E-W. The bow is a half-sine that is ZERO at both
-    // tile edges, so consecutive tiles join up seamlessly however the hash
-    // shuffles them — a rut that jumps at every seam is just tile-grid banding
-    // wearing a different hat.
-    for (const base of [4, 10]) {
-      const bow = Math.floor(r() * 3) - 1;
-      for (let cx0 = 0; cx0 < 16; cx0++) {
-        const ry = base + Math.round(bow * Math.sin(Math.PI * cx0 / 15));
-        mark(c, PAL.pathD, x, y, cx0, ry, 1, 1);
-        if (r() < 0.45) mark(c, PAL.pathXD, x, y, cx0, ry + 1, 1, 1);
-        if (r() < 0.35) mark(c, PAL.pathL, x, y, cx0, ry - 1, 1, 1);
-      }
-    }
-    speck(c, PAL.pathM, x, y, 8, r);
-    for (let i = 0; i < 2; i++) { const px = x + inX(r, 2), py = y + inY(r, 2); R(c, PAL.pebble, px, py, 2, 1); P(c, PAL.pathXD, px + 1, py + 1); }
-    seam(c, x, y, SEAM.rut, SEAM_TONE.path, 8, 3, 3);
-  });
+  /** A wheel-rutted road with a grassy crown, for long straight stretches of highway. */
+  def('DIRT_PATH_RUT', 'Rutted Road', 0, { group: 'dirt', biomes: ['road', 'plains'], variants: 6 }, TR.paintRut);
 
   /**
    * A standalone prop shadow, for anything the game drops on the ground that
@@ -3766,249 +2253,39 @@ function buildTiles() {
    * bank should not. Use these where the water meets COBBLE, FLAGSTONE, STONE
    * or a building; use SHORE_* everywhere else.
    */
-  shoreFamily('QUAY', 'Quayside', QUAY_BANK, 5, 1.4);
+  shoreFamily('QUAY', 'Quayside', true);
 
   // -------------------------------------------------------------------------
   // 4.20 LONE PATCHES — the _ISLE set. See section 2b for what these are and
-  // why a four-sided nibble was not the answer.
+  // why a four-sided nibble was not the answer; tiles_terrain.js section 9
+  // paints them. Each paints the ground its islands ACTUALLY sit in — counted
+  // over the ground plane of all 17 maps (tools/px/maps.mjs), not guessed —
+  // with a soft blob of its own material on top:
   //
-  // Each one paints the ground its islands ACTUALLY sit in — counted over the
-  // ground plane of all 17 maps, not guessed — and then a blob of its own
-  // material on top. The counts and surrounds are quoted per tile below.
+  //   SNOW_GRASS_ISLE  125, Neverwinter Wood, 96% grass around them
+  //   DIRT_ISLE         62, Triboar Trail and Conyberry, 85% grass
+  //   GRAVEL_ISLE       16, Conyberry and Wave Echo, all grass
+  //   COBBLE_ISLE       11, Conyberry ruins, 63% bare earth
+  //   PATH_ISLE         57, Neverwinter, every neighbour paved
   // -------------------------------------------------------------------------
-
-  /**
-   * Tone pools for the patch bodies. Core = the solid middle, E = the stipple
-   * ramp. The two are kept CLOSE: the edge pool is the same material a shade
-   * thinner, not a dark outline. A patch is only nine or ten pixels across, so
-   * a fringe drawn two value steps down does not read as an edge — it reads as
-   * the whole patch being darker than the material it is supposed to be.
-   */
-  const IT = {
-    snow: [PAL.snow, PAL.snow, PAL.snow, PAL.snowD, PAL.snow, PAL.snowD],
-    snowE: [PAL.snow, PAL.snow, PAL.snowD, PAL.snow, PAL.snowD, PAL.snowS],
-    dirt: [PAL.dirt, PAL.dirtM, PAL.dirt, PAL.dirtD, PAL.dirtM, PAL.dirt],
-    dirtE: [PAL.dirt, PAL.dirtM, PAL.dirt, PAL.dirtD, PAL.dirt, PAL.dirtM],
-    // weighted toward the mid tones: the GRAVEL tile is `scree` under fourteen
-    // paler chips, so a pool of raw `scree` would make the patch a full value
-    // step darker than the material it is meant to be
-    scree: [PAL.screeM, PAL.scree, PAL.screeM, PAL.screeL, PAL.scree, PAL.screeM],
-    screeE: [PAL.screeM, PAL.scree, PAL.screeM, PAL.screeD, PAL.scree, PAL.screeM],
-    cobble: [PAL.cobble, PAL.cobbleD, PAL.cobble, PAL.cobbleL, PAL.cobbleD, PAL.cobble],
-    cobbleE: [PAL.cobbleD, PAL.cobble, PAL.cobbleD, PAL.cobbleD, PAL.cobble, PAL.cobbleD],
-    path: [PAL.path, PAL.pathM, PAL.path, PAL.pathW, PAL.pathM, PAL.path],
-    pathE: [PAL.path, PAL.pathM, PAL.path, PAL.pathD, PAL.pathM, PAL.path],
-  };
-  /** A patch coordinate: inboard, so a mark cannot escape the blob's own box. */
-  const ip = (r) => 2 + Math.floor(r() * 12);
-
-  /**
-   * SNOW_GRASS_ISLE — 125 tiles in Neverwinter Wood, the worst ground in the
-   * game before this. 470 of their 491 cardinal neighbours are GRASS, GRASS_2,
-   * GRASS_3, GRASS_TALL or CLOVER (the rest are 11 WATER, 6 DIRT_PATH, 2
-   * BRIDGE_WOOD, 1 DIRT), so the surround is grass, unambiguously.
-   */
-  def('SNOW_GRASS_ISLE', 'Snow Patch', 0, { group: 'snow', biomes: [], variants: 16 }, (c, x, y, v) => {
-    const r = sr(v);
-    grassBase(c, x, y, r);
-    isleMask(r, 5.1, 1.0);
-    isleFill(c, x, y, IT.snow, IT.snowE);
-    isleRim(c, x, y, PAL.snowS, PAL.snow);
-    // blades still standing out of a shallow drift, and wind-packed ripples
-    for (let i = 0; i < 6; i++) isleMark(c, PAL.grassD, x, y, ip(r), ip(r), 1, 1 + Math.floor(r() * 2));
-    for (let i = 0; i < 3; i++) isleMark(c, PAL.snowD, x, y, ip(r), ip(r), 2 + Math.floor(r() * 2), 1);
-  });
-
-  /**
-   * DIRT_ISLE — 62 tiles: 9 on the Triboar Trail (the "tan rectangles in
-   * grass") and 52 in Conyberry. 156 of Conyberry's 192 neighbours are grass of
-   * some kind and 28 are COBBLE; Triboar's 36 are all grass. Surround: grass.
-   */
-  def('DIRT_ISLE', 'Bare Patch', 0, { group: 'dirt', biomes: [], variants: 16 }, (c, x, y, v) => {
-    const r = sr(v);
-    grassBase(c, x, y, r);
-    isleMask(r, 5.0, 1.1);
-    isleFill(c, x, y, IT.dirt, IT.dirtE);
-    isleRim(c, x, y, PAL.dirtD, PAL.dirtL);
-    // a clod or two, the same crown-and-shadow the DIRT tile is made of
-    for (let i = 0; i < 3; i++) {
-      const w = 2 + Math.floor(r() * 2), cx = ip(r), cy = ip(r);
-      isleMark(c, PAL.dirtM, x, y, cx, cy, w, 1);
-      isleMark(c, PAL.dirtL, x, y, cx, cy, w - 1, 1);
-      isleMark(c, PAL.dirtD, x, y, cx + 1, cy + 1, w, 1);
-    }
-    for (let i = 0; i < 3; i++) isleMark(c, PAL.grassD, x, y, ip(r), ip(r), 1, 1);  // turf hanging on
-  });
-
-  /**
-   * GRAVEL_ISLE — 16 tiles: 12 in Conyberry, 4 at the mouth of Wave Echo Cave.
-   * Every one of their 55 neighbours is grass. A scree spill, then: chippings
-   * that have spread into the turf, not a grey square.
-   */
-  def('GRAVEL_ISLE', 'Scree Patch', SLOW, { group: 'dirt', biomes: [], variants: 16 }, (c, x, y, v) => {
-    const r = sr(v);
-    grassBase(c, x, y, r);
-    isleMask(r, 4.9, 1.1);
-    isleFill(c, x, y, IT.scree, IT.screeE);
-    isleRim(c, x, y, PAL.screeD, PAL.screeL);
-    // chips: a 2x1 stone with a lit crown and the pixel of shade it casts
-    for (let i = 0; i < 6; i++) {
-      const px = ip(r), py = ip(r);
-      isleMark(c, r() < 0.35 ? PAL.screeL : PAL.screeM, x, y, px, py, 2, 1);
-      if (r() < 0.4) isleMark(c, PAL.pebble, x, y, px, py, 1, 1);
-      isleMark(c, PAL.screeD, x, y, px + 1, py + 1, 1, 1);
-    }
-  });
-
-  /**
-   * COBBLE_ISLE — 11 tiles, 10 of them in the Conyberry ruins. 27 of their 43
-   * neighbours are DIRT (7 RUBBLE, 3 DIRT_PATH, 2 GRAVEL, 4 grass), so the
-   * surround is bare earth: a surviving scrap of the old street, swallowed by
-   * the ground around it.
-   */
-  def('COBBLE_ISLE', 'Broken Paving', 0, { group: 'road', biomes: [], variants: 16 }, (c, x, y, v) => {
-    const r = sr(v);
-    dirtBase(c, x, y, r);
-    isleMask(r, 5.0, 1.0);
-    isleFill(c, x, y, IT.cobbleE, IT.cobbleE);          // the mortar bed first
-    // three or four whole stones still seated in it
-    for (let i = 0; i < 4; i++) {
-      const w = 2 + Math.floor(r() * 2), px = ip(r), py = ip(r);
-      isleMark(c, r() < 0.3 ? PAL.cobbleL : PAL.cobble, x, y, px, py, w, 2);
-      if (r() < 0.4) isleMark(c, PAL.cobbleH, x, y, px, py, w - 1, 1);
-      isleMark(c, PAL.cobbleD, x, y, px + w - 1, py + 2, 1, 1);
-    }
-    isleRim(c, x, y, PAL.cobbleD, null);
-    for (let i = 0; i < 3; i++) isleMark(c, PAL.dirtD, x, y, ip(r), ip(r), 1, 1);   // soil in the joints
-  });
-
-  /**
-   * PATH_ISLE — 57 tiles, every one of them in Neverwinter, and every one of
-   * their 220 neighbours paved: 118 COBBLE, 98 FLAGSTONE, 3 MOSAIC, 1 WATER.
-   * So the surround is the street, and the patch is what a lone DIRT_PATH tile
-   * in a paved ward has to be: a pothole where the paving has gone and the
-   * earth under it is showing.
-   *
-   * The backing is COBBLE and not FLAGSTONE because cobble's lattice is
-   * 16-PERIODIC and its seam-crossing stones come from the family-fixed
-   * generator, so this tile continues the paving of an adjoining cobble exactly;
-   * against a flagstone neighbour it is a cobble-beside-flagstone join, which
-   * this map already has hundreds of (they share the `road` group and are mixed
-   * freely) and which is 1.3 dL* — against the 5.6 dL* of the bare path square
-   * it replaces.
-   */
-  def('PATH_ISLE', 'Worn Paving', 0, { group: 'dirt', biomes: [], variants: 16 }, (c, x, y, v) => {
-    const r = sr(v);
-    cobbleBase(c, x, y, r);
-    isleMask(r, 4.8, 1.1);
-    isleFill(c, x, y, IT.path, IT.pathE);
-    isleRim(c, x, y, PAL.pathD, PAL.pathW);
-    for (let i = 0; i < 3; i++) {                       // stones knocked loose into it
-      const px = ip(r), py = ip(r);
-      isleMark(c, PAL.pebble, x, y, px, py, 2, 1);
-      isleMark(c, PAL.pathXD, x, y, px + 1, py + 1, 1, 1);
-    }
-  });
+  def('SNOW_GRASS_ISLE', 'Snow Patch', 0, { group: 'snow', biomes: [], variants: 16 }, TR.paintSnowIsle);
+  def('DIRT_ISLE', 'Bare Patch', 0, { group: 'dirt', biomes: [], variants: 16 }, TR.paintDirtIsle);
+  def('GRAVEL_ISLE', 'Scree Patch', SLOW, { group: 'dirt', biomes: [], variants: 16 }, TR.paintGravelIsle);
+  def('COBBLE_ISLE', 'Broken Paving', 0, { group: 'road', biomes: [], variants: 16 }, TR.paintCobbleIsle);
+  // Edge-variant like COBBLE, whose lattice it continues across every border.
+  def('PATH_ISLE', 'Worn Paving', 0, { group: 'dirt', biomes: [], variants: 16, edgeVariant: true }, TR.paintPathIsle);
 
   // -------------------------------------------------------------------------
   // 4.30 GABLE-AWARE ROOF SETS — shingle, pantile, slate
   //
-  // THATCH has always had L / M / R / RIDGE pieces, so a thatched house reads
-  // as a roof with two gable ends and a crest. SHINGLE_ROOF and TILE_ROOF were
-  // one tile repeated, so every shingled house in Phandalin was a flat red
-  // rectangle. These give `building()` the same four pieces for every roof
-  // material. The M tiles are the bodies the old single tiles drew, so a map
-  // that still places SHINGLE_ROOF beside SHINGLE_M is seamless; the L and R
-  // tiles add the verge line THATCH_L/_R carry (a 1px ink barge-board one
-  // column in, and a shaded column beside it); the RIDGE tiles cap the crest
-  // the way THATCH_RIDGE does — a dark roll with a lit crown and a shade row
-  // where it casts down the pitch.
+  // The same four authored keys thatch has (tiles_arch.js section 2 paints
+  // them): RIDGE for building()'s first roof row, L / M / R below it.
   // -------------------------------------------------------------------------
-
-  const shingleBody = (c, x, y, v, vi) => {
-    const r = sr(v);
-    coursed(c, x, y, vi, SEAM.shingle, 4, 3, 5,
-      [PAL.shingleL, PAL.shingle, PAL.shingle, PAL.shingle],
-      [PAL.shingleL, PAL.shingleL, PAL.shingle, PAL.shingleM], PAL.shingleD, PAL.shingleG);
-    patchBlock(c, PAL.shingleM, x, y, r, 4, 3, 5, 2);
-    patchBlock(c, PAL.shingleL, x, y, r, 4, 3, 4, 1);
-    speck(c, PAL.shingleD, x, y, 5, r);
-    seam(c, x, y, SEAM.shingle, SEAM_TONE.shingle, 7, 3, 3);
-    return r;
-  };
-  const pantileBody = (c, x, y, v) => {
-    const r = sr(v);
-    R(c, PAL.tileRoofD, x, y, 16, 16);
-    for (let i = 0; i < 4; i++) {
-      const px = x + i * 4;
-      R(c, PAL.tileRoof, px, y, 3, 16);
-      V(c, PAL.tileRoofL, px, y, 16);
-      V(c, PAL.tileRoofM, px + 2, y, 16);
-    }
-    for (let i = 0; i < 4; i++) { H(c, PAL.tileRoofG, x, y + i * 4 + 1, 16); H(c, PAL.tileRoofL, x, y + i * 4 + 2, 16); }
-    for (let i = 0; i < 5; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.tileRoofG, x, y, inX(r, w), inY(r, 2), w, 2); }
-    for (let i = 0; i < 3; i++) mark(c, PAL.moss, x, y, inX(r, 2), inY(r, 2), 2, 2);
-    speck(c, PAL.tileRoofL, x, y, 4, r);
-    seam(c, x, y, SEAM.tileRoof, SEAM_TONE.tileRoof, 6, 3, 3);
-    return r;
-  };
-  // Slates are wide, thin and laid to a 4px course like shingles, but the
-  // block widths run 4-7 (a slate is broader than a shake) and the face is
-  // the cold ramp above. A little lichen, never moss: slate is too cold for it.
-  const slateBody = (c, x, y, v, vi) => {
-    const r = sr(v);
-    coursed(c, x, y, vi, SEAM.slate, 4, 4, 7,
-      [PAL.slateL, PAL.slate, PAL.slate, PAL.slate],
-      [PAL.slateL, PAL.slateL, PAL.slateM, PAL.slateM], PAL.slateD, PAL.slateG);
-    patchBlock(c, PAL.slateM, x, y, r, 4, 4, 6, 2);
-    patchBlock(c, PAL.slateG, x, y, r, 4, 3, 5, 1);
-    for (let i = 0; i < 2; i++) mark(c, PAL.stoneL, x, y, inX(r, 2), inY(r, 1), 2, 1);   // lichen
-    speck(c, PAL.slateD, x, y, 4, r);
-    seam(c, x, y, SEAM.slate, SEAM_TONE.slate, 7, 3, 3);
-    return r;
-  };
-  // The verge: a barge-board one column in from the gable end, and the shaded
-  // course beside it. Same geometry as THATCH_L / THATCH_R.
-  const vergeL = (c, x, y, shadeCol) => { for (let i = 0; i < 16; i++) P(c, shadeCol, x + 2, y + i); V(c, PAL.ink, x + 1, y, 16); };
-  const vergeR = (c, x, y, shadeCol) => { for (let i = 0; i < 16; i++) P(c, shadeCol, x + 13, y + i); V(c, PAL.ink, x + 14, y, 16); };
-  // The crest: a dark ridge roll on rows 1-3, a lit crown on row 1, ink along
-  // the skyline on row 0, and the shade the roll throws onto row 4.
-  const crest = (c, x, y, r, dark, lit, mid, shade, caps) => {
-    H(c, PAL.ink, x, y, 16);
-    R(c, dark, x, y + 1, 16, 3);
-    H(c, lit, x, y + 1, 16); H(c, mid, x, y + 2, 16);
-    if (caps) for (let i = 1; i < 16; i += 4) mark(c, lit, x, y, i, 2, 2, 1);   // ridge tiles, every fourth
-    else for (let i = 0; i < 6; i++) mark(c, shade, x, y, 1 + Math.floor(r() * 14), 3, 1, 1);
-    H(c, shade, x, y + 4, 16);
-  };
-  const ROOF_OPTS = { layer: 'over', group: 'roof', biomes: ['city'], variants: 16, edgeVariant: true };
-  const PAN_OPTS = { layer: 'over', group: 'roof', biomes: ['city'], variants: 8 };
-
-  def('SHINGLE_L', 'Shingle Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { shingleBody(c, x, y, v, vi); vergeL(c, x, y, PAL.shingleD); });
-  def('SHINGLE_M', 'Shingle Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { shingleBody(c, x, y, v, vi); });
-  def('SHINGLE_R', 'Shingle Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { shingleBody(c, x, y, v, vi); vergeR(c, x, y, PAL.shingleG); });
-  def('SHINGLE_RIDGE', 'Shingle Ridge', SOLID, ROOF_OPTS, (c, x, y, v, vi) => {
-    const r = shingleBody(c, x, y, v, vi);
-    crest(c, x, y, r, PAL.shingleD, PAL.shingleL, PAL.shingle, PAL.shingleG, false);
-  });
-
-  def('TILE_L', 'Tile Roof', SOLID, PAN_OPTS, (c, x, y, v) => { pantileBody(c, x, y, v); vergeL(c, x, y, PAL.tileRoofD); });
-  def('TILE_M', 'Tile Roof', SOLID, PAN_OPTS, (c, x, y, v) => { pantileBody(c, x, y, v); });
-  def('TILE_R', 'Tile Roof', SOLID, PAN_OPTS, (c, x, y, v) => { pantileBody(c, x, y, v); vergeR(c, x, y, PAL.tileRoofG); });
-  def('TILE_RIDGE', 'Tile Ridge', SOLID, PAN_OPTS, (c, x, y, v) => {
-    const r = pantileBody(c, x, y, v);
-    crest(c, x, y, r, PAL.tileRoofD, PAL.tileRoofL, PAL.tileRoof, PAL.tileRoofG, true);
-  });
-
-  def('SLATE_L', 'Slate Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { slateBody(c, x, y, v, vi); vergeL(c, x, y, PAL.slateD); });
-  def('SLATE_M', 'Slate Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { slateBody(c, x, y, v, vi); });
-  def('SLATE_R', 'Slate Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { slateBody(c, x, y, v, vi); vergeR(c, x, y, PAL.slateG); });
-  def('SLATE_RIDGE', 'Slate Ridge', SOLID, ROOF_OPTS, (c, x, y, v, vi) => {
-    const r = slateBody(c, x, y, v, vi);
-    crest(c, x, y, r, PAL.slateD, PAL.slateL, PAL.slate, PAL.slateG, false);
-    // lead flashing along a slate ridge, every eighth pixel
-    for (let i = 3; i < 16; i += 8) mark(c, PAL.metalD, x, y, i, 1, 1, 2);
-  });
+  for (const [pre, mat] of [['SHINGLE', 'shingle'], ['TILE', 'pantile'], ['SLATE', 'slate']]) {
+    const label = pre === 'SHINGLE' ? 'Shingle Roof' : pre === 'TILE' ? 'Tile Roof' : 'Slate Roof';
+    for (const end of ['L', 'M', 'R']) def(`${pre}_${end}`, label, SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, mat, 'B', end));
+    def(`${pre}_RIDGE`, label.replace('Roof', 'Ridge'), SOLID, AR.ROOF_OPTS, (c, x, y, v, vi) => AR.paintRoof(c, x, y, v, vi, mat, 'R', 'M'));
+  }
 
   // -------------------------------------------------------------------------
   // 4.31 CANVAS — awnings, stalls, tents, washing
@@ -4268,6 +2545,66 @@ function buildTiles() {
     // the shadow the board throws back onto the plaster behind it
     R(c, 'rgba(0,0,0,0.22)', x + 4, y + 11, 10, 1);
   });
+
+  // -------------------------------------------------------------------------
+  // 4.40 TERRAIN ADDITIONS (2026-09 overhaul) — painted in tiles_terrain.js.
+  // Two more broadleaf species, so a wood can be more than one tree: a birch
+  // for the open Sword Coast forests and a willow for riverbanks and marsh.
+  // -------------------------------------------------------------------------
+  def('TREE_BIRCH', 'Birch', SOLID, { layer: 'deco', group: 'tree', biomes: ['forest', 'plains', 'pine-forest'], variants: 6 }, TR.paintBirch);
+  def('TREE_WILLOW', 'Willow', SOLID, { layer: 'deco', group: 'tree', biomes: ['marsh', 'forest', 'plains'], variants: 4 }, TR.paintWillow);
+
+  // The shelf where shallows drop into deep water: deep water carrying a band
+  // of the shallow body on the named sides (tiles_terrain.js `paintShelf`).
+  // Baked onto WATER_DEEP by resolveTileMasses; same flags as deep water.
+  // Lone wet patches in grass, drawn by the overworld's island rule in place of
+  // a bare square (see ISLE_OF). Visual only: the map keeps MUD / SWAMP_WATER /
+  // WATER and their flags.
+  def('MUD_ISLE', 'Mud', SLOW, { group: 'dirt', biomes: [], variants: 12 }, TR.paintMudIsle);
+  def('BOG_ISLE', 'Bog Water', WATER | SLOW | ENCOUNTER, { group: 'water', biomes: [], variants: 12 }, TR.paintBogIsle);
+  def('POND_ISLE', 'Water', WATER | SLOW, { group: 'water', biomes: [], variants: 12 }, TR.paintPondIsle);
+
+  for (let m = 1; m < 16; m++) {
+    const sides = ['N', 'E', 'S', 'W'].filter((s, b) => m & (1 << b)).join('');
+    def(TR.shelfKey(m), 'Deep Water', WATER | SOLID, { group: 'water', biomes: [], variants: 16, edgeVariant: true, animFrames: 4, fps: 3 },
+      (c, x, y, v, vi, f) => TR.paintShelf(c, x, y, v, vi, f, sides));
+  }
+
+  // Architecture members (tiles_arch.js section 8): roof rows and verges, wall
+  // corners, openings in each wall material, interior faces and tops, rug
+  // borders, the notice board. Appended after everything above; see there.
+  AR.registerArchTiles(def, TF, (k) => TILES_BY_NAME[k] || null);
+  // Append-only: saved tile IDs above stay stable. Smooth dark stone distinguishes
+  // Blackstaff Tower from the ward's brick shops; no per-frame canvas allocation.
+  for(const side of ['STONE','LEFT','RIGHT','CROWN'])def('BLACKSTAFF_'+side,'Blackstaff Tower',SOLID,{layer:'deco',group:'blackstaff',biomes:['city'],variants:1},(c,x,y)=>{
+    R(c,'#20232e',x,y,16,16);
+    if(side==='LEFT'){R(c,'#11141d',x,y,3,16);R(c,'#3b4050',x+3,y,2,16);}
+    if(side==='RIGHT'){R(c,'#141720',x+12,y,4,16);R(c,'#2b3040',x+10,y,2,16);}
+    if(side==='CROWN'){R(c,'#10141e',x,y,16,5);R(c,'#4d5263',x,y+5,16,2);R(c,'#303545',x,y+7,16,3);}
+  });
+  def('BLACKSTAFF_THRESHOLD','Silver Ward-Mark',0,{layer:'deco',group:'blackstaff',biomes:['city'],variants:1},(c,x,y)=>{
+    R(c,'#20232e',x,y,16,16);R(c,'#070e1c',x+3,y+3,10,13);
+    H(c,'#acc4de',x+3,y+2,10);V(c,'#819fbf',x+2,y+3,13);V(c,'#819fbf',x+13,y+3,13);
+    V(c,'#d9e4ee',x+7,y+5,8);H(c,'#d9e4ee',x+7,y+5,4);V(c,'#d9e4ee',x+10,y+3,3);P(c,'#e9eef5',x+7,y+3);H(c,'#809ab9',x+2,y+15,12);
+  });
+  def('BLACKSTAFF_SEAL','Practice Ward',0,{group:'floor',biomes:['city'],variants:1},(c,x,y)=>{
+    R(c,'#30344c',x,y,16,16);c.strokeStyle='#96b5ce';c.lineWidth=1;c.beginPath();c.arc(x+8,y+8,6,0,Math.PI*2);c.stroke();
+    c.strokeStyle='#d0c5a0';c.beginPath();c.moveTo(x+8,y+3);c.lineTo(x+12,y+11);c.lineTo(x+4,y+11);c.closePath();c.stroke();P(c,'#e4e6dd',x+8,y+8);
+  });
+  def('BLACKSTAFF_PLINTH','Tower Plinth',SOLID,{layer:'deco',group:'blackstaff',biomes:['city'],variants:1},(c,x,y)=>{
+    R(c,'#20232e',x,y,16,16);H(c,'#41495b',x,y+11,16);R(c,'#161b26',x,y+12,16,4);H(c,'#2d3444',x,y+14,16);
+  });
+  for(const [name,col]of [['FACE_LIGHT','#2b3140'],['FACE_MID','#252a37'],['SIDE','#171e2c'],['SIDE_EDGE','#101724']])
+    def('BLACKSTAFF_'+name,'Blackstaff Stone',SOLID,{layer:'deco',group:'blackstaff',biomes:['city'],variants:1},(c,x,y)=>{
+      R(c,col,x,y,16,16);if(name==='SIDE_EDGE'){V(c,'#303a4d',x+13,y,16);R(c,'#080e18',x+14,y,2,16);}
+    });
+  def('BLACKSTAFF_ROOF','Tower Crown',SOLID,{layer:'deco',group:'blackstaff',biomes:['city'],variants:1},(c,x,y)=>{
+    R(c,'#343e52',x,y,16,16);H(c,'#697389',x,y,16);H(c,'#202a3c',x,y+14,16);H(c,'#121a29',x,y+15,16);
+    H(c,'#3e485c',x+2,y+6,6);H(c,'#2c3549',x+9,y+10,5);
+  });
+  def('BLACKSTAFF_CORNICE','Tower Cornice',SOLID,{layer:'deco',group:'blackstaff',biomes:['city'],variants:1},(c,x,y)=>{
+    R(c,'#20232e',x,y,16,16);R(c,'#626d83',x,y,16,2);R(c,'#3f4960',x,y+2,16,4);R(c,'#171e2b',x,y+6,16,4);H(c,'#30394c',x,y+10,16);
+  });
 }
 
 buildTiles();
@@ -4324,11 +2661,23 @@ export function edgeVariantAt(wx, wy) {
     | ((tileHash(wx, wy + 1, EDGE_SALT + 1) & 1) << 3);
 }
 
+/**
+ * An edge-variant tile's index. One that declares MORE than 16 variants gets a
+ * factor hashed from its own position above the four shared-border bits
+ * (index = edge | extra << 4), so its interior can vary beyond the sixteen
+ * border combinations while its borders still agree; painters read the edges
+ * as `vi & 15`. At 16 or fewer this is exactly the old rule.
+ */
+function edgeIndex(d, wx, wy) {
+  const e = edgeVariantAt(wx, wy);
+  return d.variants > 16 ? e | ((tileHash(wx, wy, d.id) % (d.variants >> 4)) << 4) : e % d.variants;
+}
+
 /** Which variant of `id` sits at (wx, wy)? */
 export function variantAt(id, wx, wy) {
   const d = TILES[id];
   if (!d || d.variants <= 1) return 0;
-  if (d.edgeVariant) return edgeVariantAt(wx, wy) % d.variants;
+  if (d.edgeVariant) return edgeIndex(d, wx, wy);
   return tileHash(wx, wy, id) % d.variants;
 }
 
@@ -4363,7 +2712,9 @@ function raster(id, variant, frame) {
 }
 
 /** Drop every cached canvas (call after a palette/debug change). */
-export function clearTileCache() { cache.clear(); }
+let cacheRevision = 0;
+export function tileCacheRevision() { return cacheRevision; }
+export function clearTileCache() { cache.clear(); cacheRevision++; }
 
 /**
  * Blit tile `id` at pixel (px, py). `wx, wy` are the tile's world coordinates and
@@ -4372,7 +2723,7 @@ export function clearTileCache() { cache.clear(); }
 export function drawTile(ctx, id, px, py, wx = 0, wy = 0, t = 0) {
   const d = TILES[id];
   if (!d || id === 0) return;
-  const variant = d.variants > 1 ? (d.edgeVariant ? (edgeVariantAt(wx, wy) % d.variants) : (tileHash(wx, wy, id) % d.variants)) : 0;
+  const variant = d.variants > 1 ? (d.edgeVariant ? edgeIndex(d, wx, wy) : (tileHash(wx, wy, id) % d.variants)) : 0;
   const frame = d.animFrames > 1 ? (Math.floor(t * d.fps) % d.animFrames) : 0;
   const cv = raster(id, variant, frame);
   if (cv) ctx.drawImage(cv, px | 0, py | 0);
@@ -4523,6 +2874,11 @@ const ISLE_OF = {
   // the two pavings are 1.3 L* apart and are already mixed freely on every
   // street in the game, so a cobble-backed patch is at home in both
   DIRT_PATH: ['PATH_ISLE', 'cobble', 'flagstone'],
+  // lone wet ground in a meadow: the Mere's scatter of bog holes and wallows,
+  // and the single-tile ponds of the woods (tiles_terrain.js section 9)
+  MUD: ['MUD_ISLE', 'grass'],
+  SWAMP_WATER: ['BOG_ISLE', 'grass'],
+  WATER: ['POND_ISLE', 'grass'],
 };
 const ISLE_ID = [];
 
@@ -4638,6 +2994,86 @@ export function autotileEdges(map, x, y, id) {
 
 /** Convenience: the shore tile that should sit at a water edge. */
 export function shoreFor(map, x, y) { return autotileEdges(map, x, y, T.WATER).tile; }
+
+/**
+ * Bake the edge members into every CLIFF and CAVE_WALL mass on a map's deco
+ * plane (tiles_terrain.js `resolveMasses`): rims where a mass meets open
+ * ground, a face on its south side. Then the shelves: deep water beside the
+ * shallows becomes a WATER_SHELF member (`resolveShelves`). Map builders lay
+ * the bare tiles; call this once when the map is built. Returns how many tiles
+ * changed.
+ */
+export function resolveTileMasses(map) { return TR.resolveMasses(map, T, tileGroup) + TR.resolveShelves(map, T, tileGroup); }
+
+/**
+ * Architectural context: roof rows and verges, wall corners, the wall each
+ * window and door sits in, interior wall faces and tops, rug borders, chimney
+ * smoke. Called by world/maps.js loadMap after resolveTileMasses; idempotent.
+ */
+export function resolveArchitecture(map) { return AR.resolveArch(map, T, tileKey, tileGroup); }
+
+/**
+ * Is `id` a free-standing natural thing — a tree, a bush, a boulder, a stump —
+ * that paints its own round contact shadow? The overworld's occlusion rim and
+ * sun-shadow passes work in 16px squares, and a square of shade round a tree
+ * boxes it in, so they leave these out (tiles_terrain.js `freeStanding`).
+ */
+export function tileFreeStanding(id) { const d = TILES[id]; return !!d && TR.freeStanding(d.key, d.group); }
+
+/**
+ * THE ARENA VERGE API. Draw ground tile (tx, ty) of `map` at (px, py) with soft
+ * edges where a spreading neighbour (grass, snow, sand, soil...) meets it — for
+ * any view that blits raw ground and has no verge pass of its own, above all the
+ * battle arena. `map` needs `w`, `h` and `at('ground', x, y)` (a TileMap does).
+ * The tongues run on across tile borders and never repeat; see
+ * tiles_terrain.js section 14. The work is ~100 1px blits per verged side, so
+ * draw a field ONCE into a cached canvas rather than every frame.
+ *
+ *   for each tile: drawGroundBlended(groundCtx, map, tx, ty, tx * 16, ty * 16);
+ *   then deco on top with drawTile as before.
+ */
+export function drawGroundBlended(ctx, map, tx, ty, px, py, t = 0) {
+  const id = map.at('ground', tx, ty);
+  drawTile(ctx, id, px, py, tx, ty, t);
+  const me = groundBlendRank(id);
+  if (me == null || typeof document === 'undefined') return;
+  const sub = tileSubgroup(id);
+  const inv = [];
+  for (let s = 0; s < 4; s++) {
+    const nx = tx + (s === 1 ? 1 : s === 3 ? -1 : 0), ny = ty + (s === 2 ? 1 : s === 0 ? -1 : 0);
+    if (nx < 0 || ny < 0 || nx >= map.w || ny >= map.h) continue;
+    const nid = map.at('ground', nx, ny);
+    if (!nid || nid === id || tileSubgroup(nid) === sub) continue;
+    const rank = groundBlendRank(nid);
+    if (rank != null && rank > me) inv.push([rank, s, nid]);
+  }
+  inv.sort((a, b) => a[0] - b[0]);
+  for (const [, s, nid] of inv) {
+    const d = TILES[nid];
+    const frame = d.animFrames > 1 ? (Math.floor(t * d.fps) % d.animFrames) : 0;
+    const cv = raster(nid, variantAt(nid, tx, ty), frame);
+    const m = TR.vergeMaskAt(tx, ty, s);
+    // the invader's lip shades the ground beside it — but only a different
+    // material's: snow on snowy grass, or soil on a path, is one surface
+    if (d.group !== TILES[id].group) {
+      ctx.fillStyle = 'rgba(24,16,10,0.22)';
+      for (let i = 0; i < 256; i++) if (m[i] === 2) ctx.fillRect(px + (i & 15), py + (i >> 4), 1, 1);
+    }
+    if (!cv) continue;
+    // one blit per horizontal run of invaded pixels
+    for (let yy = 0; yy < 16; yy++) {
+      for (let xx = 0; xx < 16; xx++) {
+        if (m[yy * 16 + xx] !== 1) continue;
+        let n = 1; while (xx + n < 16 && m[yy * 16 + xx + n] === 1) n++;
+        ctx.drawImage(cv, xx, yy, n, 1, px + xx, py + yy, n, 1);
+        xx += n - 1;
+      }
+    }
+  }
+}
+
+/** How strongly ground `id` spreads into its neighbours in drawGroundBlended; null = never. */
+export function groundBlendRank(id) { const d = TILES[id]; return d && d.layer === 'ground' ? TR.blendRank(tileSubgroup(id), d.group) : null; }
 
 // ---------------------------------------------------------------------------
 // 8. REGISTRATION / WARM-UP

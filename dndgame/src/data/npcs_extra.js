@@ -235,7 +235,7 @@ export const EXTRA_CAST = [
   npc('evendur-dundragon', 'Evendur Dundragon', {
     title: 'Fisherman', desc: 'Works the Delimbiyr from a flat-bottomed boat older than he is.',
     sprite: 'npc-fisher', colorway: SALT, voice: 'plain',
-    map: 'daggerford', x: 21, y: 27, dir: 'down', wander: 1,
+    map: 'daggerford', x: 8, y: 25, dir: 'down', wander: 1,
     greeting: [
       'River is low. River is always low, until it is not.',
       'Trout, mostly. Something bit through my line last tenday and I have not gone back to that bend.',
@@ -262,7 +262,7 @@ export const EXTRA_CAST = [
       'Home was colder. Home was also home.',
     ],
   }),
-  beast('daggerford-goose', 'Goose', 'goose', 'daggerford', 19, 27),
+  beast('daggerford-goose', 'Goose', 'goose', 'daggerford', 10, 31),
 
   // =========================================================================
   // BEREGOST / NASHKEL

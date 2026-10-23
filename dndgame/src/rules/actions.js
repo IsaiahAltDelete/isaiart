@@ -17,7 +17,7 @@
 //
 // 2024 PHB rules implemented here that are easy to get wrong are commented inline.
 
-import { FEET_PER_TILE, clamp } from '../constants.js';
+import { FEET_PER_TILE, SIZES, clamp } from '../constants.js';
 import { rng } from '../core/rng.js';
 import { d20, rollExpr, parseDice, avgExpr } from '../core/dice.js';
 import { bus, EV } from '../core/events.js';
@@ -113,11 +113,20 @@ export function tileOf(a) {
   return { x: num(a.x), y: num(a.y) };
 }
 
+/** Combat positions are the north-west corner of a creature's occupied space.
+ * Bare coordinates remain single tiles, preserving point-target semantics. */
+export function footprintSize(unit) { return SIZES[String(unit?.size || 'medium').toLowerCase()]?.tiles || 1; }
+export function footprintTiles(unit, at = tileOf(unit)) {
+  const cells=[],size=footprintSize(unit);
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++)cells.push({x:at.x+x,y:at.y+y});
+  return cells;
+}
+
 /** The unit standing on a tile, if any. */
 export function unitAt(ctx, x, y) {
   for (const u of standingUnits(ctx)) {
-    const p = tileOf(u);
-    if (p.x === x && p.y === y) return u;
+    const p = tileOf(u), size = footprintSize(u);
+    if (x >= p.x && x < p.x + size && y >= p.y && y < p.y + size) return u;
   }
   return null;
 }
@@ -158,14 +167,15 @@ export function resetTurnUses(ch) { if (ch) ch._turnUses = null; }
  * optional "every second diagonal costs 10 ft" variant is deliberately off.)
  */
 export function distanceFt(a, b) {
-  const p = tileOf(a), q = tileOf(b);
-  return Math.max(Math.abs(p.x - q.x), Math.abs(p.y - q.y)) * FEET_PER_TILE;
+  const p = tileOf(a), q = tileOf(b), sa = footprintSize(a), sb = footprintSize(b);
+  const dx = Math.max(0, p.x - (q.x + sb - 1), q.x - (p.x + sa - 1));
+  const dy = Math.max(0, p.y - (q.y + sb - 1), q.y - (p.y + sa - 1));
+  return Math.max(dx, dy) * FEET_PER_TILE;
 }
 
 /** The same distance measured in tiles. */
 export function distanceTiles(a, b) {
-  const p = tileOf(a), q = tileOf(b);
-  return Math.max(Math.abs(p.x - q.x), Math.abs(p.y - q.y));
+  return distanceFt(a,b) / FEET_PER_TILE;
 }
 
 /**
@@ -203,8 +213,8 @@ export function reachFt(ch) {
   for (const act of arr(ch.actions)) {
     if (typeof act?.reach === 'number') reach = Math.max(reach, act.reach);
   }
-  // Large and bigger creatures naturally threaten further.
-  if (sizeRank(ch) >= 3) reach = Math.max(reach, 10);
+  // Body size is already accounted for by footprint distance. Reach comes
+  // from the weapon/stat block; a Large wolf's Bite still reaches only 5 ft.
   return reach;
 }
 
@@ -321,14 +331,16 @@ function blockedProbes(map, A, B) {
  */
 export function lineOfSight(ctx, a, b) {
   const map = mapOf(ctx);
-  const A = tileOf(a), B = tileOf(b);
   if (!map) return true;
-  if (A.x === B.x && A.y === B.y) return true;
   // Fog Cloud and Darkness are heavy obscurement: they stop sight rather than
   // arrows, so they belong here and not in the map's solidity. Asking the
   // encounter means one hook covers targeting, cover, advantage and the AI.
-  if (ctx && typeof ctx.zoneBlocksSight === 'function' && ctx.zoneBlocksSight(A, B)) return false;
-  return blockedProbes(map, A, B) < PROBE_OFFSETS.length;
+  for(const A of footprintTiles(a))for(const B of footprintTiles(b)){
+    if(A.x===B.x&&A.y===B.y)return true;
+    if(ctx&&typeof ctx.zoneBlocksSight==='function'&&ctx.zoneBlocksSight(A,B))continue;
+    if(blockedProbes(map,A,B)<PROBE_OFFSETS.length)return true;
+  }
+  return false;
 }
 
 /** Total cover: no ray gets through, so the target cannot be targeted directly. */
@@ -340,8 +352,17 @@ export function hasTotalCover(ctx, a, b) { return !lineOfSight(ctx, a, b); }
  * most of the probe rays gives three-quarters.
  */
 export function hasCover(ctx, a, b) {
+  let best=COVER.THREE_QUARTERS;
+  for(const A of footprintTiles(a))for(const B of footprintTiles(b)){
+    if(!lineOfSight(ctx,A,B))continue;
+    best=Math.min(best,coverForTiles(ctx,A,B,a,b));
+    if(best===COVER.NONE)return best;
+  }
+  return best;
+}
+
+function coverForTiles(ctx, A, B, source, target) {
   const map = mapOf(ctx);
-  const A = tileOf(a), B = tileOf(b);
   if (A.x === B.x && A.y === B.y) return COVER.NONE;
 
   let best = COVER.NONE;
@@ -370,7 +391,7 @@ export function hasCover(ctx, a, b) {
       if ((p.x === A.x && p.y === A.y) || (p.x === B.x && p.y === B.y)) continue;
       const u = unitAt(ctx, p.x, p.y);
       // Tiny creatures (a familiar underfoot) are not an obstacle.
-      if (u && sizeRank(u) > 0) { best = COVER.HALF; break; }
+      if (u && u!==source && u!==target && sizeRank(u) > 0) { best = COVER.HALF; break; }
     }
   }
 
@@ -388,13 +409,16 @@ export function hasCover(ctx, a, b) {
  * line and wall project from `origin` toward `target`.
  */
 export function areaTiles(origin, target, shape = {}) {
-  const O = tileOf(origin);
+  let O = tileOf(origin);
   const T = tileOf(target);
   // A bare string names the shape and carries no dimensions. Normalising it here
   // stops `shape.length` accidentally resolving to the string's character count.
   if (typeof shape === 'string') shape = { kind: shape };
   if (!shape || typeof shape !== 'object') shape = {};
   const kind = lower(shape.kind || shape.shape || 'sphere');
+  if((kind==='cone'||kind==='line')&&footprintSize(origin)>1){
+    O=footprintTiles(origin).sort((a,b)=>Math.hypot(a.x-T.x,a.y-T.y)-Math.hypot(b.x-T.x,b.y-T.y))[0];
+  }
   const ft = (v, d) => Math.max(0, num(v, d));
   const toTiles = (feet) => Math.max(0, Math.round(feet / FEET_PER_TILE));
 
@@ -506,8 +530,7 @@ export function unitsInArea(ctx, origin, target, shape) {
   const tiles = areaTiles(origin, target, { ...shape, ctx });
   const keys = new Set(tiles.map((t) => `${t.x},${t.y}`));
   return standingUnits(ctx).filter((u) => {
-    const p = tileOf(u);
-    return keys.has(`${p.x},${p.y}`);
+    return footprintTiles(u).some(p=>keys.has(`${p.x},${p.y}`));
   });
 }
 
@@ -545,8 +568,8 @@ export function opportunityCheck(ctx, mover, from, to) {
     if (moverCm.unseen && blindsight < distanceFt(u, A) && !u.flags?.seeInvisible) continue;
 
     const reach = reachFt(u);
-    const wasThreatened = distanceFt(u, A) <= reach;
-    const stillThreatened = distanceFt(u, B) <= reach;
+    const wasThreatened = distanceFt(u, { ...mover, pos:A }) <= reach;
+    const stillThreatened = distanceFt(u, { ...mover, pos:B }) <= reach;
     if (wasThreatened && !stillThreatened) {
       out.push({
         unit: u, uid: u.uid, name: u.name || 'A foe', reach,
@@ -1032,7 +1055,7 @@ export function resolveAttack(ctx, attacker, target, opts = {}) {
   let atkBonus = num(opts.atkBonus, NaN);
   if (!Number.isFinite(atkBonus)) {
     if (wpn) atkBonus = wpn.atk;
-    else if (spell) atkBonus = spellAtk(attacker);
+    else if (spell) atkBonus = spellAtk(attacker, spell.id);
     else atkBonus = abilityMod(attacker, 'str') + profBonus(attacker);
   }
   // Exhaustion's -2 per level, and any condition-granted flat d20 bonus.
@@ -1137,6 +1160,11 @@ export function resolveAttack(ctx, attacker, target, opts = {}) {
     breakdown.push({ kind: 'damage', label, dice: '0', mod: num(dmgSpec.mod), total: num(dmgSpec.mod), type: baseType, rolls: [], rerolled: [], source: 'attack', crit: false });
   }
 
+  // Vicious weapons add a flat rider on a critical; it is not doubled again.
+  if(crit&&num(wpn?.def?.magic?.critBonus)>0){
+    const bonus=num(wpn.def.magic.critBonus);
+    breakdown.push({kind:'damage',label:'Vicious critical',dice:'0',mod:bonus,total:bonus,type:baseType,rolls:[],rerolled:[],source:'weapon',crit:false});
+  }
   // Rider dice already baked into the weapon (a Flame Tongue's 2d6 fire, Hunter's
   // Mark from a mech block). These are dice, so a crit doubles them too.
   for (const b of arr(dmgSpec?.bonusDice)) {
@@ -1373,12 +1401,17 @@ export function pushCreature(ctx, pusher, target, feet = 10) {
   let x = B.x, y = B.y;
   for (let i = 0; i < steps; i++) {
     const nx = x + dx, ny = y + dy;
-    if (map) {
-      if (typeof map.inBounds === 'function' && !map.inBounds(nx, ny)) break;
-      if (isOpaque(map, nx, ny)) break;
-      if (typeof map.solid === 'function' && map.solid(nx, ny)) break;
-    }
-    if (unitAt(ctx, nx, ny)) break;
+    const fits = (px, py) => footprintTiles(target,{x:px,y:py}).every(c => {
+      if (ctx?._inBounds && !ctx._inBounds(c.x,c.y)) return false;
+      if (ctx?._isSolid && ctx._isSolid(c.x,c.y)) return false;
+      if (map) {
+        if (map.inBounds && !map.inBounds(c.x,c.y)) return false;
+        if (isOpaque(map,c.x,c.y) || map.solid?.(c.x,c.y)) return false;
+      }
+      const occupant=unitAt(ctx,c.x,c.y);
+      return !occupant || occupant===target;
+    });
+    if (!fits(nx,ny) || (dx && dy && !fits(nx,y) && !fits(x,ny))) break;
     x = nx; y = ny; moved++;
   }
   if (moved > 0) {

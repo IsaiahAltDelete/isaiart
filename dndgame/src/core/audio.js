@@ -1,18 +1,21 @@
-// src/core/audio.js — procedural WebAudio: synthesised SFX + looping chiptune music for Sword Coast Chronicles.
+// src/core/audio.js — procedural WebAudio: synthesised SFX, the music sequencer, rooms, mastering and context rotation for Sword Coast Chronicles.
 //
 // Everything here is generated from oscillators, noise buffers, gain envelopes and
 // biquad filters. No audio files, no external libraries. The module is written so
 // that a missing / blocked / suspended AudioContext degrades to silence instead of
 // throwing — the game must keep running on browsers with no WebAudio at all.
+// What an instrument sounds like lives in core/synth.js; the notes in core/music.js.
 //
 // Signal graph:
-//    voices ──▶ sfxGain ──┐
-//                         ├──▶ masterGain ──▶ destination
-//    trackGain(A) ─┐      │
-//    trackGain(B) ─┴─▶ musicGain ──┘        (two track gains exist during a crossfade)
+//    sfx voices ─────────────────────────────────────▶ sfxBus ──┐
+//    player(A) ─┬─▶ dry(room A) ─▶ dryBus ─┐                     ├─▶ master ─▶ limiter ─▶ destination
+//               └─▶ room A convolver ─▶ wetBus ─┴─▶ glue comp ─▶ musicBus ─▶ duck ─┘
+//    player(B) ─┘ (a second player exists during a crossfade or a segue)
 
 import { makeRNG } from './rng.js';
-import { TRACKS, SPB, INSTRUMENTS, TRACK_GROUPS, trackForBiome } from './music.js';
+import { TRACKS, SPB, INSTRUMENTS, TRACK_GROUPS, trackForBiome, trackCatalogue } from './music.js';
+import { makeEnv, noiseBuffers, roomFor, roomDone, setRoomLevel, layerRuntime, releaseLayer, playNote, playDrum, ROOMS } from './synth.js';
+import { LOUDNESS, REFERENCE } from './music_loudness.js';
 
 // Dedicated RNG stream for audio jitter. Deliberately NOT the global `rng`: audio
 // must never consume numbers from the gameplay stream or saves would desync.
@@ -71,12 +74,21 @@ const state = {
   voices: 0,          // live sfx voices, for the polyphony cap
   lastAt: Object.create(null), // sfx name -> ctx time of last trigger (machine-gun guard)
   // music
+  env: null,          // synth env for the live context (see core/synth.js)
   players: [],        // active MusicPlayer instances (2 during a crossfade)
   currentId: null,
   pendingId: null,
   timer: null,        // setInterval handle for the lookahead scheduler
+  ahead: 0.2,         // current lookahead; widens when the tab's timers are throttled
+  lastTick: 0,
   fanfareResume: null,// track id to return to after a one-shot fanfare
   duckUntil: 0,
+  // context rotation (docs/OVERHAUL.md §4.7)
+  context: null,      // the context the current track is serving, or null for a plain track id
+  intensity: null,    // 1..3 when a fight asked for music by danger (music.js battleCue)
+  rotation: { loops: 0, history: [] },
+  songbook: { pinned: Object.create(null), banned: new Set() },
+  place: null,        // () => { map, day }: seeds which tune a place gets today
 };
 
 const MAX_VOICES = 24;       // hard polyphony cap; extra sfx are dropped, not queued
@@ -84,27 +96,39 @@ const LOOKAHEAD_MS = 25;     // scheduler wake-up interval
 const SCHEDULE_AHEAD = 0.2;  // seconds of music scheduled beyond `now`
 const CROSSFADE = 0.6;       // seconds
 
-/** Build the 2-second noise buffers once. White for percussive hits, pink for wind/roar. */
-function buildNoise(ctx) {
-  const n = Math.floor(ctx.sampleRate * 2);
-  const white = ctx.createBuffer(1, n, ctx.sampleRate);
-  const wd = white.getChannelData(0);
-  for (let i = 0; i < n; i++) wd[i] = arng.float(-1, 1);
-  state.noiseBuf = white;
+// DynamicsCompressorNode applies its own automatic makeup gain (the Web Audio
+// spec's "makeup = (1 / full-range gain) ^ 0.6"), which would lift quiet music
+// by several dB. These trims cancel it, measured in Chromium by rendering a
+// quiet tone through each stage (+3.85 dB and +1.14 dB), so the compressors
+// only ever turn peaks DOWN and a quiet passage plays exactly as written.
+const GLUE_TRIM = 0.642;
+const LIMIT_TRIM = 0.877;
 
-  // Voss-McCartney-lite pink noise: sum of a few decaying random walks. Cheaper than
-  // a real filter bank and plenty for a 16-bit-era game.
-  const pink = ctx.createBuffer(1, n, ctx.sampleRate);
-  const pd = pink.getChannelData(0);
-  let b0 = 0, b1 = 0, b2 = 0;
-  for (let i = 0; i < n; i++) {
-    const w = arng.float(-1, 1);
-    b0 = 0.99765 * b0 + w * 0.0990460;
-    b1 = 0.96300 * b1 + w * 0.2965164;
-    b2 = 0.57000 * b2 + w * 1.0526913;
-    pd[i] = (b0 + b1 + b2 + w * 0.1848) * 0.22;
-  }
-  state.pinkBuf = pink;
+/**
+ * The music's mastering: dry and wet sums into a gentle glue compressor, so a
+ * stacked choir plus a chapel's reverb bends instead of piling up.
+ */
+function buildMusicChain(ctx) {
+  const dry = ctx.createGain(), wet = ctx.createGain(), sum = ctx.createGain();
+  dry.connect(sum); wet.connect(sum);
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 2.2;
+  comp.attack.value = 0.025; comp.release.value = 0.3;
+  const trim = ctx.createGain();
+  trim.gain.value = GLUE_TRIM;
+  sum.connect(comp); comp.connect(trim);
+  return { bus: { dry, wet }, out: trim };
+}
+
+/** The last word before the speakers: a fast, high limiter so nothing ever clips. */
+function buildLimiter(ctx) {
+  const lim = ctx.createDynamicsCompressor();
+  lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20;
+  lim.attack.value = 0.002; lim.release.value = 0.12;
+  const trim = ctx.createGain();
+  trim.gain.value = LIMIT_TRIM;
+  lim.connect(trim);
+  return { input: lim, out: trim };
 }
 
 /** Lazily create the AudioContext. MUST be called from a user gesture on most browsers. */
@@ -119,31 +143,21 @@ function ensure() {
     const musicBus = ctx.createGain();
     const duckGain = ctx.createGain();   // separate node so ducking never fights setVolume()
     const sfxBus = ctx.createGain();
-
-    // A stone-hall reverb across the music. More than anything else, this is what
-    // stops a synthesised loop sounding like a cheap chip and starts it sounding
-    // like players in a room.
-    const musicDry = ctx.createGain();
-    const musicWet = ctx.createGain();
-    const verb = ctx.createConvolver();
-    musicDry.gain.value = 0.78;
-    musicWet.gain.value = 0.34;
-    try { verb.buffer = makeHallIR(ctx, 2.1, 2.6); } catch (e) { /* no reverb, still fine */ }
-    // Roll off the very top of the wet path — stone absorbs treble.
-    const wetTone = ctx.createBiquadFilter();
-    wetTone.type = 'lowpass'; wetTone.frequency.value = 3200;
-
-    musicBus.connect(musicDry); musicDry.connect(duckGain);
-    musicBus.connect(verb); verb.connect(wetTone); wetTone.connect(musicWet); musicWet.connect(duckGain);
-
+    const chain = buildMusicChain(ctx);
+    const limiter = buildLimiter(ctx);
+    chain.out.connect(musicBus);
+    musicBus.connect(duckGain);
     duckGain.connect(master);
     sfxBus.connect(master);
-    master.connect(ctx.destination);
+    master.connect(limiter.input);
+    limiter.out.connect(ctx.destination);
     state.ctx = ctx; state.master = master; state.musicBus = musicBus; state.sfxBus = sfxBus;
-    state.duckGain = duckGain; state.musicWet = musicWet; state.musicDry = musicDry;
+    state.duckGain = duckGain;
     // Flush anything that was requested before the context was allowed to run.
     try { ctx.onstatechange = () => { if (ctx.state === 'running') flushPending(); }; } catch (e) { /* ignore */ }
-    buildNoise(ctx);
+    const nb = noiseBuffers(ctx);
+    state.noiseBuf = nb.noise; state.pinkBuf = nb.pink;
+    state.env = makeEnv(ctx, chain.bus, { live: true, noise: nb });
     state.ok = true;
     applyVolumes(0);
     resume();
@@ -617,13 +631,8 @@ const SFX = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// Music: the score lives in core/music.js — instrument models, modal helpers and
-// every track. This file owns the synthesis and the sequencer, not the notes.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Music engine: oscillator/drum voices, lookahead sequencer, crossfading players
+// Music engine: the lookahead sequencer, players, rooms, loudness and context
+// rotation. The notes are in core/music.js; what they sound like, core/synth.js.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _pending = [];  // callbacks deferred until the context is actually running
@@ -646,531 +655,306 @@ function whenRunning(fn) {
   return false;
 }
 
-// Duty-cycle pulse waves. 25% and 12.5% pulses are *the* NES/GBA lead timbres;
-// WebAudio only ships a 50% square, so synthesise them from the Fourier series
-// of a rectangular wave: coefficient k = (2/(kπ))·sin(kπ·duty).
-const _pulseCache = new Map();
-function pulseWave(duty) {
-  if (_pulseCache.has(duty)) return _pulseCache.get(duty);
-  const n = 34;
-  const real = new Float32Array(n), imag = new Float32Array(n);
-  for (let k = 1; k < n; k++) imag[k] = (2 / (k * Math.PI)) * Math.sin(Math.PI * k * duty);
-  let w = null;
-  try { w = state.ctx.createPeriodicWave(real, imag, { disableNormalization: false }); } catch (e) { w = null; }
-  _pulseCache.set(duty, w);
-  return w;
-}
+const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-// ---------------------------------------------------------------------------
-// HARMONIC SPECTRA — what actually makes a note sound like an instrument.
-//
-// `triangle` and `sawtooth` are the two shapes every synthesised game score in
-// the world is made of, and the ear knows them instantly: they are the "beep".
-// A real instrument is a specific recipe of harmonic strengths, and the Web
-// Audio API will build an oscillator from one directly (createPeriodicWave), so
-// a violin can be a violin without shipping a single byte of sample.
-//
-// Each list is the amplitude of harmonic 1, 2, 3, … relative to the loudest.
-// The characteristic facts are the ones worth knowing:
-//   • a clarinet's cylindrical bore suppresses EVEN harmonics — that hollow, woody
-//     sound is literally the missing 2nd, 4th and 6th;
-//   • an oboe and a bassoon are weak at the fundamental and loud at 2–4, which is
-//     why they cut through an orchestra at low volume;
-//   • a flute is very nearly a sine wave, and is carried by breath noise instead;
-//   • brass gets its bite from strong upper-middle harmonics, and the higher the
-//     instrument the further up that peak sits.
-// ---------------------------------------------------------------------------
+/** The places and moods a track may declare in `contexts` (docs/OVERHAUL.md §4.7). */
+export const CONTEXTS = Object.freeze(['title', 'town', 'city', 'village', 'inn', 'tavern', 'shop', 'market',
+  'temple', 'crypt', 'castle', 'field', 'road', 'forest', 'hills', 'mountain', 'coast', 'marsh', 'night',
+  'dungeon', 'cave', 'underdark', 'battle', 'boss', 'dragon', 'victory', 'defeat', 'lament', 'camp',
+  'festival', 'mystery', 'tense', 'travel']);
 
-const SPECTRA = {
-  // strings — rich, dense, slow rolloff
-  violin: [1, 0.72, 0.55, 0.42, 0.38, 0.28, 0.22, 0.18, 0.14, 0.11, 0.09, 0.07, 0.05, 0.04, 0.03],
-  viola: [1, 0.68, 0.48, 0.34, 0.26, 0.19, 0.14, 0.10, 0.08, 0.06, 0.04, 0.03],
-  cello: [1, 0.75, 0.50, 0.35, 0.26, 0.18, 0.13, 0.09, 0.07, 0.05, 0.03],
-  contrabass: [1, 0.60, 0.32, 0.18, 0.11, 0.07, 0.04, 0.02],
-  // brass — the peak climbs with the instrument
-  horn: [1, 0.55, 0.30, 0.16, 0.09, 0.05, 0.03],
-  trombone: [0.90, 1, 0.70, 0.45, 0.30, 0.20, 0.13, 0.08, 0.05],
-  trumpet: [0.70, 1, 0.85, 0.62, 0.45, 0.32, 0.22, 0.15, 0.10, 0.07, 0.05],
-  tuba: [1, 0.70, 0.38, 0.20, 0.11, 0.06, 0.03],
-  // double reeds — quiet fundamental, loud 2nd and 3rd
-  oboe: [0.45, 1, 0.90, 0.60, 0.40, 0.30, 0.20, 0.14, 0.10, 0.06],
-  bassoon: [0.50, 1, 0.75, 0.50, 0.30, 0.20, 0.12, 0.08, 0.05],
-  // single reed — odd harmonics only
-  clarinet: [1, 0.05, 0.60, 0.04, 0.35, 0.03, 0.22, 0.02, 0.12, 0.01, 0.06],
-  // air columns — almost pure
-  flute: [1, 0.25, 0.08, 0.04, 0.02],
-  panpipe: [1, 0.18, 0.10, 0.05, 0.02],
+// Where a track is heard when it does not say (a track's own `room:` wins):
+// first by the first score's track ids, then by the first context that implies
+// a building, else the stone hall every track used to share.
+const ROOM_OF_TRACK = {
+  temple: 'chapel', inn: 'tavern', shop: 'tavern', rivertune: 'tavern',
+  cave: 'cave', dungeon: 'cave', undermountain: 'cave',
+  field: 'open', forest: 'open', night: 'open', wilds: 'open', camp: 'open',
 };
-
-const _waveCache = new Map();
-
-/** A cached PeriodicWave for one named spectrum. Null if the context refuses. */
-function harmonicWave(name) {
-  if (_waveCache.has(name)) return _waveCache.get(name);
-  const spec = SPECTRA[name];
-  let w = null;
-  if (spec && state.ctx) {
-    const n = spec.length + 1;
-    const real = new Float32Array(n), imag = new Float32Array(n);
-    for (let k = 1; k < n; k++) imag[k] = spec[k - 1];
-    try { w = state.ctx.createPeriodicWave(real, imag, { disableNormalization: false }); } catch (e) { w = null; }
-  }
-  _waveCache.set(name, w);
-  return w;
+const ROOM_OF_CONTEXT = {
+  temple: 'chapel', crypt: 'chapel', inn: 'tavern', tavern: 'tavern', shop: 'tavern',
+  cave: 'cave', underdark: 'cave', dungeon: 'cave',
+  field: 'open', road: 'open', forest: 'open', hills: 'open', mountain: 'open', coast: 'open', marsh: 'open',
+  camp: 'open', travel: 'open', night: 'open', village: 'open', market: 'open', festival: 'open',
+  castle: 'hall', city: 'hall', town: 'hall',
+};
+function roomOf(id, track) {
+  if (track.room && ROOMS[track.room]) return track.room;
+  if (ROOM_OF_TRACK[id]) return ROOM_OF_TRACK[id];
+  for (const c of track.contexts || []) if (ROOM_OF_CONTEXT[c]) return ROOM_OF_CONTEXT[c];
+  return 'hall';
 }
 
 /**
- * Build a decaying-noise impulse response — a serviceable stone hall without
- * shipping an audio file. `decay` shapes how fast it dies; `secs` is the tail.
- *
- * The tail alone reads as "processed"; what tells the ear the size of a room is
- * the handful of DISCRETE early reflections that arrive before it — the first
- * bounce off a wall, then the ceiling. Those are stamped in first, at times
- * that suit a hall rather than a cupboard, and the two channels are built from
- * separate noise so the reverb has width instead of sitting in your head.
+ * Gain that brings a track to the score's reference loudness, from the table
+ * measured offline (core/music_loudness.js), within ±9 dB so a deliberately
+ * hushed track is lifted, not blared. The track's own `gain` then applies on
+ * top as the composer's intent. A track the table has not seen is measured
+ * the first time it plays (see measureLater) and plays as written until then.
  */
-function makeHallIR(ctx, secs = 2.0, decay = 2.5) {
-  const rate = ctx.sampleRate;
-  const len = Math.max(1, Math.floor(rate * secs));
-  const buf = ctx.createBuffer(2, len, rate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) {
-      const t = i / len;
-      // Early reflections thin out into a smooth exponential tail.
-      const env = Math.pow(1 - t, decay);
-      d[i] = (arng.float(-1, 1)) * env;
-    }
-    // Gentle pre-delay so the dry attack still reads clearly.
-    const pre = Math.floor(rate * 0.012);
-    for (let i = len - 1; i >= pre; i--) d[i] = d[i - pre];
-    for (let i = 0; i < pre; i++) d[i] = 0;
-
-    // Early reflections: the first few discrete bounces. These are what carry
-    // the SIZE of the room — without them a tail is just a wash. Times are
-    // slightly different per channel so the hall has width.
-    const taps = ch === 0
-      ? [[0.0191, 0.62], [0.0295, -0.48], [0.0438, 0.36], [0.0617, -0.27], [0.0834, 0.19]]
-      : [[0.0223, 0.58], [0.0331, -0.44], [0.0472, 0.33], [0.0663, -0.25], [0.0891, 0.17]];
-    for (const [t, a] of taps) {
-      const i = Math.floor(rate * t);
-      if (i < len) d[i] += a;
-    }
-  }
-  return buf;
+function loudnessGain(id) {
+  const l = LOUDNESS[id] ?? MEASURED.get(id);
+  if (!Number.isFinite(l) || REFERENCE == null) return 1;
+  return clampN(Math.pow(10, (REFERENCE - l) / 20), 0.35, 2.8);
 }
 
-/** Apply a layer's wave setting to an oscillator. Returns false for noise layers. */
-function setWave(osc, wave) {
-  switch (wave) {
-    case 'pulse25': { const w = pulseWave(0.25); if (w) { osc.setPeriodicWave(w); return true; } osc.type = 'square'; return true; }
-    case 'pulse18': { const w = pulseWave(0.18); if (w) { osc.setPeriodicWave(w); return true; } osc.type = 'square'; return true; }
-    case 'pulse12':
-    case 'pulse125': { const w = pulseWave(0.125); if (w) { osc.setPeriodicWave(w); return true; } osc.type = 'square'; return true; }
-    case 'saw': case 'sawtooth': osc.type = 'sawtooth'; return true;
-    case 'sine': osc.type = 'sine'; return true;
-    case 'triangle': osc.type = 'triangle'; return true;
-    case 'square': osc.type = 'square'; return true;
-    default: {
-      // A named harmonic spectrum — 'violin', 'horn', 'clarinet'. Falls back to
-      // a sawtooth if the browser will not build the wave, so a missing
-      // spectrum is a duller note rather than silence.
-      const w = SPECTRA[wave] ? harmonicWave(wave) : null;
-      if (w) { osc.setPeriodicWave(w); return true; }
-      osc.type = SPECTRA[wave] ? 'sawtooth' : 'square';
-      return true;
-    }
-  }
-}
+// A book that lands after the last `tools/music-render.mjs --loudness` run would
+// otherwise play unnormalised forever, so a track missing from the table is
+// measured here, once a session, exactly as the tool measures: a short dry
+// offline render (its own context, so the speakers never wait on it) a moment
+// after the track has started, then the player eases to the normalised level.
+const MEASURED = new Map();            // id -> dB (NaN while in flight or if it failed)
+export const TABLE_VOLUME = 0.7 * 0.55; // master x music at the defaults the table is rendered with
 
 /**
- * One percussion voice. Drums are pure synthesis: a pitched sine body for the
- * low drums, filtered white noise for everything with a hiss.
+ * Gated loudness in dB, in the spirit of BS.1770 without K-weighting: 400 ms
+ * blocks on a 100 ms hop, an absolute gate at -70 dBFS and a relative gate 10 dB
+ * under the mean, so a sparse track is judged by its notes and not its rests.
  */
-function drumVoice(name, when, vol, dest) {
-  const ctx = state.ctx;
-  const mk = (o) => {
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(Math.max(0.0002, o.vol), when + (o.atk ?? 0.001));
-    g.gain.exponentialRampToValueAtTime(0.0001, when + (o.atk ?? 0.001) + o.dec);
-    g.connect(dest);
-    return g;
-  };
-  const osc = (o) => {
-    const s = ctx.createOscillator();
-    s.type = o.type || 'sine';
-    s.frequency.setValueAtTime(o.f0, when);
-    if (o.f1) s.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), when + o.dec * 0.9);
-    const g = mk(o);
-    if (o.filter) { const bq = chainFilter(s, o.filter, when, o.dec); bq.connect(g); }
-    else s.connect(g);
-    s.start(when); s.stop(when + o.dec + 0.05);
-  };
-  const nz = (o) => {
-    const s = ctx.createBufferSource();
-    s.buffer = o.pink ? state.pinkBuf : state.noiseBuf;
-    s.loop = true;
-    const g = mk(o);
-    const bq = chainFilter(s, o.filter, when, o.dec);
-    bq.connect(g);
-    try { s.start(when, arng.float(0, 1.5)); } catch (e) { s.start(when); }
-    s.stop(when + o.dec + 0.05);
-  };
-
-  switch (name) {
-    case 'kick':                                            // sine drop + a click transient
-      osc({ f0: 150, f1: 44, dec: 0.19, vol: 0.9 * vol, type: 'sine' });
-      nz({ filter: { type: 'lowpass', freq: 2400, sweepTo: 300 }, dec: 0.03, vol: 0.25 * vol });
-      break;
-    case 'snare':                                           // noise body + tuned "shell" tone
-      nz({ filter: { type: 'highpass', freq: 1300, q: 0.8 }, dec: 0.13, vol: 0.55 * vol });
-      osc({ f0: 195, f1: 150, dec: 0.07, vol: 0.3 * vol, type: 'triangle' });
-      break;
-    case 'rim':                                             // dry stick click
-      nz({ filter: { type: 'bandpass', freq: 2200, q: 6 }, dec: 0.05, vol: 0.5 * vol });
-      osc({ f0: 420, f1: 300, dec: 0.035, vol: 0.25 * vol, type: 'square' });
-      break;
-    case 'hat':
-      nz({ filter: { type: 'highpass', freq: 7200, q: 0.9 }, dec: 0.035, vol: 0.4 * vol });
-      break;
-    case 'openhat':
-      nz({ filter: { type: 'highpass', freq: 6200, q: 0.9 }, dec: 0.2, vol: 0.32 * vol });
-      break;
-    case 'shaker':
-      nz({ pink: true, filter: { type: 'bandpass', freq: 5200, q: 1.1 }, dec: 0.06, vol: 0.5 * vol });
-      break;
-    case 'tom':
-      osc({ f0: 230, f1: 105, dec: 0.24, vol: 0.7 * vol, type: 'sine' });
-      nz({ filter: { type: 'lowpass', freq: 1400, sweepTo: 400 }, dec: 0.07, vol: 0.14 * vol });
-      break;
-    // ── medieval percussion ───────────────────────────────────────────────
-    case 'tabor':          // small snared side-drum, the dance drum of the period
-      osc({ f0: 220, f1: 170, dec: 0.075, vol: 0.34 * vol, type: 'triangle' });
-      nz({ filter: { type: 'bandpass', freq: 1900, q: 1.2 }, dec: 0.075, vol: 0.30 * vol });
-      break;
-    case 'frame':          // hand-struck frame drum / bodhrán — soft and woody
-      osc({ f0: 128, f1: 78, dec: 0.24, vol: 0.72 * vol, type: 'sine' });
-      nz({ filter: { type: 'lowpass', freq: 900, q: 0.7, sweepTo: 240 }, dec: 0.10, vol: 0.16 * vol });
-      break;
-    case 'wardrum':        // big deep nakers — felt in the chest, not the ears
-      osc({ f0: 92, f1: 46, dec: 0.42, vol: 0.95 * vol, type: 'sine' });
-      osc({ f0: 138, f1: 70, dec: 0.16, vol: 0.22 * vol, type: 'triangle' });
-      nz({ filter: { type: 'lowpass', freq: 600, q: 0.8, sweepTo: 160 }, dec: 0.09, vol: 0.14 * vol });
-      break;
-    // ── orchestral percussion ─────────────────────────────────────────────
-    case 'timp':           // timpani: a tuned kettle, pitch bending down as it rings
-      osc({ f0: 110, f1: 82, dec: 0.9, vol: 0.9 * vol, type: 'sine' });
-      osc({ f0: 165, f1: 124, dec: 0.5, vol: 0.30 * vol, type: 'sine' });
-      osc({ f0: 220, f1: 168, dec: 0.28, vol: 0.14 * vol, type: 'triangle' });
-      nz({ filter: { type: 'lowpass', freq: 800, q: 0.8, sweepTo: 180 }, dec: 0.12, vol: 0.16 * vol });
-      break;
-    case 'timphi':         // the higher of the pair, for the answering note
-      osc({ f0: 165, f1: 124, dec: 0.75, vol: 0.85 * vol, type: 'sine' });
-      osc({ f0: 248, f1: 186, dec: 0.4, vol: 0.26 * vol, type: 'sine' });
-      nz({ filter: { type: 'lowpass', freq: 950, q: 0.8, sweepTo: 220 }, dec: 0.1, vol: 0.14 * vol });
-      break;
-    case 'gong':           // tam-tam: a long inharmonic wash under a big moment
-      osc({ f0: 84, f1: 72, dec: 2.4, vol: 0.34 * vol, type: 'sine', atk: 0.02 });
-      osc({ f0: 131, f1: 118, dec: 2.0, vol: 0.20 * vol, type: 'triangle', atk: 0.03 });
-      osc({ f0: 197, f1: 174, dec: 1.6, vol: 0.13 * vol, type: 'triangle', atk: 0.04 });
-      nz({ filter: { type: 'bandpass', freq: 1800, q: 0.5 }, dec: 1.8, vol: 0.16 * vol, atk: 0.05 });
-      break;
-    case 'drip':           // water falling somewhere in the dark
-      osc({ f0: 1500, f1: 620, dec: 0.10, vol: 0.30 * vol, type: 'sine', atk: 0.002 });
-      nz({ filter: { type: 'bandpass', freq: 2600, q: 5 }, dec: 0.035, vol: 0.10 * vol });
-      break;
-    case 'crash':
-      nz({ filter: { type: 'highpass', freq: 4200, q: 0.7 }, dec: 0.75, vol: 0.3 * vol, atk: 0.004 });
-      break;
-    case 'click':
-    default:
-      nz({ filter: { type: 'bandpass', freq: 2800, q: 5 }, dec: 0.03, vol: 0.4 * vol });
-      break;
+export function gatedLoudness(buf, skip = 1) {
+  const sr = buf.sampleRate, a = buf.getChannelData(0), b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : a;
+  const blk = Math.floor(0.4 * sr), hop = Math.floor(0.1 * sr), es = [];
+  for (let s = Math.floor(skip * sr); s + blk <= a.length; s += hop) {
+    let e = 0;
+    for (let i = s; i < s + blk; i++) e += a[i] * a[i] + b[i] * b[i];
+    if (e / (2 * blk) > 1e-7) es.push(e / (2 * blk));
   }
+  if (!es.length) return -200;
+  const m1 = es.reduce((x, y) => x + y, 0) / es.length;
+  const g2 = es.filter((e) => e > m1 * 0.1);
+  return 10 * Math.log10(g2.reduce((x, y) => x + y, 0) / g2.length);
 }
 
-/** One pitched music note. `layer` supplies wave/filter/vibrato/detune; `dest` is the layer gain. */
-/**
- * One musical note, voiced as a real instrument.
- *
- * `layer.inst` names an entry in INSTRUMENTS; the model decides the envelope and
- * timbre. Plucked strings decay whether or not the note is "held"; bowed strings
- * and pipes sustain for the written duration and release; organs stack partials;
- * bells ring on inharmonic overtones. `layer.wave` is still honoured as a plain
- * oscillator for anything that hasn't been given an instrument.
- */
-function musicVoice(layer, when, note, dur, vol, dest, transpose) {
-  const ctx = state.ctx;
-  const inst = INSTRUMENTS[layer.inst] || null;
-  const f = Math.max(8, freqOf(note, transpose));
-  const amp = Math.max(0.0002, vol * (inst ? (inst.gain ?? 1) : 1));
-
-  // Shared output gain for this note.
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, when);
-  g.connect(dest);
-
-  // Where the sound stops making noise, so we know when to free the nodes.
-  let stopAt;
-
-  if (!inst) {
-    // ── plain oscillator (legacy layers) ────────────────────────────────────
-    const osc = ctx.createOscillator();
-    setWave(osc, layer.wave);
-    osc.frequency.setValueAtTime(f, when);
-    try { osc.detune.setValueAtTime((layer.detune || 0) + jitter(4), when); } catch (e) { /* ignore */ }
-    const rel = layer.sustain ?? 0.06;
-    const atk = layer.attack ?? 0.006;
-    const end = when + dur;
-    g.gain.linearRampToValueAtTime(amp, when + Math.min(atk, dur * 0.5));
-    g.gain.setValueAtTime(amp, Math.max(when + 0.001, end - Math.min(rel, dur * 0.5)));
-    g.gain.exponentialRampToValueAtTime(0.0001, end + rel);
-    let node = osc;
-    if (layer.filter) node = chainFilter(node, layer.filter, when, dur);
-    node.connect(g);
-    osc.start(when); stopAt = end + rel + 0.06; osc.stop(stopAt);
-    return;
-  }
-
-  const kind = inst.kind || 'pluck';
-  const sources = [];
-
-  // ── envelope ──────────────────────────────────────────────────────────────
-  if (kind === 'pluck' || kind === 'bell') {
-    // Struck/plucked: ignore the written length, ring for the instrument's decay
-    // (capped so a whole-note lute chord doesn't smear into the next bar).
-    const decay = Math.min(inst.decay ?? 1.2, dur + (inst.decay ?? 1.2) * 0.5);
-    const atk = inst.attack ?? 0.004;
-    g.gain.linearRampToValueAtTime(amp, when + atk);
-    // A steeper-than-exponential curve reads as a real string dying away.
-    const curve = inst.curve ?? 2.2;
-    const steps = 6;
-    for (let i = 1; i <= steps; i++) {
-      const t = i / steps;
-      const v = Math.max(0.0001, amp * Math.pow(1 - t, curve));
-      g.gain.exponentialRampToValueAtTime(v, when + atk + decay * t);
-    }
-    stopAt = when + atk + decay + 0.05;
-  } else {
-    // Sustained: attack, hold at the sustain level, release after the note ends.
-    const atk = inst.attack ?? 0.05;
-    const rel = inst.release ?? 0.12;
-    const sus = inst.sustainLevel ?? 0.88;
-    const end = when + dur;
-    const peak = when + Math.min(atk, dur * 0.6);
-    g.gain.linearRampToValueAtTime(amp, peak);
-    g.gain.linearRampToValueAtTime(Math.max(0.0002, amp * sus), Math.min(end, peak + 0.14));
-    g.gain.setValueAtTime(Math.max(0.0002, amp * sus), Math.max(when + 0.002, end));
-    g.gain.exponentialRampToValueAtTime(0.0001, end + rel);
-    stopAt = end + rel + 0.06;
-  }
-
-  // ── tone generation ───────────────────────────────────────────────────────
-  const mix = ctx.createGain();
-  mix.gain.value = 1;
-
-  if (inst.partials) {
-    // Additive: organs, choirs and bells are sums of tuned partials.
-    let total = 0;
-    for (const [, a] of inst.partials) total += a;
-    for (const [ratio, a] of inst.partials) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(f * ratio, when);
-      try { o.detune.setValueAtTime(jitter(3), when); } catch (e) { /* ignore */ }
-      const pg = ctx.createGain();
-      pg.gain.value = a / total;
-      o.connect(pg); pg.connect(mix);
-      sources.push(o);
-    }
-  } else {
-    // Subtractive: one oscillator per string course, slightly detuned so a lute's
-    // doubled strings beat against each other the way real ones do.
-    //
-    // `section: n` is the same idea taken to an orchestra. Sixteen violinists
-    // are not one violin played louder — they are sixteen very slightly
-    // different pitches, starting at very slightly different moments, spread
-    // across the stage. That spread and that smear IS the sound of a section,
-    // and it is the difference between "a synth pad" and "the strings came in".
-    const sect = Math.max(0, inst.section || 0);
-    const n = Math.max(1, sect || inst.courses || 1);
-    const width = inst.width ?? (sect ? 0.55 : 0);
-    for (let i = 0; i < n; i++) {
-      const o = ctx.createOscillator();
-      setWave(o, inst.wave || 'triangle');
-      const t0 = sect ? when + arng.float(0, inst.smear ?? 0.022) : when;
-      o.frequency.setValueAtTime(f, t0);
-      const spread = inst.spread || 0;
-      const off = n === 1 ? 0 : (i - (n - 1) / 2) * spread;
-      // Players are out of tune by a few cents in BOTH directions, never evenly.
-      const cents = sect ? arng.float(-(inst.detuneCents ?? 9), inst.detuneCents ?? 9) : jitter(3);
-      try { o.detune.setValueAtTime(off + cents, t0); } catch (e) { /* ignore */ }
-      const pg = ctx.createGain();
-      // Uneven weighting: a section is not n identical players.
-      pg.gain.value = (1 / n) * (sect ? arng.float(0.72, 1.28) : 1);
-      o.connect(pg);
-      if (width > 0 && typeof ctx.createStereoPanner === 'function') {
-        const pan = ctx.createStereoPanner();
-        pan.pan.value = n === 1 ? 0 : ((i / (n - 1)) * 2 - 1) * width;
-        pg.connect(pan); pan.connect(mix);
-      } else {
-        pg.connect(mix);
+function measureLater(id) {
+  if (REFERENCE == null || LOUDNESS[id] != null || MEASURED.has(id) || typeof OfflineAudioContext === 'undefined') return;
+  MEASURED.set(id, NaN);
+  setTimeout(() => {
+    Audio.render(id, { seconds: 10, sampleRate: 16000, dry: true, normalize: false, volume: TABLE_VOLUME }).then((buf) => {
+      const db = gatedLoudness(buf);
+      if (!(db > -150)) return;
+      MEASURED.set(id, db);
+      for (const p of state.players) {
+        if (p.id === id && p.normalize && !p.stopping) { p.targetGain = p.baseGain * loudnessGain(id); p.fadeIn(2); }
       }
-      o._startAt = t0;
-      sources.push(o);
-    }
-  }
-
-  // Breath noise for pipes — a recorder is mostly air.
-  if (inst.breath) {
-    const s = ctx.createBufferSource();
-    s.buffer = state.noiseBuf; s.loop = true;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.frequency.setValueAtTime(f * 2, when); bp.Q.value = 1.1;
-    const bg = ctx.createGain(); bg.gain.value = inst.breath;
-    s.connect(bp); bp.connect(bg); bg.connect(mix);
-    try { s.start(when, arng.float(0, 1.5)); } catch (e) { s.start(when); }
-    s.stop(stopAt);
-  }
-
-  // Pick/plectrum click: the transient that makes a pluck sound struck.
-  if (inst.click) {
-    const s = ctx.createBufferSource();
-    s.buffer = state.noiseBuf; s.loop = true;
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'bandpass'; hp.frequency.setValueAtTime(Math.min(6000, f * 6), when); hp.Q.value = 0.9;
-    const cg = ctx.createGain();
-    cg.gain.setValueAtTime(amp * inst.click, when);
-    cg.gain.exponentialRampToValueAtTime(0.0001, when + 0.035);
-    s.connect(hp); hp.connect(cg); cg.connect(g);
-    try { s.start(when, arng.float(0, 1.5)); } catch (e) { s.start(when); }
-    s.stop(when + 0.06);
-  }
-
-  // ── filter ────────────────────────────────────────────────────────────────
-  let node = mix;
-  if (inst.filter) {
-    const fl = { ...inst.filter };
-    // Keep the filter meaningful for high notes: never cut below the fundamental.
-    if (fl.freq && fl.type === 'lowpass') fl.freq = Math.max(fl.freq, f * 1.6);
-    if (fl.sweepTo) fl.sweepTo = Math.max(fl.sweepTo, f * 1.05);
-    node = chainFilter(node, fl, when, Math.max(0.05, stopAt - when));
-  }
-  node.connect(g);
-
-  // ── vibrato ───────────────────────────────────────────────────────────────
-  if (inst.vibrato) {
-    const lfo = ctx.createOscillator(), lg = ctx.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(inst.vibrato.rate ?? 5, when);
-    // Real players ease vibrato in rather than starting with it.
-    const delay = inst.vibrato.delay ?? 0;
-    lg.gain.setValueAtTime(0.0001, when);
-    lg.gain.setValueAtTime(0.0001, when + delay);
-    lg.gain.linearRampToValueAtTime(inst.vibrato.depth ?? 4, when + delay + 0.18);
-    lfo.connect(lg);
-    for (const o of sources) { try { lg.connect(o.detune); } catch (e) { /* ignore */ } }
-    lfo.start(when); lfo.stop(stopAt);
-  }
-
-  for (const o of sources) { o.start(o._startAt || when); o.stop(stopAt); }
+    }).catch(() => { /* stays unnormalised */ });
+  }, 2500);
 }
 
+/** Pattern note → MIDI: numbers under 128 are MIDI, larger ones Hz, strings note names. */
+function midiOf(n) {
+  if (typeof n === 'number') return n > 0 && n < 128 ? n : n >= 128 ? 69 + 12 * Math.log2(n / 440) : NaN;
+  return noteToMidi(n);
+}
+
+/** Every pitch class a track uses. Ornaments borrow neighbours from it, so a trill stays in the mode. */
+function pitchClasses(track, transpose) {
+  const pcs = new Set();
+  for (const L of track.layers || []) {
+    if (L.wave === 'noise') continue;
+    for (const e of L.pattern || []) {
+      const m = midiOf(e && e[1]);
+      if (Number.isFinite(m)) pcs.add((((Math.round(m + transpose)) % 12) + 12) % 12);
+    }
+  }
+  return pcs;
+}
+/** The nearest note of the track's scale a step above (dir 1) or below (-1). */
+function neighbour(pcs, midi, dir) {
+  for (let d = 1; d <= 2; d++) { const m = Math.round(midi) + dir * d; if (pcs.has(((m % 12) + 12) % 12)) return m; }
+  return Math.round(midi) + dir * 2;
+}
+
+const ORNAMENTS = new Set(['mordent', 'trill', 'grace']);
+
 /**
- * A playing instance of one TRACKS entry. Owns a gain node (for crossfading) and
- * an index of pattern events bucketed by step, which the sequencer walks.
+ * A playing instance of one track in one env (the speakers, or an offline
+ * render). Owns a gain for fades, a dry send and a room send, and per layer a
+ * step-indexed event table plus the layer's synth runtime. Everything a tick
+ * needs is precomputed here, so scheduling walks arrays and allocates nothing
+ * but the notes themselves.
  */
 class MusicPlayer {
-  constructor(id, track, { loop = true, gain = 1, onEnd = null } = {}) {
-    this.id = id;
-    this.track = track;
-    this.loop = loop;
-    this.onEnd = onEnd;
-    this.done = false;
+  constructor(env, id, track, { loop = true, gain = 1, onEnd = null, onLoop = null, startAt = null, normalize = true, room = null } = {}) {
+    const ctx = env.ctx;
+    this.env = env; this.id = id; this.track = track; this.loop = loop;
+    this.onEnd = onEnd; this.onLoop = onLoop;
+    this.done = false; this.stopping = false; this.destroyed = false; this.endStep = Infinity;
     this.stepDur = 60 / (track.bpm || 120) / 4;              // 16th note in seconds
-    this.totalSteps = (track.loopBars || 4) * SPB;
+    this.totalSteps = Math.max(1, Math.round((track.loopBars || 4) * SPB));
     this.transpose = (track.transpose || 0) + (track.relative ? keyTranspose(track.key) : 0);
-    this.targetGain = gain * (track.gain ?? 1);
-
-    const ctx = state.ctx;
+    this.baseGain = gain * (track.gain ?? 1); this.normalize = normalize;
+    this.targetGain = this.baseGain * (normalize ? loudnessGain(id) : 1);
     this.gain = ctx.createGain();
     this.gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    this.gain.connect(state.musicBus);
+    this.room = room === false ? null : roomFor(env, room || roomOf(id, track));
+    this.dry = ctx.createGain();
+    this.dry.gain.value = this.room ? this.room.spec.dry : 1;
+    this.gain.connect(this.dry); this.dry.connect(env.bus.dry);
+    if (this.room) this.gain.connect(this.room.input);
+    this.startTime = startAt ?? ctx.currentTime + 0.06;     // a small pad so the first step isn't in the past
+    const pcs = pitchClasses(track, this.transpose);
+    this.layers = [];
+    for (const L of track.layers || []) {
+      try { this.layers.push(this._layer(L, pcs)); } catch (e) { /* a broken layer is skipped, never the track */ }
+    }
+    this.step = 0;                                           // absolute step counter (grows past totalSteps)
+  }
 
-    // Per-layer gain node + a step-bucketed event index for O(1) scheduling.
-    this.layers = (track.layers || []).map((L) => {
-      const lg = ctx.createGain();
-      lg.gain.setValueAtTime(L.gain ?? 0.25, ctx.currentTime);
-      lg.connect(this.gain);
-      const byStep = new Map();
-      for (const ev of (L.pattern || [])) {
-        const s = ((ev[0] % this.totalSteps) + this.totalSteps) % this.totalSteps;
-        if (!byStep.has(s)) byStep.set(s, []);
-        byStep.get(s).push(ev);
+  _layer(L, pcs) {
+    const env = this.env, ctx = env.ctx, total = this.totalSteps;
+    const node = ctx.createGain();
+    node.gain.value = L.gain ?? 0.25;
+    if (L.pan && typeof ctx.createStereoPanner === 'function') {
+      const p = ctx.createStereoPanner();
+      p.pan.value = clampN(Number(L.pan) || 0, -1, 1);
+      node.connect(p); p.connect(this.gain);
+    } else node.connect(this.gain);
+    const drums = L.wave === 'noise';
+    const inst = drums || !L.inst ? null : INSTRUMENTS[L.inst] || null;
+    const evs = [];
+    for (const e of L.pattern || []) {
+      if (!Array.isArray(e)) continue;
+      const s0 = Math.round(Number(e[0])), steps = Number(e[2]) || 1, vol = e[3] == null ? 1 : Number(e[3]);
+      if (!Number.isFinite(s0) || !(steps > 0) || !Number.isFinite(vol)) continue;
+      const s = ((s0 % total) + total) % total;
+      if (drums) { evs.push({ s, drum: String(e[1]), steps, vol, shift: 0 }); continue; }
+      const midi = midiOf(e[1]);
+      if (!Number.isFinite(midi)) continue;
+      evs.push({ s, midi: midi + this.transpose, steps, vol, vowel: typeof e[4] === 'string' ? e[4] : null,
+        tieIn: false, tieOut: false, orn: null, alt: null, shift: 0 });
+    }
+    evs.sort((a, b) => a.s - b.s);
+    if (!drums) this._ties(evs);
+    // Swing: the off-beat eighths (and, half as much, the odd sixteenths) come late.
+    const swing = clampN(Number(L.swing) || 0, 0, 0.3);
+    const orn = ORNAMENTS.has(L.ornament) ? L.ornament : null;
+    const byStep = new Array(total).fill(null);
+    for (const ev of evs) {
+      if (swing) ev.shift = (ev.s % 4 === 2 ? 2 * swing : ev.s % 2 ? swing : 0) * this.stepDur;
+      // Whether a long note is ornamented is decided each time it plays (see
+      // _play), so no two passes of the loop are graced quite alike.
+      if (orn && ev.steps >= (L.ornamentMin ?? 4)) {
+        ev.alt = { ...ev, orn: { type: orn, upper: neighbour(pcs, ev.midi, 1), lower: neighbour(pcs, ev.midi, -1) } };
       }
-      return { def: L, node: lg, byStep };
-    });
+      (byStep[ev.s] || (byStep[ev.s] = [])).push(ev);
+    }
+    const midis = drums ? null : [...new Set(evs.map((e) => Math.round(e.midi)))];
+    return {
+      def: L, node, drums, byStep,
+      rt: drums ? null : layerRuntime(env, L, inst, node, { midis }),
+      human: clampN(Number(L.humanize) || 0, 0, 80) / 1000,
+      ornRate: clampN(L.ornamentRate ?? 0.5, 0, 1),
+    };
+  }
 
-    this.startTime = ctx.currentTime + 0.06;   // small pad so the first step isn't in the past
-    this.step = 0;                              // absolute step counter (grows past totalSteps)
+  /**
+   * Mark legato ties. In a line that never overlaps itself, a note that begins
+   * exactly where the last one ended is joined to it (and, when the track
+   * loops, the last note of the loop to the first). Voices sing a tied line on
+   * one breath, and any instrument marked `legato` slurs it; chords never tie.
+   */
+  _ties(evs) {
+    const n = evs.length, total = this.totalSteps;
+    if (!n) return;
+    for (let i = 1; i < n; i++) if (evs[i].s < evs[i - 1].s + evs[i - 1].steps - 0.01) return;
+    if (evs[n - 1].s + evs[n - 1].steps > total + evs[0].s + 0.01) return;
+    for (let i = 0; i < n; i++) {
+      const wrap = i === n - 1;
+      if (wrap && !this.loop) break;
+      const a = evs[i], b = wrap ? evs[0] : evs[i + 1];
+      if (Math.abs(a.s + a.steps - (wrap ? b.s + total : b.s)) < 0.01) { a.tieOut = true; b.tieIn = true; }
+    }
   }
 
   timeOf(absStep) { return this.startTime + absStep * this.stepDur; }
+  get loopSeconds() { return this.totalSteps * this.stepDur; }
 
-  /** Schedule everything that falls before `until`. Returns false when a one-shot has finished. */
+  /** Schedule everything that falls before `until`. Returns false once finished. */
   advance(until) {
     if (this.done) return false;
+    const total = this.totalSteps;
     while (this.timeOf(this.step) < until) {
-      if (!this.loop && this.step >= this.totalSteps) {
+      const s = this.step % total;
+      if (s === 0 && this.step > 0 && this.onLoop && this.step < this.endStep) this.onLoop(this, this.step / total, this.timeOf(this.step));
+      if (this.step >= this.endStep || (!this.loop && this.step >= total)) {
         this.done = true;
         if (this.onEnd) { const f = this.onEnd; this.onEnd = null; f(this.timeOf(this.step)); }
         return false;
       }
-      const s = this.step % this.totalSteps;
-      const when = this.timeOf(this.step);
-      for (const L of this.layers) {
-        const evs = L.byStep.get(s);
-        if (!evs) continue;
-        for (const ev of evs) {
-          const dur = Math.max(0.02, (ev[2] || 1) * this.stepDur * 0.94); // 6% gap = articulation
-          const vol = (ev[3] == null ? 1 : ev[3]);
-          if (L.def.wave === 'noise') drumVoice(String(ev[1]), when, vol, L.node);
-          else musicVoice(L.def, when, ev[1], dur, vol, L.node, this.transpose);
-        }
+      const t = this.timeOf(this.step);
+      for (let li = 0; li < this.layers.length; li++) {
+        const L = this.layers[li], evs = L.byStep[s];
+        if (evs) for (let k = 0; k < evs.length; k++) this._play(L, evs[k], t);
       }
       this.step++;
     }
     return true;
   }
 
-  fadeIn(dur) { setGain(this.gain, this.targetGain, now(), dur); }
+  _play(L, ev, t) {
+    const env = this.env;
+    let when = t + ev.shift;
+    if (L.human) when += (arng.next() + arng.next() - 1) * L.human;
+    if (when < env.ctx.currentTime) when = env.ctx.currentTime;
+    const vol = L.human ? ev.vol * (0.96 + arng.next() * 0.08) : ev.vol;
+    try {
+      if (L.drums) { playDrum(env, ev.drum, when, vol, L.node); return; }
+      const full = ev.steps * this.stepDur;
+      // A 6% gap is the articulation between detached notes; a tied note runs its full length into the next.
+      const dur = ev.tieOut ? full : Math.max(0.02, full * 0.94);
+      playNote(L.rt, when, ev.midi, dur, vol, ev.alt && arng.next() < L.ornRate ? ev.alt : ev);
+    } catch (e) { /* one bad note never stops the music */ }
+  }
 
-  /** Ramp to silence and disconnect after the ramp. Safe to call twice. */
-  fadeOut(dur, thenRemove = true) {
+  fadeIn(dur) { setGain(this.gain, this.targetGain, this.env.ctx.currentTime, dur); }
+
+  /** Fade to silence from `at` (default now), stop the layers' own sources, let go of the room. Safe twice. */
+  fadeOut(dur, at = null) {
     if (this.stopping) return;
     this.stopping = true;
-    const t = now();
-    setGain(this.gain, 0, t, dur);
     this.done = true;
-    if (thenRemove) {
-      setTimeout(() => {
-        try { this.gain.disconnect(); } catch (e) { /* ignore */ }
-        const i = state.players.indexOf(this);
-        if (i >= 0) state.players.splice(i, 1);
-        if (!state.players.length) stopScheduler();
-      }, dur * 1000 + 120);
-    }
+    const ctx = this.env.ctx, t = Math.max(ctx.currentTime, at ?? 0);
+    const p = this.gain.gain;
+    try { p.cancelScheduledValues(t); p.setTargetAtTime(0, t, Math.max(0.01, dur / 4)); } catch (e) { /* ignore */ }
+    const end = t + dur * 1.8 + 0.1;
+    for (const L of this.layers) if (L.rt) releaseLayer(L.rt, end);
+    if (this.env.live) setTimeout(() => this.destroy(), Math.max(0, end - ctx.currentTime) * 1000 + 60);
   }
+
+  /** Stop at this loop boundary and let the last notes and the room ring out: a minstrel's segue. */
+  segue(boundaryStep, t) {
+    this.endStep = boundaryStep;
+    this.fadeOut(3, t + 0.6);
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    try { this.gain.disconnect(); this.dry.disconnect(); } catch (e) { /* ignore */ }
+    if (this.room) roomDone(this.env, this.room);
+    const i = state.players.indexOf(this);
+    if (i >= 0) state.players.splice(i, 1);
+    if (!state.players.length) stopScheduler();
+  }
+}
+
+function tick() {
+  if (!state.ok) return;
+  const t = state.ctx.currentTime;
+  const gap = t - state.lastTick;
+  state.lastTick = t;
+  // A hidden or busy tab wakes this timer late (browsers hold background timers
+  // to about once a second), so look further ahead then and the music never gaps.
+  const hidden = typeof document !== 'undefined' && document.hidden;
+  state.ahead = hidden ? 1.4 : gap > 0.12 ? Math.min(1.4, gap * 1.5 + 0.1) : Math.max(SCHEDULE_AHEAD, state.ahead - 0.01);
+  const until = t + state.ahead;
+  for (let i = state.players.length - 1; i >= 0; i--) { const p = state.players[i]; if (p) p.advance(until); }
 }
 
 function startScheduler() {
   if (state.timer != null || !state.ok) return;
-  state.timer = setInterval(() => {
-    if (!state.ok) return;
-    const until = now() + SCHEDULE_AHEAD;
-    for (const p of state.players.slice()) p.advance(until);
-  }, LOOKAHEAD_MS);
+  state.lastTick = state.ctx.currentTime;
+  state.timer = setInterval(tick, LOOKAHEAD_MS);
 }
 
 function stopScheduler() {
@@ -1181,17 +965,99 @@ function stopScheduler() {
 function stopMusic(fade = CROSSFADE) {
   for (const p of state.players.slice()) p.fadeOut(fade);
   state.currentId = null;
+  state.context = null;
 }
 
-function startTrack(id, { loop = true, fade = CROSSFADE, onEnd = null } = {}) {
+function startTrack(id, { loop = true, fade = CROSSFADE, onEnd = null, startAt = null } = {}) {
   const track = TRACKS[id];
-  if (!track) return null;
-  const p = new MusicPlayer(id, track, { loop, onEnd });
+  if (!track || !state.env) return null;
+  const p = new MusicPlayer(state.env, id, track, { loop, onEnd, startAt, onLoop: loop ? rotateAtLoop : null });
   state.players.push(p);
-  p.advance(now() + SCHEDULE_AHEAD);
+  p.advance(now() + state.ahead);
   p.fadeIn(fade);
   startScheduler();
+  measureLater(id);
   return p;
+}
+
+const livePlayer = (id) => state.players.some((p) => p.id === id && !p.stopping);
+
+// ── context rotation ───────────────────────────────────────────────────────
+//
+// `Audio.music('town')` names a PLACE, not a tune. Every track that lists the
+// context (plus a track of that very name, so the first score's 'town' is in
+// its own pool) may answer. Which one a place opens with is seeded by the map
+// and the in-game day, so a town has a tune today and perhaps another
+// tomorrow; walking between two maps of the same context keeps what is
+// playing; and after a few passes the minstrel moves on to another tune of the
+// same kind at a loop boundary. A long session never wears one tune thin.
+
+function contextPool(ctxId, { all = false } = {}) {
+  const ids = [];
+  for (const id in TRACKS) {
+    const c = TRACKS[id].contexts;
+    if (id === ctxId || (Array.isArray(c) && c.includes(ctxId))) ids.push(id);
+  }
+  if (all) return ids;
+  const ok = ids.filter((id) => !state.songbook.banned.has(id));
+  return ok.length ? ok : ids;
+}
+
+// A fight asks for music by danger: a track's own `intensity` (1 skirmish, 2
+// a proper fight, 3 desperate; 2 when unstated) near the asked-for one is
+// strongly preferred, but the pool is never narrowed to nothing.
+const INTENSITY_FIT = [1, 0.15, 0.01];
+
+function weightOf(id) {
+  const w = Number(TRACKS[id] && TRACKS[id].weight);
+  const base = Number.isFinite(w) && w >= 0 ? w : 1;
+  if (state.intensity == null) return base;
+  const d = Math.abs((Number(TRACKS[id].intensity) || 2) - state.intensity);
+  return base * (INTENSITY_FIT[Math.min(2, Math.round(d))]);
+}
+
+function weightedPick(pool, u) {
+  let total = 0;
+  for (const id of pool) total += weightOf(id);
+  if (total <= 0) return pool[Math.floor(u * pool.length) % pool.length];
+  let x = u * total;
+  for (const id of pool) { x -= weightOf(id); if (x < 0) return id; }
+  return pool[pool.length - 1];
+}
+
+/** Which tune this place plays today: the same map on the same day always opens with the same one. */
+function seededPick(pool, ctxId) {
+  let place = null;
+  try { place = state.place ? state.place() : null; } catch (e) { place = null; }
+  return weightedPick(pool, makeRNG(`${(place && place.map) ?? ''}|${(place && place.day) ?? 0}|${ctxId}`).next());
+}
+
+function remember(id) {
+  const h = state.rotation.history;
+  h.push(id);
+  if (h.length > 3) h.shift();
+}
+
+/** About two and a half minutes of a tune before moving on: 2 to 6 passes, or the track's own `rotateLoops`. */
+function rotationLoops(p) {
+  const n = Number(p.track.rotateLoops);
+  return n >= 1 ? n : clampN(Math.round(150 / p.loopSeconds), 2, 6);
+}
+
+/** Called by a looping player at each loop boundary. */
+function rotateAtLoop(p, loops, t) {
+  const ctxId = state.context;
+  if (!ctxId || p.stopping || p.id !== state.currentId || state.songbook.pinned[ctxId]) return;
+  if (loops < rotationLoops(p)) return;
+  const pool = contextPool(ctxId).filter((id) => id !== p.id);
+  if (!pool.length) return;
+  const fresh = pool.filter((id) => !state.rotation.history.includes(id));
+  const next = weightedPick(fresh.length ? fresh : pool, arng.next());
+  // The old tune finishes its phrase and rings out; the next begins a breath later.
+  p.segue(p.step, t);
+  remember(next);
+  state.currentId = next; state.pendingId = next;
+  startTrack(next, { loop: true, fade: 0.25, startAt: t + clampN(4 * p.stepDur, 0.3, 0.9) });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1257,8 +1123,15 @@ export const Audio = {
   },
 
   /**
-   * Start a looping procedural track, crossfading from whatever is playing.
-   * Pass null/'' to fade the music out. Re-requesting the current track is a no-op.
+   * Play music for a context ('town', 'battle', 'crypt' …) or a track id,
+   * crossfading from whatever is playing. A context with several tracks picks
+   * one seeded by map and in-game day, keeps it while the context holds, and
+   * rotates to another after a few loops (see "context rotation" above). A
+   * plain track id plays that track; `{ exact: true }` forces an id to be read
+   * as a track even when it is also a context; `{ intensity: 1..3 }` leans a
+   * context's pick toward tracks of that danger (a fight's battleCue). Pass
+   * null/'' to fade out.
+   * Re-requesting what is already playing is a no-op.
    */
   music(trackId, opts = {}) {
     const fade = opts.fade ?? CROSSFADE;
@@ -1268,43 +1141,91 @@ export const Audio = {
       if (state.ok) stopMusic(fade);
       return;
     }
-    if (!TRACKS[trackId]) {
+    const pool = opts.exact ? [] : contextPool(trackId);
+    let pick = null, ctxId = opts.context ?? null;
+    state.intensity = opts.exact ? state.intensity : Number(opts.intensity) || null;
+    if (pool.length > 1) {
+      ctxId = trackId;
+      // From one field to the next field, the tune that is playing carries on.
+      const cur = state.currentId;
+      if (cur && pool.includes(cur) && livePlayer(cur)) { state.context = ctxId; state.pendingId = cur; return; }
+      const pin = state.songbook.pinned[ctxId];
+      pick = pin && TRACKS[pin] ? pin : seededPick(pool, ctxId);
+    } else if (TRACKS[trackId]) pick = trackId;
+    else if (pool.length === 1) { pick = pool[0]; ctxId = trackId; }
+    else {
       if (!_warned.has('trk:' + trackId)) { _warned.add('trk:' + trackId); try { console.warn('[audio] unknown track:', trackId); } catch (e) { /* ignore */ } }
       return;
     }
     // Remember the request even if audio can't start yet, so init() can honour it.
-    state.pendingId = trackId;
+    state.pendingId = pick;
     whenRunning(() => {
-      if (state.pendingId !== trackId) return;              // superseded while the context was suspended
-      if (state.currentId === trackId && state.players.some((p) => p.id === trackId && !p.stopping)) return;
+      if (state.pendingId !== pick) return;                 // superseded while the context was suspended
+      state.context = ctxId;
+      if (state.currentId === pick && livePlayer(pick)) return;
       state.fanfareResume = null;
       for (const p of state.players.slice()) p.fadeOut(fade);
-      state.currentId = trackId;
-      startTrack(trackId, { loop: true, fade });
+      state.currentId = pick;
+      remember(pick);
+      startTrack(pick, { loop: true, fade });
     });
   },
 
   /** Currently playing (or queued) loop id, or null. */
   get playing() { return state.currentId || state.pendingId || null; },
+  /** { track, context }: what is playing and which context (if any) it is serving. */
+  get nowPlaying() { return { track: state.currentId || state.pendingId || null, context: state.context }; },
   get tracks() { return Object.keys(TRACKS); },
   get sounds() { return Object.keys(SFX); },
   hasTrack(id) { return !!TRACKS[id]; },
   hasSfx(name) { return !!(SFX[name] || SFX[SFX_ALIAS[name]]); },
 
+  /** Every context in use: the contract's list plus any a track declares. */
+  get contexts() {
+    const s = new Set(CONTEXTS);
+    for (const id in TRACKS) for (const c of TRACKS[id].contexts || []) s.add(c);
+    return [...s];
+  },
+  /** Every track that may answer a context (banned ones included), for a songbook UI. */
+  contextTracks(ctxId) { return contextPool(ctxId, { all: true }); },
+  /** Every track with its title, form, mood and contexts (music.js trackCatalogue), for a songbook screen. */
+  catalogue() { return trackCatalogue(); },
+  /**
+   * The player's own choices, e.g. from a minstrel's songbook screen:
+   * `pinned` maps a context to the one track it should always play; `banned`
+   * lists tracks never to rotate in (ignored if it would leave a context empty).
+   */
+  setSongbook({ pinned = {}, banned = [] } = {}) {
+    state.songbook.pinned = Object.assign(Object.create(null), pinned);
+    state.songbook.banned = new Set(banned);
+  },
+  /** `fn()` -> { map, day }: where the party is, which seeds each place's tune for the day. */
+  setPlaceSource(fn) { state.place = typeof fn === 'function' ? fn : null; },
+  /** { db, gain } a track is normalised by: from the table, measured this session, or null (plays as written). */
+  loudnessOf(id) {
+    const db = LOUDNESS[id] ?? MEASURED.get(id);
+    return { db: Number.isFinite(db) ? db : null, gain: loudnessGain(id) };
+  },
+
   /**
    * Play `trackId` once (e.g. 'victory') and then return to the loop that was
-   * playing before. Used by the battle-won / level-up flow.
+   * playing before. Used by the battle-won / level-up flow. A context id picks
+   * one of its tracks.
    */
   fanfare(trackId, opts = {}) {
-    const track = TRACKS[trackId];
+    const pool = contextPool(trackId);
+    const id = pool.length > 1 ? weightedPick(pool, arng.next()) : TRACKS[trackId] ? trackId : pool[0];
+    const track = TRACKS[id];
     if (!track) return;
     const resumeId = state.fanfareResume || state.currentId || state.pendingId || null;
+    const resumeCtx = state.context;
     whenRunning(() => {
-      state.fanfareResume = (resumeId === trackId) ? null : resumeId;
+      state.fanfareResume = (resumeId === id) ? null : resumeId;
       for (const p of state.players.slice()) p.fadeOut(opts.fadeOut ?? 0.25);
-      state.currentId = trackId;
-      state.pendingId = trackId;
-      startTrack(trackId, {
+      state.currentId = id;
+      state.pendingId = id;
+      state.context = null;
+      startTrack(id, {
         loop: false,
         fade: opts.fade ?? 0.05,
         onEnd: (endTime) => {
@@ -1313,15 +1234,58 @@ export const Audio = {
           setTimeout(() => {
             const back = state.fanfareResume;
             state.fanfareResume = null;
-            if (state.currentId === trackId) {
+            if (state.currentId === id) {
               state.currentId = null; state.pendingId = null;
-              if (back) Audio.music(back, { fade: 0.5 });
+              if (back) Audio.music(back, { fade: 0.5, exact: true, context: resumeCtx });
               else stopMusic(0.4);
             }
           }, wait);
         },
       });
     });
+  },
+
+  /**
+   * Render a track (id or track object) offline, exactly as the player would
+   * hear it: same instruments, room and mastering. Resolves to an AudioBuffer.
+   * Used by tools/music-render.mjs to measure and audition the score.
+   *   seconds (20), sampleRate (44100), loop (true), room (override),
+   *   dry (no room, no mastering), master (false: room but no mastering),
+   *   normalize (false: skip loudness normalisation), volume (default: the
+   *   current music x master volume)
+   */
+  async render(what, opts = {}) {
+    const track = typeof what === 'string' ? TRACKS[what] : what;
+    if (!track || typeof track !== 'object') throw new Error('Audio.render: unknown track ' + what);
+    const id = typeof what === 'string' ? what : (opts.id || '__render');
+    const OAC = typeof OfflineAudioContext !== 'undefined' ? OfflineAudioContext : null;
+    if (!OAC) throw new Error('Audio.render: no OfflineAudioContext here');
+    const rate = opts.sampleRate || 44100, secs = Math.max(0.5, opts.seconds || 20);
+    const ctx = new OAC(2, Math.ceil(rate * secs), rate);
+    const vol = ctx.createGain();
+    vol.gain.value = opts.volume ?? state.vol.music * state.vol.master;
+    let bus;
+    if (opts.dry || opts.master === false) {
+      bus = { dry: ctx.createGain(), wet: ctx.createGain() };
+      bus.dry.connect(vol); bus.wet.connect(vol);
+      vol.connect(ctx.destination);
+    } else {
+      const chain = buildMusicChain(ctx), lim = buildLimiter(ctx);
+      bus = chain.bus;
+      chain.out.connect(vol); vol.connect(lim.input); lim.out.connect(ctx.destination);
+    }
+    const env = makeEnv(ctx, bus, { live: false });
+    if (state.env) env.reverb = state.env.reverb;
+    const p = new MusicPlayer(env, id, track, { loop: opts.loop ?? true, startAt: 0.02, normalize: opts.normalize !== false,
+      room: opts.dry ? false : opts.room || null });
+    p.fadeIn(0.01);
+    // Scheduled in two-second slices while it renders, so a long render never builds its whole graph up front.
+    const SLICE = 2;
+    p.advance(Math.min(secs, SLICE + 0.5));
+    for (let t = SLICE; t < secs; t += SLICE) {
+      ctx.suspend(t).then(() => { p.advance(Math.min(secs + 0.1, t + SLICE + 0.5)); ctx.resume(); });
+    }
+    return ctx.startRendering();
   },
 
   /**
@@ -1374,9 +1338,8 @@ export const Audio = {
 
   // Exposed builders so other modules (spell VFX, monster cries) can compose one-offs.
   tone, noise, chord, arp,
-  TRACKS, TRACK_GROUPS, INSTRUMENTS, trackForBiome,
+  TRACKS, TRACK_GROUPS, INSTRUMENTS, CONTEXTS, trackForBiome,
 
-  /** Wet/dry balance of the music reverb, 0 = dry closet, 1 = cathedral. */
   /**
    * The sound of the sky: a looping bed under everything, crossfaded on change.
    *
@@ -1463,13 +1426,9 @@ export const Audio = {
     try { out.gain.setTargetAtTime(AMB_LEVEL[want] * inten, ctx.currentTime, 1.1); } catch (e) { /* ignore */ }
   },
 
+  /** How much room the music has, 0 = dry closet, 0.34 = each room as designed, 1 = everything a cathedral. */
   setReverb(amount = 0.34) {
-    if (!state.ok || !state.musicWet) return;
-    const a = clamp01(amount);
-    try {
-      state.musicWet.gain.setTargetAtTime(a * 0.55, state.ctx.currentTime, 0.05);
-      state.musicDry.gain.setTargetAtTime(1 - a * 0.35, state.ctx.currentTime, 0.05);
-    } catch (e) { /* ignore */ }
+    if (state.env) setRoomLevel(state.env, clamp01(amount) / 0.34);
   },
 };
 

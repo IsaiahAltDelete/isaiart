@@ -19,9 +19,11 @@ import { Audio } from '../core/audio.js';
 import { drawSprite, hasSprite, walkFrame, spriteDef, makeColorway } from '../render/sprites.js';
 import { drawActor } from '../render/actor.js';
 import { drawTile, T } from '../render/tiles.js';
+import { Lighting } from '../render/lighting.js';
 import { TF } from './tilemap.js';
 import { Game } from '../engine.js';
 import { chestKey, isChestLooted, markChestLooted } from '../state.js';
+import { npcDisposition } from '../rules/reputation.js';
 
 let serial = 0;
 const nextId = (p) => `${p}${(++serial).toString(36)}`;
@@ -31,6 +33,42 @@ function gstate() { return (Game && Game.state) || null; }
 
 /** Seconds of game time, used for tile animation frames. */
 function gtime() { return (Game && Game.time) || 0; }
+
+// ---------------------------------------------------------------------------
+// Carried lights: a torch or a lantern in the hand, three pixels wide, so the
+// pool render/lighting.js throws at night comes from something you can see.
+// Offsets are from the feet anchor (px, py) to the item's top-left, per facing:
+// the free hand, at hip height, on the side the sprite's weapon is not.
+// ---------------------------------------------------------------------------
+
+const HELD_AT = {
+  down: [4, -12], up: [-7, -12], left: [-6, -11], right: [3, -11],
+};
+const IRON_D = '#2a2320', IRON = '#6a5a48', GLASS = '#e0a040', WOOD = '#6a4a2a', WOOD_L = '#8a6440';
+const FLAME = ['#ffd070', '#fff0b8'], FIRE = '#f08a2a';
+
+function drawHeld(ctx, kind, x, y, dir, t, moving) {
+  const o = HELD_AT[dir] || HELD_AT.down;
+  // A step's swing: the hand rises a pixel every other stride.
+  const sw = moving && (Math.floor(t * 6) & 1) ? 1 : 0;
+  const hx = x + o[0], hy = y + o[1] - sw;
+  const f = Math.floor(t * 7 + x * 0.13) & 1;           // two-frame flicker
+  if (kind === 'torch') {
+    ctx.fillStyle = WOOD; ctx.fillRect(hx + 1, hy + 3, 1, 3);
+    ctx.fillStyle = WOOD_L; ctx.fillRect(hx + 1, hy + 3, 1, 1);
+    ctx.fillStyle = FIRE; ctx.fillRect(hx, hy + 1, 3, 2); ctx.fillRect(hx + 1, hy - f, 1, 1 + f);
+    ctx.fillStyle = FLAME[f]; ctx.fillRect(hx + 1, hy + 1, 1, 1);
+    return;
+  }
+  // A horn lantern on a bail.
+  ctx.fillStyle = IRON_D;
+  ctx.fillRect(hx + 1, hy, 1, 1);
+  ctx.fillRect(hx, hy + 1, 1, 3); ctx.fillRect(hx + 2, hy + 1, 1, 3);
+  ctx.fillRect(hx + 1, hy + 4, 1, 1);
+  ctx.fillStyle = IRON; ctx.fillRect(hx + 1, hy + 1, 1, 1);
+  ctx.fillStyle = FLAME[f]; ctx.fillRect(hx + 1, hy + 2, 1, 1);
+  ctx.fillStyle = GLASS; ctx.fillRect(hx + 1, hy + 3, 1, 1);
+}
 
 // ===========================================================================
 // BASE ENTITY
@@ -72,6 +110,7 @@ export class Entity {
     this.shadow = opts.shadow !== false;
     this.bobbing = !!opts.bobbing;    // floaty things (wisps, spectres)
     this.alpha = opts.alpha != null ? opts.alpha : 1;
+    this.heldLight = opts.heldLight || null;
     this.frameOverride = null;
 
     // Rules-ish.
@@ -274,21 +313,54 @@ export class Entity {
       ...opts,
     };
 
+    // A carried light is drawn in the hand: behind the body when walking away,
+    // in front of it otherwise. render/lighting.js puts its pool at the flame.
+    const held = this.heldLightNow();
+    if (held && this.dir === 'up') drawHeld(ctx, held, x, y + bob, this.dir, this.t, this.moving);
+
+    let ok;
     // Full characters go through the layered actor compositor.
-    if (this.char) {
-      return drawActor(ctx, this.char, x, y, {
+    if (this.kind === 'monster' && this.monsterId) {
+      ok = drawActor(ctx, this, x, y, {dir:this.dir,phase:Math.floor(this.animPhase)&3,moving:this.moving,...drawOpts});
+    } else if (this.char) {
+      ok = drawActor(ctx, this.char, x, y, {
         idleBob: this.idlePose(), dir: this.dir, phase: Math.floor(this.animPhase) & 3, moving: this.moving,
         ...drawOpts,
       });
+    } else if (this.sprite && hasSprite(this.sprite)) {
+      ok = drawSprite(ctx, this.sprite, this.frame(), x, y, drawOpts);
     }
-    if (this.sprite && hasSprite(this.sprite)) {
-      return drawSprite(ctx, this.sprite, this.frame(), x, y, drawOpts);
+    if (ok !== undefined) {
+      if (held && this.dir !== 'up') drawHeld(ctx, held, x, y + bob, this.dir, this.t, this.moving);
+      return ok;
     }
     if (this.tileId) {
       drawTile(ctx, this.tileId, x - TILE / 2, y - TILE, this.x, this.y, gtime());
       return true;
     }
     return this.drawFallback(ctx, x, y);
+  }
+
+  /**
+   * What this one carries that burns: 'torch' | 'lantern' | null. The party's
+   * lead is told each frame by the overworld (from what is in the packs);
+   * NPCs decide for themselves (NPCEntity).
+   */
+  heldLightNow() { return this.heldLight || null; }
+
+  /** World pixel of the carried flame (where its light pool is centred), into `out`. */
+  heldLightAt(out) {
+    const o = HELD_AT[this.dir] || HELD_AT.down;
+    out.x = Math.round(this.px) + o[0] + 1;
+    const sw = this.moving && (Math.floor(this.t * 6) & 1) ? 1 : 0;
+    const bob = this.bobbing ? Math.round(Math.sin(this.t * 2.6) * 1.5) : 0;
+    out.y = Math.round(this.py) + o[1] + (this.heldLightNow() === 'torch' ? 1 : 2) + bob - sw;
+    if (this.bumpT > 0) {
+      const v = DIR_VEC[this.dir] || DIR_VEC.down;
+      const k = Math.round(Math.sin((this.bumpT / 0.14) * Math.PI) * 2);
+      out.x += v.x * k; out.y += v.y * k;
+    }
+    return out;
   }
 
   /** Never leave a hole in the world: an unknown sprite draws as a marker. */
@@ -405,6 +477,17 @@ export class NPCEntity extends Entity {
     this.busy = false;                                  // true while in dialogue
   }
 
+  /**
+   * The watch walk their rounds with a lantern after dark. Only out of doors,
+   * only once it is properly night, and never a monster's business.
+   */
+  heldLightNow() {
+    if (this.heldLight) return this.heldLight;
+    if (this.role !== 'guard') return null;
+    const env = Lighting.env;
+    return env.place === 'outdoor' && env.night > 0.6 ? 'lantern' : null;
+  }
+
   /** Freeze and turn toward the player for a moment (called on interaction). */
   pauseAndFace(x, y, dur = 2.5) {
     this.pauseT = Math.max(this.pauseT, dur);
@@ -453,18 +536,40 @@ export class NPCEntity extends Entity {
   /** MonsterEntity's name for the same idea, so callers need not care which. */
   scatter(seconds = 10) { return this.flee(this.x, this.y - 1, seconds); }
 
-  think(dt, map) {
+  think(dt, map, ctx) {
     if (this.fleeT > 0) {
       this.fleeT -= dt;
       if (this.fleeT <= 0) {
         this.moveTime = this.ambleTime != null ? this.ambleTime : WALK_TIME * 1.9;
         this.fleeFrom = null;
+        this.returningHome = true;
       }
       else if (!this.moving && map) { this._stepAway(map); return; }
     }
     if (this.busy) return;
     if (this.pauseT > 0) { this.pauseT -= dt; return; }
     if (this.moving || !map) return;
+
+    const st = gstate();
+    const p = ctx?.player || (st ? { x: st.x, y: st.y } : null);
+    this.disposition = this.tag === 'animal' ? 'neutral' : npcDisposition(st, this, map);
+    const seesParty = p && this.distanceTo(p.x, p.y) <= 4 && map.lineOfSight(this.x, this.y, p.x, p.y);
+    // Suspicious civilians keep a little space; guards hold their post and
+    // watch. Do not run from the party indefinitely or abandon a shop counter.
+    if (seesParty && this.disposition === 'wary' && this.distanceTo(p.x, p.y) <= 2) {
+      this.path = null;
+      this.faceToward(p.x, p.y);
+      if (this.role !== 'guard' && !this.shopId && this.wanderRadius > 0 && this.distanceTo(this.home.x, this.home.y) <= this.wanderRadius + 1) {
+        this.fleeFrom = { x: p.x, y: p.y };
+        this._stepAway(map);
+        this.fleeFrom = null;
+        this.returningHome = true;
+      }
+      return;
+    }
+    if (this.returningHome && seesParty && this.disposition === 'wary') {
+      this.path = null; this.faceToward(p.x, p.y); return;
+    }
 
     // Time-of-day schedule takes priority over both patrol and wander.
     if (this.schedule) {
@@ -481,6 +586,19 @@ export class NPCEntity extends Entity {
     }
     this.path = null;
 
+    // A panic used to strand a wanderer outside their permitted yard forever.
+    if (this.returningHome) {
+      if (this.x === this.home.x && this.y === this.home.y) this.returningHome = false;
+      else {
+        this.repathT -= dt;
+        if (this.repathT <= 0) {
+          this.repathT = 0.8;
+          this.path = map.findPath({ x: this.x, y: this.y }, this.home, { maxNodes: 900, partial: true, avoid: (x, y) => map.entityBlocks(x, y, this) });
+        }
+        return;
+      }
+    }
+
     if (this.patrol && this.patrol.length) { this.doPatrol(dt, map); return; }
     if (this.wanderRadius > 0) this.doWander(dt, map);
   }
@@ -495,6 +613,7 @@ export class NPCEntity extends Entity {
     for (const d of order) {
       const v = DIR_VEC[d];
       const nx = this.x + v.x, ny = this.y + v.y;
+      if (Math.abs(nx - from.x) + Math.abs(ny - from.y) <= Math.abs(dx) + Math.abs(dy)) continue;
       if (!map.inBounds(nx, ny)) continue;
       if (map.flagAt(nx, ny) & (TF.TRIGGER | TF.DAMAGE)) continue;
       if (!this.canEnter(map, nx, ny)) continue;

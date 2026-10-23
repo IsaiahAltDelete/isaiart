@@ -498,7 +498,7 @@ export function reachableList(enc, unit) {
   const out = [];
   const push = (x, y, cost, path) => {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    out.push({ x, y, cost: num(cost, 0), path: Array.isArray(path) ? path : [] });
+    out.push({ x, y, pos:{x,y}, size:unit?.size, cost: num(cost, 0), path: Array.isArray(path) ? path : [] });
   };
 
   if (raw instanceof Map) {
@@ -536,6 +536,7 @@ export function reachableList(enc, unit) {
 
 /** How many living enemies threaten a tile with a melee reach? */
 export function threatAt(enc, unit, tile) {
+  tile=atPosition(unit,tile);
   let n = 0;
   for (const e of unitsOf(enc)) {
     if (!isAlive(e) || !isHostile(e, unit)) continue;
@@ -558,6 +559,7 @@ function coverAt(enc, tile, enemies) {
  * maximise attacks made, minimise attacks taken, sit in cover, hold the preferred band.
  */
 export function scoreTile(enc, unit, tile, o = {}) {
+  tile={...tile,...atPosition(unit,tile)};
   const {
     target = null, desiredRange = 5, attackRange = 5, avoidMelee = false,
     protect = null, enemies = [], cost = 0,
@@ -630,6 +632,22 @@ function onSegment(mid, a, b) {
 
 /** Pick the best tile out of a reachable set; returns null when standing still wins. */
 export function bestTile(enc, unit, tiles, o = {}) {
+  // When no attack square is reachable this turn, follow an actual route to
+  // contact. Straight-line scoring alone strands melee creatures behind walls.
+  if (o.target && o.attackRange <= 10 && typeof enc?.reachableTiles === 'function'
+      && !tiles.some(t => distanceFt(atPosition(unit, t), o.target) <= o.attackRange
+        && !hasTotalCover(enc, atPosition(unit, t), o.target))) {
+    const full = [...enc.reachableTiles(unit, { movement: Math.min(4096, (enc.w || 22) * (enc.h || 15) * 10) }).values()];
+    const goals = full.filter(t => distanceFt(atPosition(unit, t), o.target) <= o.attackRange
+      && !hasTotalCover(enc, atPosition(unit, t), o.target)).sort((a,b) => a.cost - b.cost);
+    if (goals.length) {
+      const available = new Map(tiles.map(t => [keyOf(t.x,t.y),t]));
+      for (const p of [...goals[0].path].reverse()) {
+        const step = available.get(keyOf(p.x,p.y));
+        if (step?.path?.length) return step;
+      }
+    }
+  }
   const here = tileOf(unit);
   let best = null, bestScore = -Infinity;
   for (const t of tiles) {
@@ -831,10 +849,12 @@ function markTarget(unit, target) {
   target._aiMarkedBy = unit?.uid || null;
 }
 
+function atPosition(unit, p=tileOf(unit)) { return {...unit,x:p.x,y:p.y,pos:{x:p.x,y:p.y}}; }
+
 /** Pick the best offensive option that can hit `target` from `from`. */
 function bestAttackOption(enc, unit, infos, target, from) {
   let best = null, bestScore = -Infinity;
-  const pos = from || unit;
+  const pos = from ? atPosition(unit,from) : unit;
   for (const info of infos) {
     if (info.cost !== 'action' && info.cost !== 'free') continue;
     if (!info.isAttack && info.role !== 'nuke' && info.role !== 'attack'
@@ -985,14 +1005,14 @@ function planMelee(enc, unit, infos, o = {}) {
 
   const reach = reachFt(unit);
   const plans = [];
-  let from = tileOf(unit);
+  let from = atPosition(unit);
 
-  if (distanceFt(unit, target) > reach) {
+  if (distanceFt(unit, target) > reach || hasTotalCover(enc, unit, target)) {
     const tiles = reachCache(enc, unit).tiles;
     const tile = bestTile(enc, unit, tiles, {
       target, desiredRange: reach, attackRange: reach, enemies, avoidMelee: false,
     });
-    if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+    if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
   }
 
   const atk = bestAttackOption(enc, unit, infos, target, from);
@@ -1022,12 +1042,12 @@ function planSwarm(enc, unit, infos) {
   const target = enemies.reduce((a, e) => (distanceFt(unit, e) < distanceFt(unit, a) ? e : a), enemies[0]);
   const reach = reachFt(unit);
   const plans = [];
-  let from = tileOf(unit);
-  if (distanceFt(unit, target) > reach) {
+  let from = atPosition(unit);
+  if (distanceFt(unit, target) > reach || hasTotalCover(enc, unit, target)) {
     const tile = bestTile(enc, unit, reachCache(enc, unit).tiles, {
       target, desiredRange: reach, attackRange: reach, enemies,
     });
-    if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+    if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
   }
   const atk = bestAttackOption(enc, unit, infos, target, from);
   if (atk) { markTarget(unit, target); plans.push(actionPlan(atk, { unit: target })); }
@@ -1051,14 +1071,14 @@ function planSkirmisher(enc, unit, infos) {
   const speed = Math.max(0, num(unit.speed, 30));
 
   const plans = [];
-  let from = tileOf(unit);
+  let from = atPosition(unit);
   let spent = 0;
 
-  if (distanceFt(unit, target) > reach) {
+  if (distanceFt(unit, target) > reach || hasTotalCover(enc, unit, target)) {
     // Only spend half the movement getting in, so there is fuel left to get out.
     const tiles = reachCache(enc, unit).tiles.filter((t) => t.cost <= speed);
     const tile = bestTile(enc, unit, tiles, { target, desiredRange: reach, attackRange: reach, enemies });
-    if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; spent = tile.cost; }
+    if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); spent = tile.cost; }
   }
 
   const atk = bestAttackOption(enc, unit, infos, target, from);
@@ -1112,14 +1132,14 @@ function planArcher(enc, unit, infos) {
   if (!target) return [];
 
   const plans = [];
-  let from = tileOf(unit);
+  let from = atPosition(unit);
 
   const tiles = reachCache(enc, unit).tiles;
   const tile = bestTile(enc, unit, tiles, {
     target, desiredRange: band, attackRange: shot.length ? shot[0].range : band,
     avoidMelee: true, enemies,
   });
-  if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+  if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
 
   const atk = bestAttackOption(enc, unit, infos, target, from);
   if (atk) { markTarget(unit, target); plans.push(actionPlan(atk, { unit: target })); }
@@ -1158,7 +1178,7 @@ function planCaster(enc, unit, infos) {
     attackRange: band, avoidMelee: true, enemies,
   });
   if (tile) plans.push(movePlan(tile));
-  const from = tile ? { x: tile.x, y: tile.y } : tileOf(unit);
+  const from = atPosition(unit,tile || tileOf(unit));
 
   // 2. Area / control first if it is worth it.
   const areas = infos.filter((i) => i.cost === 'action' && i.aoe && (i.dmg > 0 || i.role === 'control'));
@@ -1207,13 +1227,13 @@ function planSupport(enc, unit, infos) {
     const heal = heals.sort((a, b) => b.healAvg - a.healAvg)[0];
     const maxR = Array.isArray(heal.range) ? heal.range[1] : heal.range;
     const plans = [];
-    let from = tileOf(unit);
+    let from = atPosition(unit);
     if (distanceFt(unit, patient.unit) > maxR) {
       const tile = bestTile(enc, unit, reachCache(enc, unit).tiles, {
         target: patient.unit, desiredRange: Math.max(5, maxR - 5), attackRange: maxR,
         avoidMelee: true, enemies: unitsOf(enc).filter((u) => isAlive(u) && isHostile(u, unit)),
       });
-      if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+      if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
     }
     if (distanceFt(from, patient.unit) <= maxR) {
       plans.push(actionPlan(heal, { unit: patient.unit }));
@@ -1253,14 +1273,14 @@ function planAmbusher(enc, unit, infos) {
     // actually reach without being spotted first.
     const target = ranked[0].unit;
     const plans = [];
-    let from = tileOf(unit);
+    let from = atPosition(unit);
     const reach = reachFt(unit);
     const anyRanged = infos.some((i) => (Array.isArray(i.range) ? i.range[1] : i.range) > 10);
     if (!anyRanged && distanceFt(unit, target) > reach) {
       const tile = bestTile(enc, unit, reachCache(enc, unit).tiles, {
         target, desiredRange: reach, attackRange: reach, enemies,
       });
-      if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+      if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
     }
     const atk = bestAttackOption(enc, unit, infos, target, from);
     if (atk) { markTarget(unit, target); plans.push(actionPlan(atk, { unit: target })); }
@@ -1299,12 +1319,12 @@ function planTank(enc, unit, infos) {
     : rankTargets(enc, unit)[0]?.unit;
 
   const plans = [];
-  let from = tileOf(unit);
+  let from = atPosition(unit);
   const reach = reachFt(unit);
   const tile = bestTile(enc, unit, reachCache(enc, unit).tiles, {
     target, desiredRange: reach, attackRange: reach, enemies, protect: ward,
   });
-  if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+  if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
 
   // Shove a Large-or-smaller enemy prone when it is already engaged with our ward:
   // prone costs it half its movement to stand and hands melee allies Advantage.
@@ -1369,13 +1389,13 @@ function planBoss(enc, unit, infos) {
       .sort((a, b) => b.score - a.score);
     const target = ranked[0]?.unit;
     if (target) {
-      let from = tileOf(unit);
+      let from = atPosition(unit);
       const reach = reachFt(unit);
       if (distanceFt(unit, target) > reach && !infos.some((i) => (Array.isArray(i.range) ? i.range[1] : i.range) > reach)) {
         const tile = bestTile(enc, unit, reachCache(enc, unit).tiles, {
           target, desiredRange: reach, attackRange: reach, enemies,
         });
-        if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+        if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
       }
       const atk = bestAttackOption(enc, unit, infos, target, from);
       if (atk) {
@@ -1443,13 +1463,13 @@ export function companionTurn(enc, unit) {
     const heal = bonusHeal || heals.sort((a, b) => b.healAvg - a.healAvg)[0];
     const maxR = Array.isArray(heal.range) ? heal.range[1] : heal.range;
     const plans = [];
-    let from = tileOf(unit);
+    let from = atPosition(unit);
     if (distanceFt(unit, downed.unit) > maxR) {
       const tile = bestTile(enc, unit, reachCache(enc, unit).tiles, {
         target: downed.unit, desiredRange: Math.max(5, maxR - 5), attackRange: maxR,
         enemies: unitsOf(enc).filter((u) => isAlive(u) && isHostile(u, unit)),
       });
-      if (tile) { plans.push(movePlan(tile)); from = { x: tile.x, y: tile.y }; }
+      if (tile) { plans.push(movePlan(tile)); from = atPosition(unit,tile); }
     }
     if (distanceFt(from, downed.unit) <= maxR) {
       plans.push(actionPlan(heal, { unit: downed.unit }));

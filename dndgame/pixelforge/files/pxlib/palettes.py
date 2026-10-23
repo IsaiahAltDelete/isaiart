@@ -56,6 +56,23 @@ PALETTES = {
          "#d04648", "#757161", "#597dce", "#d27d2c", "#8595a1", "#6daa2c",
          "#d2aa99", "#6dc2ca", "#dad45e", "#deeed6"]),
 
+    # The game's humanoid key map (render/spritedata_chars.js PAL). Values are
+    # colorway TOKENS, so a layer authored against it recolours per character
+    # in game; previews resolve them through the default colorway.
+    "sc-chars": _pal(
+        "KsdleHhjaAqbBmMntTLPcCxXoOWZ",
+        ["OUTLINE", "SKIN", "SKIN_D", "SKIN_L", "EYE", "HAIR_D", "HAIR", "HAIR_L",
+         "MAIN", "MAIN_D", "MAIN_L", "ALT", "ALT_D", "METAL", "METAL_D", "METAL_L",
+         "TRIM", "TRIM_D", "LEATHER", "LEATHER_D", "CLOTH", "CLOTH_D",
+         "ACCENT", "ACCENT_D", "HORN", "HORN_D", "WHITE", "BLACK"],
+        {"K": "outline", "s": "skin", "d": "skin dark", "l": "skin light",
+         "e": "eye", "h": "hair", "H": "hair dark", "j": "hair light",
+         "a": "main", "A": "main dark", "q": "main light", "b": "alt", "B": "alt dark",
+         "m": "metal", "M": "metal dark", "n": "metal light", "t": "trim",
+         "T": "trim dark", "L": "leather", "P": "leather dark", "c": "cloth",
+         "C": "cloth dark", "x": "accent", "X": "accent dark", "o": "horn",
+         "O": "horn dark", "W": "white", "Z": "black"}),
+
     "gb": _pal("0123", ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"]),
 
     "mono": _pal("0123", ["#000000", "#555555", "#aaaaaa", "#ffffff"]),

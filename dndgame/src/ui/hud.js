@@ -1,243 +1,89 @@
-// ui/hud.js — the overworld heads-up display. Not a Scene: OverworldScene owns an
-// instance and calls hud.update(dt) / hud.draw(ctx) itself, so the HUD keeps
-// running while menus are stacked above and can fade out from underneath them.
+// ui/hud.js — the overworld heads-up display: party cards, clock, quest compass, minimap, log, toasts, banner.
 //
-// Layout on the 400x240 logical screen:
-//   top-left       compact party cards
-//   left edge      compact party portraits, HP, AC/slots and conditions
-//   top-centre     location banner, with notifications stacked below
-//   top-right      clock, date, weather and purse
-//   bottom-right   explored minimap
-//   lower centre   quest tracker and log, above the compact action belt
+// Not a Scene: OverworldScene owns an instance, calls hud.update(dt) while the
+// world runs and hud.draw(ctx) on the 'hud' layer every frame, so the HUD can
+// fade out from under a menu or a conversation instead of popping.
 //
-// Everything textual goes through ui/kit.js. The little 5x5 marks (coin, skull,
-// condition badges, weather) are hand-plotted pixels — the kit has no glyph for
-// them and they must stay legible at 1x.
+// Every block is a Layout widget (ui/layout.js): it registers where it was
+// designed to sit, draws and hit-tests at Layout.rect(id) every frame, and can
+// be moved or hidden in Arrange mode (F8). The designed layout, on the 2x
+// 'hud' layer's fine grid (half a logical px is one device pixel):
+//   top-left      party cards: bust, name, HP with a damage ghost, slots or
+//                 death saves, conditions and buffs
+//   top-right     clock (a little sky dial), date, weather, purse; under it
+//                 the quest compass: objective, a needle to it, the distance
+//   top-centre    the heraldic place banner; toasts below it (on 'overlay')
+//   bottom-left   the running log, straight on the world over a soft wash
+//   bottom-centre the action belt (ui/hotbar.js)
+//   bottom-right  the parchment minimap roundel (ui/hudmap.js)
+// Presets (Layout.presets): classic (close to the old HUD), minimal (clock,
+// party pips, belt), cinematic (the HUD fades while you walk and comes back
+// when you stop, point at it, or get hurt); Save.settings.hudPreset holds it.
+// Barks (ui/barks.js) are drawn from here on 'world-ui': hud.bark(target, text, opts).
 
 import { Game } from '../engine.js';
 import { UI } from './kit.js';
-import { medievalPanel } from './ornament.js';
+import { GILT, RUBRIC } from './ornament.js';
 import { bus, EV } from '../core/events.js';
+import { Input } from '../core/input.js';
+import { Save } from '../core/save.js';
 import { Party } from '../world/party.js';
 import { drawActorBust } from '../render/actor.js';
+import { Layout } from './layout.js';
 import {
-  VIEW_W, VIEW_H, clamp, approach, titleCase, clockText, dateText, timeOfDay,
+  snap, C, txt, tw, fit, shortName, frame, well, scrim, meter, mark, markKeyed, badgesOf,
+  cached, blit, disc, ring,
+} from './hudparts.js';
+import { drawMinimap, questGoal, trackedQuest, currentStep, ZOOMS } from './hudmap.js';
+import { bark as addBark, drawBarks, updateBarks, clearBarks } from './barks.js';
+import {
+  VIEW_W, VIEW_H, TILE, clamp, approach, titleCase, clockText, dateText, timeOfDay,
 } from '../constants.js';
 
 // ---------------------------------------------------------------------------
-// kit shims — the kit is authoritative; these only stop a missing helper from
-// killing the frame, and never fall back to ctx.fillText.
+// Geometry (logical px) and the widgets
 // ---------------------------------------------------------------------------
 
-const K = {
-  ink: '#efe6d0', dim: '#9a917f', gold: '#e3b34a', red: '#d4553f', green: '#6fc36a',
-  blue: '#6aa8e8', purple: '#b07ae0', bg: '#0b0d16', panel: '#181b28', border: '#5c4a2a',
-  hp: '#c8452f', mp: '#4a7ad0', xp: '#e3b34a',
-};
-const C = (k) => (UI && UI.COLORS && UI.COLORS[k]) || K[k] || '#ffffff';
+const CARD = { w: 66, h: 18, gap: 1 };
+const PIPS = { w: 36, row: 6 };
+const CLOCK = { w: 106, h: 15 };
+const QUEST = { w: 106, h: 20 };
+const MAP_R = 22;                              // the roundel is 2r across
+const LOG = { w: 106, h: 18, lines: 3, life: 6 };
+const TOAST = { max: 4, life: 3.4, slide: 0.22, h: 8, gap: 1.5, w: 120 };
 
-function txt(ctx, x, y, s, o) {
-  try { UI.text(ctx, Math.round(x), Math.round(y), String(s), o || {}); } catch (e) { /* kit not ready */ }
-}
-function tw(s, size) {
-  try { if (UI && UI.measure) return UI.measure(String(s), size) || 0; } catch (e) { /* below */ }
-  return String(s).length * 4;
-}
-function txtR(ctx, rx, y, s, o) { txt(ctx, rx - tw(s, (o || {}).size), y, s, o); }
-function txtC(ctx, cx, y, s, o) { txt(ctx, cx - tw(s, (o || {}).size) / 2, y, s, o); }
-function panel(ctx, x, y, w, h, o) {
-  medievalPanel(ctx, x, y, w, h);
-}
-function bar(ctx, x, y, w, h, pct, o) {
-  try { if (UI && UI.bar) { UI.bar(ctx, x | 0, y | 0, w | 0, h | 0, clamp(pct, 0, 1), o || {}); return; } } catch (e) { /* below */ }
-  ctx.fillStyle = (o && o.bg) || '#000';
-  ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
-  ctx.fillStyle = (o && o.color) || C('hp');
-  ctx.fillRect((x | 0) + 1, (y | 0) + 1, Math.max(0, Math.round((w - 2) * clamp(pct, 0, 1))), (h | 0) - 2);
-}
-/** Kit icon when one exists, otherwise the supplied pixel fallback. */
-function icon(ctx, name, x, y, size, color, fallback) {
-  if (UI && typeof UI.icon === 'function') {
-    try { UI.icon(ctx, name, Math.round(x), Math.round(y), size, color); return; } catch (e) { /* below */ }
-  }
-  if (fallback) fallback(ctx, Math.round(x), Math.round(y), size, color);
-}
-function fit(s, w, size) {
-  try { if (UI && UI.fit) return UI.fit(String(s == null ? '' : s), w, size); } catch (e) { /* below */ }
-  let str = String(s == null ? '' : s);
-  if (tw(str, size) <= w) return str;
-  while (str.length > 1 && tw(str + '…', size) > w) str = str.slice(0, -1);
-  return str + '…';
-}
-/**
- * A person's name in `w` pixels. The party strip is 104px wide and
- * "Sildar Hallwinter" is 101px on its own, so the full name loses every fight
- * with the HP readout beside it. An ellipsis in a name reads as a bug —
- * "Sildar Hall…" looks like the string was cut by mistake — so a name that will
- * not fit falls back to its FIRST WORD, which is what everyone at the table
- * calls that character anyway. Only a single unfittable word gets an ellipsis.
- */
-function shortName(name, w, size) {
-  const s = String(name == null || name === '' ? 'Unnamed' : name);
-  if (tw(s, size) <= w) return s;
-  const first = s.split(/[\s,]+/)[0];
-  if (first && first !== s && tw(first, size) <= w) return first;
-  return fit(s, w, size);
-}
+const partyH = (n) => n * CARD.h + Math.max(0, n - 1) * CARD.gap;
 
-async function softImport(path) {
-  try { return await import(path); } catch (e) { return null; }
-}
+Layout.register('hud.party', { anchor: 'tl', x: 3, y: 3, w: CARD.w, h: partyH(4), label: 'Party', scene: 'overworld' });
+Layout.register('hud.clock', { anchor: 'tr', x: VIEW_W - 3 - CLOCK.w, y: 3, w: CLOCK.w, h: CLOCK.h, label: 'Clock & purse', scene: 'overworld' });
+Layout.register('hud.quest', { anchor: 'tr', x: VIEW_W - 3 - QUEST.w, y: 20, w: QUEST.w, h: QUEST.h, label: 'Quest', scene: 'overworld' });
+Layout.register('hud.banner', { anchor: 'tc', x: 110, y: 6, w: 180, h: 30, label: 'Place name', scene: 'overworld' });
+Layout.register('hud.toasts', { anchor: 'tr', x: VIEW_W - 3 - TOAST.w, y: 49, w: TOAST.w, h: TOAST.max * (TOAST.h + TOAST.gap), label: 'Notices', scene: 'overworld' });
+Layout.register('hud.log', { anchor: 'bl', x: 3, y: VIEW_H - 3 - LOG.h, w: LOG.w, h: LOG.h, label: 'Log', scene: 'overworld' });
+// The "Found" slip the overworld raises over a chest or a search, centred
+// above the party ('mc': it grows about its middle).
+Layout.register('hud.popup', { anchor: 'mc', x: 125, y: 54, w: 150, h: 40, label: 'Found slip', scene: 'overworld' });
+Layout.register('hud.minimap', { anchor: 'br', x: VIEW_W - 3 - MAP_R * 2, y: VIEW_H - 3 - MAP_R * 2, w: MAP_R * 2, h: MAP_R * 2, label: 'Minimap', scene: 'overworld' });
 
-// ---------------------------------------------------------------------------
-// 5x5 pixel marks. Small enough to read at 1x, distinct enough to tell apart.
-// ---------------------------------------------------------------------------
-
-const MARKS = {
-  eye: ['.XXX.', 'X...X', 'X.X.X', 'X...X', '.XXX.'],
-  heart: ['.X.X.', 'XXXXX', 'XXXXX', '.XXX.', '..X..'],
-  drop: ['..X..', '..X..', '.XXX.', 'XXXXX', '.XXX.'],
-  chain: ['XX...', 'X.X..', '.XXX.', '..X.X', '...XX'],
-  zzz: ['XXXX.', '...X.', '..X..', '.X...', 'XXXX.'],
-  flame: ['..X..', '.XX..', '.XXX.', 'XXXXX', '.XXX.'],
-  snow: ['X.X.X', '.XXX.', 'XXXXX', '.XXX.', 'X.X.X'],
-  down: ['..X..', '..X..', 'XXXXX', '.XXX.', '..X..'],
-  star: ['..X..', '.XXX.', 'XXXXX', '.X.X.', 'X...X'],
-  bang: ['..X..', '..X..', '..X..', '.....', '..X..'],
-  skull: ['.XXX.', 'X.X.X', 'XXXXX', '.X.X.', '.XXX.'],
-  fist: ['.XXX.', 'XXXXX', 'XXXXX', '.XXX.', '..X..'],
-  stone: ['.XXX.', 'XXXXX', 'XXXXX', 'XXXXX', '.XXX.'],
-  coin: ['.XXX.', 'X.X.X', 'X.X.X', 'X.X.X', '.XXX.'],
-  scroll: ['XXXXX', 'X...X', 'XXXXX', 'X...X', 'XXXXX'],
-  person: ['..X..', '.XXX.', '..X..', '.XXX.', 'X...X'],
-  sword: ['....X', '...XX', '..XX.', 'XXX..', 'XX...'],
-  sun: ['X.X.X', '.XXX.', 'XXXXX', '.XXX.', 'X.X.X'],
-  cloud: ['.....', '.XXX.', 'XXXXX', 'XXXXX', '.....'],
-  rain: ['.XXX.', 'XXXXX', '.....', 'X.X.X', 'X.X.X'],
-  fog: ['.....', 'XXXXX', '.....', 'XXXXX', '.....'],
-  ash: ['X...X', '..X..', 'X...X', '..X..', 'X...X'],
-  moon: ['.XXX.', 'XX...', 'XX...', 'XX...', '.XXX.'],
-  shield: ['XXXXX', 'XXXXX', 'XXXXX', '.XXX.', '..X..'],
-};
-
-/** Plot a 5x5 mark with its top-left at (x, y). */
-function mark(ctx, name, x, y, color) {
-  const rows = MARKS[name];
-  if (!rows) return;
-  ctx.fillStyle = color;
-  for (let r = 0; r < rows.length; r++) {
-    const row = rows[r];
-    for (let c = 0; c < row.length; c++) if (row[c] === 'X') ctx.fillRect((x | 0) + c, (y | 0) + r, 1, 1);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Conditions. rules/conditions.js is authored concurrently, so the HUD carries
-// its own badge table and upgrades to the real catalogue as soon as it loads.
-// ---------------------------------------------------------------------------
-
-const COND_BADGE = {
-  blinded: { mark: 'eye', color: '#6a6a80', abbr: 'BL' },
-  charmed: { mark: 'heart', color: '#e07ab0', abbr: 'CH' },
-  deafened: { mark: 'zzz', color: '#7a7a8a', abbr: 'DF' },
-  frightened: { mark: 'bang', color: '#b07ae0', abbr: 'FR' },
-  grappled: { mark: 'chain', color: '#8a7550', abbr: 'GR' },
-  incapacitated: { mark: 'zzz', color: '#c0c0c0', abbr: 'IN' },
-  invisible: { mark: 'eye', color: '#6aa8e8', abbr: 'IV' },
-  paralyzed: { mark: 'fist', color: '#e3d24a', abbr: 'PA' },
-  petrified: { mark: 'stone', color: '#8a8a8a', abbr: 'PE' },
-  poisoned: { mark: 'drop', color: '#6fc36a', abbr: 'PO' },
-  prone: { mark: 'down', color: '#a08a6a', abbr: 'PR' },
-  restrained: { mark: 'chain', color: '#c88a3a', abbr: 'RE' },
-  stunned: { mark: 'star', color: '#e3b34a', abbr: 'ST' },
-  unconscious: { mark: 'zzz', color: '#5a5a6a', abbr: 'UN' },
-  exhaustion: { mark: 'bang', color: '#a04a3a', abbr: 'EX' },
-  burning: { mark: 'flame', color: '#ff6a2a', abbr: 'BU' },
-  frozen: { mark: 'snow', color: '#8ad8e8', abbr: 'FZ' },
-  blessed: { mark: 'star', color: '#e3d24a', abbr: 'BS' },
-  bane: { mark: 'bang', color: '#8a4a8a', abbr: 'BA' },
-  marked: { mark: 'bang', color: '#d4553f', abbr: 'MK' },
-  concentrating: { mark: 'eye', color: '#7aa8e8', abbr: 'CO' },
-  raging: { mark: 'flame', color: '#d4553f', abbr: 'RG' },
-  hidden: { mark: 'eye', color: '#7a7a92', abbr: 'HD' },
-};
-
-/**
- * Badges for BUFFS — the things in `ch.effects` rather than `ch.conditions`.
- *
- * The HUD only ever read `conditions`, so every misfortune showed and no
- * blessing did: you could cast Mage Armor, watch your AC go up in the sheet,
- * and have nothing anywhere on screen confirm it was running or when it would
- * lapse. Keyed by effect id with a loose match on the name, because a spell may
- * write either.
- */
-const BUFF_BADGE = {
-  'mage-armor': { mark: 'shield', color: '#8ab4e8', abbr: 'MA' },
-  'shield-of-faith': { mark: 'shield', color: '#e3d24a', abbr: 'SF' },
-  'blade-ward': { mark: 'shield', color: '#a8a8c0', abbr: 'BW' },
-  bless: { mark: 'star', color: '#e3d24a', abbr: 'BL' },
-  heroism: { mark: 'heart', color: '#e0a03a', abbr: 'HE' },
-  guidance: { mark: 'star', color: '#8ad8c0', abbr: 'GU' },
-  resistance: { mark: 'shield', color: '#7aa8e8', abbr: 'RS' },
-  longstrider: { mark: 'person', color: '#8ad86a', abbr: 'LS' },
-  haste: { mark: 'person', color: '#e3d24a', abbr: 'HA' },
-  jump: { mark: 'person', color: '#8ad86a', abbr: 'JP' },
-  'water-walk': { mark: 'drop', color: '#7ac8e8', abbr: 'WW' },
-  'spider-climb': { mark: 'person', color: '#a08ad8', abbr: 'SC' },
-  fly: { mark: 'cloud', color: '#a8c8f0', abbr: 'FL' },
-  invisibility: { mark: 'eye', color: '#6aa8e8', abbr: 'IV' },
-  'pass-without-trace': { mark: 'fog', color: '#8a9aa8', abbr: 'PW' },
-  'enhance-ability': { mark: 'fist', color: '#d8a03a', abbr: 'EA' },
-  'protection-from-evil-and-good': { mark: 'shield', color: '#e8e0c0', abbr: 'PE' },
-  'freedom-of-movement': { mark: 'chain', color: '#8ad8c0', abbr: 'FM' },
-  light: { mark: 'sun', color: '#ffe9a3', abbr: 'LT' },
-  familiar: { mark: 'eye', color: '#8ad86a', abbr: 'FA' },
-  steed: { mark: 'person', color: '#c8a86a', abbr: 'ST' },
-  darkvision: { mark: 'eye', color: '#8a7ad8', abbr: 'DV' },
-};
-
-/** A buff badge, matched on id first and then loosely on the display name. */
-function buffBadgeFor(e) {
-  const id = String((e && e.id) || '').toLowerCase();
-  if (BUFF_BADGE[id]) return BUFF_BADGE[id];
-  const name = String((e && e.name) || '').toLowerCase().replace(/[^a-z]+/g, '-');
-  if (BUFF_BADGE[name]) return BUFF_BADGE[name];
-  for (const key of Object.keys(BUFF_BADGE)) {
-    if (id.includes(key) || name.includes(key)) return BUFF_BADGE[key];
-  }
-  return { mark: 'star', color: '#8ad8a0', abbr: String(id || name || '?').slice(0, 2).toUpperCase() };
-}
-let CONDITIONS_CAT = null;
-softImport('../rules/conditions.js').then((m) => { if (m && m.CONDITIONS) CONDITIONS_CAT = m.CONDITIONS; });
-
-function badgeFor(id) {
-  const base = COND_BADGE[id] || { mark: 'bang', color: '#b0a890', abbr: String(id || '?').slice(0, 2).toUpperCase() };
-  const cat = CONDITIONS_CAT && CONDITIONS_CAT[id];
-  return cat && cat.color ? { ...base, color: cat.color } : base;
-}
-
-// ---------------------------------------------------------------------------
-// Layout constants
-// ---------------------------------------------------------------------------
-
-// A narrow side rail; each member keeps separate name, health and status rows.
-const PARTY = { x: 3, y: 3, w: 86, row: 31, pad: 3 };
-const TR = { w: 120, h: 28, x: VIEW_W - 123, y: 3 };
-// The quest and log sit beside the party rail and above the toolbar.
-const QUEST = { x: 98, w: 238, h: 32, y: VIEW_H - 79 };
-const MAP = { cx: VIEW_W - 33, cy: VIEW_H - 33, r: 27, px: 2 };
-const RIBBON = { x: 3, w: 300, h: 12, y: VIEW_H - 41 };
-
-const TOAST_MAX = 4;
-const TOAST_LIFE = 3.0;
-const TOAST_SLIDE = 0.22;
-// Notifications occupy the free band between the clock and minimap.
-const TOAST_W = 176;
-const LOG_LIFE = 4.0;
-
-// Tile flag bits, mirrored from world/tilemap.js so the HUD never has to import
-// a module that may not exist yet.
-const TF_SOLID = 1, TF_WATER = 2, TF_DOOR = 8;
+// The presets. Classic puts the redrawn widgets back where the old HUD had
+// them (quest over the belt, belt and log bottom-left); minimal keeps only
+// the clock, a strip of party pips and the belt; cinematic keeps the designed
+// layout and changes behaviour only.
+Layout.definePreset('classic', {
+  label: 'Classic',
+  place: {
+    'hud.quest': { x: 147, y: 170 },
+    'hud.log': { x: 3, y: 180 },
+    'hud.toolbar': { x: 3, y: 219 },
+    'hud.toasts': { x: 140, y: 38 },
+  },
+});
+Layout.definePreset('minimal', {
+  label: 'Minimal',
+  hide: ['hud.quest', 'hud.log', 'hud.minimap', 'battle.log'],
+  mode: { party: 'pips' },
+});
+Layout.definePreset('cinematic', { label: 'Cinematic', mode: { fade: 'cinematic' } });
 
 // Spell-slot pip colours, 1st through 9th.
 const SLOT_COLORS = [
@@ -245,35 +91,43 @@ const SLOT_COLORS = [
   '#c078d8', '#d478c8', '#e07ab0', '#e88a90',
 ];
 
+// Widgets the walking fade and the cinematic fade act on (toasts and the
+// banner are news: they always show).
+const FADERS = ['hud.party', 'hud.clock', 'hud.quest', 'hud.log', 'hud.minimap', 'hud.toolbar'];
+
 // ===========================================================================
 // HUD
 // ===========================================================================
 
 export class HUD {
+  /** opts: { scene } — the OverworldScene, for its entities, player, camera and menus. */
   constructor(opts = {}) {
     this.opts = opts || {};
+    this.scene = this.opts.scene || null;
     this.t = 0;
     this.visible = true;
-    this.alpha = 1;              // current global fade
-    this.hidden = false;         // hard hide (dialogue / cutscene)
+    this.hidden = false;         // hard hide (cutscene)
+    this.alpha = 1;              // the whole HUD's fade (menus, dialogue)
+    this.fades = Object.create(null);   // widget id -> its own alpha
 
-    this.map = null;             // current TileMap
-    this.entities = null;        // optional entity list override
-    this.player = null;          // { sx, sy, moving } in screen pixels
+    this.map = null;
+    this.entities = null;        // optional override of the scene's entity list
+    this.player = null;          // { sx, sy, moving } in screen px (setPlayerScreen)
     // Spell markers, shared by reference with the overworld scene:
-    // rules/fieldworld.js addMarker/expireMarkers own the array, the HUD only
-    // draws it. [{ x, y, label, until, color }]
+    // rules/fieldworld.js owns the array, the HUD only draws it.
     this.markers = null;
 
     this.toasts = [];
-    this.logLine = null;
-    this.ghosts = Object.create(null);   // uid -> { v, hold }
-    this.flash = Object.create(null);    // uid -> seconds remaining
-    this._walkT = 0;             // seconds since the last step event
-    this._dlgGrace = 0;
+    this.log = [];               // [{ text, kind, t, lines }]
+    this.ghosts = Object.create(null);   // uid -> { v, hold, last }
+    this.flash = Object.create(null);    // uid -> seconds of hit flash left
+    this._walkT = 9;             // seconds since the party last moved
+    this._hurtT = 9;             // seconds since someone was hurt (cinematic returns)
     this._dialogue = false;
-    this._disc = null;           // Set of discovered "x,y" keys
-    this._discKey = '';          // cache signature for the above
+    this._dlgGrace = 0;
+    this._hover = null;          // the widget under the pointer
+    this._goal = null;           // the quest compass's target this frame
+    this._hint = null;           // the interact hint's rect, for barks to avoid
 
     this._off = [];
     this._wire();
@@ -288,63 +142,54 @@ export class HUD {
       if (!p) return;
       this.toast(p.text || String(p), { color: p.color, mark: p.icon || p.mark, kind: p.kind });
     });
-
     on(EV.ITEM_GAIN, (p) => {
       if (!p || !p.id) return;
       const it = safeItem(p.id);
       const name = (it && it.name) || titleCase(String(p.id).replace(/-/g, ' '));
       const qty = p.qty && p.qty > 1 ? ` ×${p.qty}` : '';
-      this.toast(`${name}${qty}`, { color: (it && it.tint) || C('ink'), mark: 'sword', kind: 'item' });
+      this.toast(`${name}${qty}`, { color: (it && it.tint) || C('ink'), mark: 'bag', kind: 'item' });
     });
-
     on(EV.GOLD_CHANGE, (p) => {
       if (!p || !p.delta) return;
       const d = Math.round(p.delta);
       this.toast(`${d > 0 ? '+' : '−'}${Math.abs(d)} gp`, { color: C('gold'), mark: 'coin', kind: 'gold' });
     });
-
     on(EV.LEVEL_UP, (p) => {
       const ch = (p && (p.ch || p.character || p.unit)) || null;
       const name = (ch && ch.name) || (p && p.name) || 'Someone';
-      const lvl = (ch && ch.level) || (p && p.level) || '';
-      this.toast(lvl ? `${name} reached level ${lvl}` : `${name} levelled up`, { color: C('xp'), mark: 'star', kind: 'level' });
+      const lvl = p?.to || p?.level || ch?.level || '';
+      const text = p?.applied ? `${name} reached level ${lvl}` : `${name} earned a level-up`;
+      this.toast(text, { color: C('xp'), mark: 'star', kind: 'level' });
     });
-
     on(EV.QUEST_DONE, (p) => {
       const title = (p && p.quest && p.quest.title) || (p && p.title) || 'a task';
-      this.toast(`Quest complete: ${title}`, { color: C('green'), mark: 'scroll', kind: 'quest' });
+      this.toast(`Quest complete: ${title}`, { color: C('green'), mark: 'quest', kind: 'quest' });
     });
-
     on(EV.QUEST_START, (p) => {
       const title = (p && p.quest && p.quest.title) || (p && p.title) || null;
-      if (title) this.toast(`New quest: ${title}`, { color: C('gold'), mark: 'scroll', kind: 'quest' });
+      if (title) this.toast(`New quest: ${title}`, { color: C('gold'), mark: 'quest', kind: 'quest' });
     });
-
     on(EV.MEMBER_JOIN, (p) => {
       const ch = p && p.ch;
       if (!ch) return;
-      this.toast(`${ch.name || 'A companion'} joined the party`, { color: C('blue'), mark: 'person', kind: 'party' });
+      this.toast(`${ch.name || 'A companion'} joined the party`, { color: C('blue'), mark: 'helm', kind: 'party' });
     });
-
     on(EV.LOG, (p) => {
       const text = (p && (p.text || p.msg)) || (typeof p === 'string' ? p : '');
       if (!text) return;
-      this.logLine = { text: String(text), kind: (p && p.kind) || '', t: 0 };
+      this.log.push({ text: String(text), kind: (p && p.kind) || '', t: 0, lines: null });
+      while (this.log.length > 4) this.log.shift();
     });
-
     on(EV.STEP, () => { this._walkT = 0; });
-
     on(EV.MAP_ENTER, (p) => {
       const m = (p && (p.map || p.tilemap)) || null;
       if (m) this.setMap(m);
-      this._disc = null; this._discKey = '';
+      clearBarks();
     });
-
     on(EV.DIALOGUE_OPEN, (p) => {
       if (p && p.open === false) { this._dlgGrace = 0; this._dialogue = false; }
       else { this._dialogue = true; this._dlgGrace = 0.3; }
     });
-
     // Flash the bar of whoever just got hit, whatever the payload calls them.
     on(EV.DAMAGE, (p) => {
       const u = p && (p.target || p.unit || p.ch || p.victim);
@@ -368,37 +213,49 @@ export class HUD {
   setVisible(v) { this.visible = !!v; return this.visible; }
 
   /** Pulse a party member's HP bar — call it when they take a hit. */
-  flashHP(uid) { if (uid) this.flash[uid] = 0.55; }
+  flashHP(uid) { if (uid) { this.flash[uid] = 0.55; this._hurtT = 0; } }
 
   /** The TileMap the minimap should draw. */
-  setMap(map) { this.map = map || null; this._disc = null; this._discKey = ''; return this.map; }
+  setMap(map) { this.map = map || null; return this.map; }
 
-  /** Entities to plot on the minimap; defaults to `map.entities`. */
+  /** Entities to plot on the minimap; defaults to the scene's. */
   setEntities(list) { this.entities = Array.isArray(list) ? list : null; }
 
   /**
-   * Where the player sprite currently is on screen, so the HUD knows when to get
-   * out of their way. The overworld calls this every frame; if it never does, the
-   * HUD assumes the player is mid-screen and simply never auto-fades.
+   * Where the player sprite is on screen, so the HUD knows when to get out of
+   * the way. The overworld calls this every frame.
    */
   setPlayerScreen(sx, sy, moving) {
     this.player = { sx, sy, moving: !!moving };
     if (moving) this._walkT = 0;
   }
 
-  /** Queue a toast. opts: { color, mark, kind, life } */
+  /** Queue a toast. opts: { color, mark (a kit icon or a 5x5 mark), kind, life } */
   toast(text, opts = {}) {
     if (!text) return null;
     const t = {
-      text: String(text), color: opts.color || C('ink'), mark: opts.mark || null,
-      kind: opts.kind || '', life: opts.life || TOAST_LIFE, t: 0, y: 0, slot: 0,
+      text: String(text), color: opts.color || null, mark: opts.mark || null,
+      kind: opts.kind || '', life: opts.life || TOAST.life, t: 0, slot: -1,
     };
     this.toasts.push(t);
-    while (this.toasts.length > TOAST_MAX) this.toasts.shift();
+    while (this.toasts.length > TOAST.max) this.toasts.shift();
     return t;
   }
 
   clearToasts() { this.toasts.length = 0; }
+
+  /**
+   * A speech bubble over `target` (an entity, { px, py } world px, or { x, y }
+   * a map tile). opts: { ttl, kind: 'say'|'shout'|'whisper'|'party'|'hostile'|'thought' }.
+   * See ui/barks.js.
+   */
+  bark(target, text, opts) { return addBark(target, text, opts); }
+
+  /** The alpha a widget is drawn at this frame (the hotbar asks for 'hud.toolbar'). */
+  alphaOf(id) {
+    if (Layout.editing) return 1;
+    return clamp(this.alpha * (this.fades[id] == null ? 1 : this.fades[id]), 0, 1);
+  }
 
   // --- update -------------------------------------------------------------
 
@@ -406,262 +263,280 @@ export class HUD {
     const d = clamp(dt || 0, 0, 0.1);
     this.t += d;
     this._walkT += d;
+    this._hurtT += d;
     if (this._dlgGrace > 0) this._dlgGrace -= d;
+    updateBarks(d);
 
-    // Toasts: advance, retire, and settle into their stack slots.
-    for (let i = this.toasts.length - 1; i >= 0; i--) {
-      const tt = this.toasts[i];
-      tt.t += d;
-      if (tt.t >= tt.life) this.toasts.splice(i, 1);
-    }
-    for (let i = 0; i < this.toasts.length; i++) {
-      const tt = this.toasts[i];
-      const target = i * 15;
-      tt.slot = tt.slot === 0 && tt.t < 0.02 ? target : approach(tt.slot, target, d * 120);
-    }
-
-    // Log ribbon.
-    if (this.logLine) {
-      this.logLine.t += d;
-      if (this.logLine.t > LOG_LIFE) this.logLine = null;
-    }
+    for (const l of this.log) l.t += d;
+    this.log = this.log.filter((l) => l.t < LOG.life);
 
     // Damage ghosts and hit flashes.
     for (const m of Party.members || []) {
       if (!m || !m.uid) continue;
       const pct = clamp((m.hp || 0) / Math.max(1, m.maxHp || 1), 0, 1);
       let g = this.ghosts[m.uid];
-      if (!g) { g = this.ghosts[m.uid] = { v: pct, hold: 0 }; }
+      if (!g) g = this.ghosts[m.uid] = { v: pct, hold: 0 };
       if (pct > g.v) g.v = pct;                       // healing snaps the ghost up
       else if (pct < g.v - 0.0005) {
-        if (g.hold <= 0 && g.v - pct > 0.001 && g.last !== pct) { g.hold = 0.35; g.last = pct; }
+        if (g.hold <= 0 && g.last !== pct) { g.hold = 0.35; g.last = pct; this._hurtT = 0; }
         if (g.hold > 0) g.hold -= d;
         else g.v = Math.max(pct, g.v - d * 0.55);
       } else g.v = pct;
       if (this.flash[m.uid] > 0) { this.flash[m.uid] -= d; if (this.flash[m.uid] <= 0) delete this.flash[m.uid]; }
     }
 
-    this._syncDialogue();
+    this._clicks();
+  }
 
-    // Global fade: gone during dialogue, ghosted while the player walks beneath it.
-    let target = 1;
-    if (!this.visible || this.hidden) target = 0;
-    else if (this._dialogue) target = 0;
-    else if (this._isWalking() && this._playerUnderHud()) target = 0.25;
-    this.alpha = approach(this.alpha, target, d * 4.5);
+  /** Clicks on the HUD itself: the minimap zooms, a card opens the party, the quest the journal. */
+  _clicks() {
+    const m = Input.mouse;
+    if (!m || !m.over || !m.clicked || Layout.editing) return;
+    const hit = (id) => {
+      if (!Layout.visible(id) || this.alphaOf(id) < 0.3) return false;
+      const r = Layout.rect(id);
+      return m.x >= r.x && m.x < r.x + r.w && m.y >= r.y && m.y < r.y + r.h;
+    };
+    const open = (which) => { const s = this.scene; if (s && typeof s._openMenu === 'function') s._openMenu(which); };
+    if (hit('hud.minimap')) {
+      const i = ZOOMS.indexOf(this._zoom());
+      Save.settings.minimapZoom = ZOOMS[(i + 1) % ZOOMS.length];
+      try { Save.saveSettings(); } catch (e) { /* the zoom still applies this session */ }
+      m.clicked = false;
+    } else if (hit('hud.party') && (Party.members || []).length) {
+      m.clicked = false; open('party');
+    } else if (hit('hud.quest') && trackedQuest(Game.state)) {
+      m.clicked = false; open('journal');
+    }
+  }
+
+  _zoom() {
+    const z = Number(Save.settings && Save.settings.minimapZoom);
+    return ZOOMS.includes(z) ? z : 1;
   }
 
   _isWalking() {
     if (this.player && this.player.moving) return true;
-    return this._walkT < 0.32;      // EV.STEP fired recently
-  }
-
-  /** True when the player sprite sits inside one of the HUD's panels. */
-  _playerUnderHud() {
-    const p = this.player;
-    if (!p) return false;
-    const x = p.sx, y = p.sy;
-    const inRect = (r, w, h) => x >= r.x - 6 && x <= r.x + w + 6 && y >= r.y - 10 && y <= r.y + h + 6;
-    const partyH = PARTY.pad * 2 + Math.max(1, Math.min(4, (Party.members || []).length)) * PARTY.row;
-    if (inRect(PARTY, PARTY.w, partyH)) return true;
-    if (inRect(TR, TR.w, TR.h)) return true;
-    if (this._trackedQuest() && inRect(QUEST, QUEST.w, QUEST.h)) return true;
-    if (this.logLine && inRect(RIBBON, RIBBON.w, RIBBON.h)) return true;
-    const dx = x - MAP.cx, dy = y - MAP.cy;
-    if (dx * dx + dy * dy < (MAP.r + 8) * (MAP.r + 8)) return true;
-    return false;
+    return this._walkT < 0.32;
   }
 
   _syncDialogue() {
     if (this._dlgGrace > 0) return;
     let found = false;
-    try {
-      for (const s of (Game.scenes || [])) {
-        const n = (s && (s.id || (s.constructor && s.constructor.name))) || '';
-        if (/dialog/i.test(String(n))) { found = true; break; }
-      }
-    } catch (e) { /* ignore */ }
+    for (const s of (Game.scenes || [])) {
+      const n = (s && (s.id || (s.constructor && s.constructor.name))) || '';
+      if (/dialog/i.test(String(n))) { found = true; break; }
+    }
     this._dialogue = found;
+  }
+
+  /**
+   * Fades, worked out in draw() with the frame's own dt: the world's update
+   * stops under a menu, and the HUD still has to fade away beneath it.
+   */
+  _fade(dt, rects) {
+    this._syncDialogue();
+    const covered = Game.top && this.scene && Game.top !== this.scene;
+    let target = 1;
+    if (!this.visible || this.hidden || this._dialogue || covered) target = 0;
+    this.alpha = approach(this.alpha, target, dt * 5);
+
+    const walking = this._isWalking();
+    const cinematic = Layout.mode('fade') === 'cinematic';
+    const m = Input.mouse;
+    this._hover = null;
+    for (const id of FADERS) {
+      const r = rects[id];
+      // (Arrange mode draws its own highlight; the widgets' hover looks stay out of it.)
+      const hovered = !Layout.editing && !!(r && m && m.over && m.x >= r.x && m.x < r.x + r.w && m.y >= r.y && m.y < r.y + r.h);
+      if (hovered) this._hover = id;
+      let want = 1;
+      if (cinematic && (walking || this._walkT < 0.9) && !hovered && this._hurtT > 3) want = 0;
+      else if (walking && r && this._under(r)) want = 0.25;
+      const cur = this.fades[id] == null ? 1 : this.fades[id];
+      this.fades[id] = approach(cur, want, dt * (want > cur ? 6 : cinematic ? 2.2 : 4.5));
+    }
+  }
+
+  /** Is the player sprite inside (or just under) rect r? */
+  _under(r) {
+    const p = this.player;
+    if (!p) return false;
+    return p.sx >= r.x - 6 && p.sx <= r.x + r.w + 6 && p.sy >= r.y - 6 && p.sy <= r.y + r.h + 22;
+  }
+
+  /** True when the player sprite sits under any visible panel. */
+  _playerUnderHud() {
+    for (const id of FADERS) if (Layout.visible(id) && this._under(Layout.rect(id))) return true;
+    return false;
   }
 
   // --- draw ---------------------------------------------------------------
 
+  /** Every visible widget's rect this frame (for fades, barks and Arrange mode). */
+  _rects() {
+    const out = {};
+    const n = Math.max(1, Math.min(4, (Party.members || []).length));
+    const pips = Layout.mode('party') === 'pips';
+    out['hud.party'] = Layout.rect('hud.party', pips ? { w: PIPS.w, h: n * PIPS.row + 3 } : { w: CARD.w, h: partyH(n) });
+    // A long objective takes a second line rather than an ellipsis.
+    const ql = this._questLines(Game.state);
+    out['hud.quest'] = Layout.rect('hud.quest', { w: QUEST.w, h: QUEST.h + (ql && ql.lines.length > 1 ? 5 : 0) });
+    for (const id of ['hud.clock', 'hud.log', 'hud.minimap', 'hud.toolbar']) out[id] = Layout.rect(id);
+    for (const id of Object.keys(out)) if (!out[id].visible) delete out[id];
+    return out;
+  }
+
   draw(ctx) {
-    if (this.alpha <= 0.02) return;
-    ctx.save();
-    ctx.globalAlpha = clamp(this.alpha, 0, 1);
-    this._drawParty(ctx);
-    this._drawPurseClock(ctx);
-    this._drawQuest(ctx);
-    this._drawMinimap(ctx);
-    this._drawLog(ctx);
-    ctx.restore();
-    // Toasts stay legible even when the rest of the HUD has ghosted away.
-    ctx.save();
-    ctx.globalAlpha = clamp(Math.max(this.alpha, this._dialogue || !this.visible ? 0 : 0.9), 0, 1);
-    this._drawToasts(ctx);
-    ctx.restore();
-  }
+    const dt = clamp(Game.dt || 0, 0, 0.1);
+    const rects = this._rects();
+    this._rectsNow = rects;
+    this._fade(dt, rects);
+    if (this.alpha <= 0.02 && !Layout.editing) return;
+    const st = Game.state || {};
+    const scene = this.scene;
+    this._goal = scene && this.map ? safe(() => questGoal(st, this.map, this._ents(), scene.player), null) : null;
 
-  // --- party strip --------------------------------------------------------
-
-  _drawParty(ctx) {
-    const members = (Party.members || []).slice(0, 4);
-    if (!members.length) return;
-    const h = PARTY.pad * 2 + members.length * PARTY.row;
-    panel(ctx, PARTY.x, PARTY.y, PARTY.w, h, { style: 'dark' });
-
-    const x0 = PARTY.x + 27;
-    const cw = PARTY.w - 31;
-    for (let i = 0; i < members.length; i++) {
-      const m = members[i], ry = PARTY.y + PARTY.pad + i * PARTY.row;
-      const dead = !!m.dead, down = !dead && (m.hp || 0) <= 0, grey = dead || down;
-      if (i) { ctx.fillStyle = '#303342'; ctx.fillRect(PARTY.x + 4, ry - 2, PARTY.w - 8, 1); }
+    const paint = (id, fn) => {
+      const r = rects[id];
+      if (!r) return;
+      const a = this.alphaOf(id);
+      if (a <= 0.02) return;
       ctx.save();
-      if (grey) ctx.globalAlpha *= 0.5;
-      drawActorBust(ctx, m, PARTY.x + 4, ry + 1, 20);
+      ctx.globalAlpha = a;
+      try { fn.call(this, ctx, r, st); } catch (e) { reportOnce(id, e); }
       ctx.restore();
-      ctx.fillStyle = i === 0 ? C('gold') : '#576576';
-      ctx.fillRect(PARTY.x + 1, ry + 1, 1, 20);
-      if (grey) mark(ctx, 'skull', PARTY.x + 11, ry + 9, C('red'));
-      txt(ctx, x0, ry + 1, shortName(m.name, cw, 'sm'), { size: 'sm', color: grey ? C('dim') : C('ink') });
-      const readout = dead ? 'DEAD' : down ? 'DOWN' : `${Math.max(0, m.hp | 0)}/${m.maxHp | 0}`;
-      txt(ctx, x0, ry + 10, fit(readout, cw, 'sm'), { size: 'sm', color: grey ? C('red') : hpColor(m) });
-      this._drawHpBar(ctx, x0, ry + 19, cw, 4, m, dead);
-      if (down) {
-        const ds = m.deathSaves || {};
-        for (let j = 0; j < 3; j++) {
-          ctx.fillStyle = j < (ds.success || 0) ? C('green') : '#313b35';ctx.fillRect(PARTY.x + 4 + j * 3, ry + 25, 2, 2);
-          ctx.fillStyle = j < (ds.fail || 0) ? C('red') : '#3c3032';ctx.fillRect(PARTY.x + 15 + j * 3, ry + 25, 2, 2);
-        }
-      } else if (!this._drawSlotPips(ctx, PARTY.x + 4, ry + 25, 20, m, grey)) {
-        mark(ctx, 'shield', PARTY.x + 4, ry + 24, C('dim'));
-        txt(ctx, PARTY.x + 11, ry + 24, String(m.ac || 10), { size: 'sm', color: C('dim') });
-      }
-      this._drawConditions(ctx, x0, ry + 24, cw, m);
-    }
+    };
+    paint('hud.party', Layout.mode('party') === 'pips' ? this._drawPips : this._drawParty);
+    paint('hud.clock', this._drawClock);
+    paint('hud.quest', this._drawQuest);
+    paint('hud.minimap', this._drawMinimap);
+    paint('hud.log', this._drawLog);
   }
 
-  _drawHpBar(ctx, x, y, w, h, m, dead) {
-    const max = Math.max(1, m.maxHp || 1);
-    const pct = clamp((m.hp || 0) / max, 0, 1);
-    const g = this.ghosts[m.uid];
-    const ghost = g ? clamp(g.v, 0, 1) : pct;
-
-    // backing
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(x, y, w, h);
-    // The ghost: what the bar used to be, draining a beat behind the real value.
-    // Drawn at the same origin/width scale the fill uses, or the trailing edge
-    // sits a pixel off from the bar it is trailing.
-    if (ghost > pct) {
-      ctx.fillStyle = 'rgba(232,110,80,0.55)';
-      ctx.fillRect(x, y, Math.round(w * ghost), h);
-    }
-    bar(ctx, x, y, w, h, pct, { color: dead ? '#4a3a3a' : hpColor(m), bg: 'transparent', border: false });
-
-    // temp HP rides on top as a blue cap
-    if (m.tempHp > 0) {
-      const tw2 = Math.round(w * clamp(m.tempHp / max, 0, 1));
-      ctx.fillStyle = 'rgba(106,168,232,0.8)';
-      ctx.fillRect(Math.max(x, x + Math.round(w * pct) - tw2), y, Math.max(1, tw2), 2);
-    }
-    // hit flash
-    const f = this.flash[m.uid];
-    if (f > 0) {
-      ctx.globalAlpha = ctx.globalAlpha * clamp(f / 0.55, 0, 1);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-      ctx.globalAlpha = clamp(this.alpha, 0, 1);
-    }
-    // A low-HP pulse: the bar breathes below a quarter health.
-    if (pct > 0 && pct <= 0.25 && !dead) {
-      ctx.globalAlpha = ctx.globalAlpha * (0.25 + 0.25 * Math.sin(this.t * 7));
-      ctx.fillStyle = '#ff6a4a';
-      ctx.fillRect(x, y, w, h);
-      ctx.globalAlpha = clamp(this.alpha, 0, 1);
-    }
+  _ents() {
+    if (this.entities) return this.entities;
+    const s = this.scene;
+    return (s && s.entities && s.entities.list) || (this.map && Array.isArray(this.map.entities) ? this.map.entities : []);
   }
 
-  _drawDeathSaves(ctx, x, y, m) {
-    const ds = m.deathSaves || { success: 0, fail: 0 };
-    const label = 'SAVES';
-    txt(ctx, x, y - 1, label, { size: 'sm', color: 'rgba(154,145,127,0.6)' });
-    // 'SAVES' is 29px; the pips started at +24 and covered its final S.
-    let px = x + tw(label, 'sm') + 4;
-    for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = i < (ds.success | 0) ? C('green') : 'rgba(40,46,40,0.9)';
-      ctx.fillRect(px, y, 4, 4); px += 5;
-    }
-    px += 3;
-    for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = i < (ds.fail | 0) ? C('red') : 'rgba(46,36,36,0.9)';
-      ctx.fillRect(px, y, 4, 4); px += 5;
-    }
+  // --- party cards --------------------------------------------------------
+
+  _drawParty(ctx, r) {
+    const members = (Party.members || []).slice(0, 4);
+    const m = Input.mouse;
+    const step = CARD.h + CARD.gap;
+    const hi = this._hover === 'hud.party' && m ? Math.floor((m.y - r.y) / step) : -1;
+    for (let i = 0; i < members.length; i++) this._card(ctx, r.x, r.y + i * step, members[i], i === 0, i === hi);
+    if (members[hi]) this._cardTip(ctx, r, r.y + hi * step, members[hi]);
   }
 
   /**
-   * The badge row: what is currently true about this character.
-   *
-   * It used to read `conditions` only, so every misfortune had an icon and no
-   * blessing did — you could cast Mage Armor, see the AC rise on the sheet, and
-   * find nothing anywhere on screen saying it was up. Buffs live in `effects`,
-   * a separate list, and they are drawn here too: same 7px cell, but with a
-   * lit rim rather than a plain dark one, so good and bad read apart at a
-   * glance without needing colour vision to tell them apart.
+   * Pointing at a card spells out what its badges only hint at: level and
+   * calling, HP and AC, death saves, and every condition and blessing by name.
    */
-  _drawConditions(ctx, x, y, w, m) {
-    const seen = new Set();
-    const badges = [];
-
-    for (const c of Array.isArray(m.conditions) ? m.conditions : []) {
-      const id = typeof c === 'string' ? c : (c && c.id);
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      badges.push({ ...badgeFor(id), good: false });
+  _cardTip(ctx, r, y, m) {
+    const cls = (m.classes || []).map((c) => titleCase(String(c.id || '').replace(/-/g, ' '))).filter(Boolean).join(' / ');
+    const rows = [];
+    rows.push({ s: m.name || 'Unnamed', size: 'fineb', color: '#f6e3b0' });
+    rows.push({ s: `Level ${m.level || 1}${cls ? ' ' + cls : ''}`, size: 'xs', color: '#a89a7c' });
+    const hp = `HP ${Math.max(0, m.hp | 0)}/${m.maxHp | 0}${m.tempHp > 0 ? ` +${m.tempHp | 0}` : ''}   AC ${m.ac || 10}`;
+    rows.push({ s: hp, size: 'fine', color: '#e8dcc0' });
+    const toNext = PROG && PROG.xpToNext ? safe(() => PROG.xpToNext(m), null) : null;
+    if (toNext != null) rows.push({ s: `${m.xp | 0} XP, ${toNext} to the next level`, size: 'xs', color: '#c8a458' });
+    if (!m.dead && (m.hp || 0) <= 0) {
+      const ds = m.deathSaves || {};
+      rows.push({ s: `Death saves ${ds.success || 0} of 3, failures ${ds.fail || 0} of 3`, size: 'fine', color: '#e07a64' });
     }
-    if (m.concentration && !seen.has('concentrating')) {
-      seen.add('concentrating');
-      badges.unshift({ ...badgeFor('concentrating'), good: false });
-    }
-    for (const e of Array.isArray(m.effects) ? m.effects : []) {
-      const key = String((e && e.id) || (e && e.name) || '').toLowerCase();
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      badges.push({ ...buffBadgeFor(e), good: true });
-    }
-    if (!badges.length) return;
-
-    // Buffs first: what you did on purpose is more useful than what happened
-    // to you when you are deciding whether to set off.
-    badges.sort((a, b) => (a.good === b.good ? 0 : a.good ? -1 : 1));
-
-    const per = 8;
-    const maxN = Math.max(1, Math.floor(w / per));
-    const shown = Math.min(badges.length, maxN);
-    let px = x + w - shown * per;
-    for (let i = 0; i < shown; i++) {
-      const b = badges[i];
-      ctx.fillStyle = 'rgba(8,10,16,0.85)';
-      ctx.fillRect(px, y, 7, 7);
-      if (b.good) {
-        // A one-pixel lit rim marks a blessing rather than an affliction.
-        ctx.fillStyle = 'rgba(150,220,170,0.35)';
-        ctx.fillRect(px, y, 7, 1); ctx.fillRect(px, y + 6, 7, 1);
-        ctx.fillRect(px, y, 1, 7); ctx.fillRect(px + 6, y, 1, 7);
-      }
-      mark(ctx, b.mark, px + 1, y + 1, b.color);
-      px += per;
-    }
-    // More than the row can hold: say how many are hiding.
-    if (badges.length > shown) {
-      UI.text(ctx, x + w - shown * per - 2, y, `+${badges.length - shown}`,
-        { size: 'sm', align: 'right', color: C('dim'), shadow: true });
+    for (const b of badgesOf(m)) rows.push({ s: b.name, size: 'fine', color: b.good ? '#9ad8a8' : '#e8a08a', mark: b });
+    const w = snap(Math.min(150, Math.max(...rows.map((o) => tw(o.s, o.size) + (o.mark ? 7 : 0)))) + 7);
+    const h = snap(rows.reduce((a, o) => a + (o.size === 'xs' ? 4.5 : 5.5), 0) + 3.5);
+    const x = r.x + r.w + 2 + w > VIEW_W - 2 ? r.x - w - 2 : r.x + r.w + 2;
+    const ty = clamp(y, 2, VIEW_H - h - 2);
+    frame(ctx, x, ty, w, h, { tone: 'gilt', alpha: 0.97 });
+    let yy = ty + 2;
+    for (const o of rows) {
+      let tx = x + 3.5;
+      if (o.mark) { mark(ctx, o.mark.mark, tx, yy + 0.5, o.mark.color, 0.5); tx += 4; }
+      txt(ctx, tx, yy + 0.5, fit(o.s, w - (tx - x) - 3, o.size), o.size, o.color);
+      yy += o.size === 'xs' ? 4.5 : 5.5;
     }
   }
 
-  /** Slot pips for casters. Returns false when this character casts nothing. */
-  _drawSlotPips(ctx, x, y, w, m, grey) {
+  _card(ctx, x, y, m, leader, hover) {
+    const w = CARD.w, h = CARD.h;
+    const dead = !!m.dead, down = !dead && (m.hp || 0) <= 0, grey = dead || down;
+    frame(ctx, x, y, w, h, { tone: dead ? 'dead' : down ? 'danger' : leader || hover ? 'gilt' : null });
+
+    // The bust, in a recessed well, at the world's own pixel scale.
+    well(ctx, x + 1.5, y + 1.5, 15, 15, grey ? '#140c0c' : '#16121a');
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x + 2, y + 2, 14, 14); ctx.clip();
+    if (grey) ctx.globalAlpha *= 0.45;
+    safe(() => drawActorBust(ctx, m, x + 2, y + 2, 14));
+    ctx.restore();
+    if (grey) markKeyed(ctx, 'skull', x + 6.5, y + 6.5, dead ? '#b0a8a0' : C('red'));
+
+    const tx = x + 19, right = x + w - 2.5;
+    // HP readout, then the name in what room is left.
+    const readout = dead ? 'DEAD' : down ? 'DOWN' : `${Math.max(0, m.hp | 0)}/${m.maxHp | 0}`;
+    txt(ctx, right, y + 3, readout, 'xs', grey ? '#e07a64' : hpColor(m), { align: 'right' });
+    const nameW = right - tx - tw(readout, 'xs') - 2.5;
+    txt(ctx, tx, y + 2.5, shortName(m.name, nameW, 'fineb'), 'fineb', grey ? C('dim') : leader ? '#f6e3b0' : C('ink'));
+
+    // HP meter with the damage ghost, a temp-HP cap and the low-health breath.
+    const pct = clamp((m.hp || 0) / Math.max(1, m.maxHp || 1), 0, 1);
+    const g = this.ghosts[m.uid];
+    const low = pct > 0 && pct <= 0.25 && !dead;
+    meter(ctx, tx, y + 8, right - tx, 2.5, pct, dead ? '#4a3a3a' : hpColor(m), {
+      ghost: g ? g.v : pct,
+      temp: m.tempHp > 0 ? m.tempHp / Math.max(1, m.maxHp || 1) : 0,
+      pulse: low ? 0.18 + 0.18 * Math.sin(this.t * 7) : 0,
+    });
+    const f = this.flash[m.uid];
+    if (f > 0) {
+      const a = ctx.globalAlpha;
+      ctx.globalAlpha = a * clamp(f / 0.55, 0, 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(tx - 0.5, y + 7.5, right - tx + 1, 3.5);
+      ctx.globalAlpha = a;
+    }
+
+    // The status row: death saves when down, else spell slots (or AC), and
+    // the condition and buff badges from the right.
+    const rowY = y + 12;
+    let used;
+    if (down) used = this._deathSaves(ctx, tx, rowY + 1, m);
+    else used = this._slotPips(ctx, tx, rowY + 1.5, right - tx - 14, m, grey);
+    if (!used && !down) {
+      mark(ctx, 'shield', tx, rowY + 0.5, '#8a8272', 0.5);
+      txt(ctx, tx + 3.5, rowY + 0.5, `AC ${m.ac || 10}`, 'xs', C('dim'));
+    }
+    // A gilt hairline along the foot of the card: the way to the next level.
+    const xp = PROG && PROG.xpProgress ? safe(() => PROG.xpProgress(m), 0) : 0;
+    if (!grey) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(x + 17.5, y + h - 1.5, w - 19, 0.5);
+      if (xp > 0) { ctx.fillStyle = 'rgba(226,182,84,0.8)'; ctx.fillRect(x + 17.5, y + h - 1.5, snap((w - 19) * xp), 0.5); }
+    }
+    this._badges(ctx, right, rowY - 0.5, m, down ? 22 : 26);
+  }
+
+  /** Three saves and three failures, as lit lozenges. */
+  _deathSaves(ctx, x, y, m) {
+    const ds = m.deathSaves || {};
+    const gem = (px, on, col, off) => {
+      ctx.fillStyle = '#07060a'; ctx.fillRect(px - 0.5, y - 0.5, 3, 3);
+      ctx.fillStyle = on ? col : off; ctx.fillRect(px, y, 2, 2);
+      if (on) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(px, y, 0.5, 0.5); }
+    };
+    for (let j = 0; j < 3; j++) gem(x + j * 3, j < (ds.success || 0), C('green'), '#26302a');
+    for (let j = 0; j < 3; j++) gem(x + 10 + j * 3, j < (ds.fail || 0), C('red'), '#352628');
+    return true;
+  }
+
+  /** Slot pips for casters, on the fine grid. False when this character casts nothing. */
+  _slotPips(ctx, x, y, w, m, grey) {
     const sp = m.spells;
     if (!sp) return false;
     const groups = [];
@@ -669,328 +544,336 @@ export class HUD {
     for (let lvl = 1; lvl <= 9; lvl++) {
       const s = slots[lvl];
       const max = s && (s.max | 0);
-      if (max > 0) groups.push({ lvl, max, used: (s.used | 0), color: SLOT_COLORS[lvl - 1] });
+      if (max > 0) groups.push({ max, used: (s.used | 0), color: SLOT_COLORS[lvl - 1] });
     }
-    if (sp.pact && (sp.pact.max | 0) > 0) {
-      groups.push({ lvl: sp.pact.level || 1, max: sp.pact.max | 0, used: sp.pact.used | 0, color: C('purple'), pact: true });
-    }
+    if (sp.pact && (sp.pact.max | 0) > 0) groups.push({ max: sp.pact.max | 0, used: sp.pact.used | 0, color: C('purple') });
     if (!groups.length) return false;
-
-    // Shrink the pips rather than overflow the strip.
-    let total = 0;
-    for (const g of groups) total += g.max;
-    let pw = 3, gap = 1, sep = 2;
-    let need = total * (pw + gap) + (groups.length - 1) * sep;
-    if (need > w) { pw = 2; need = total * (pw + gap) + (groups.length - 1) * sep; }
-    if (need > w) { gap = 0; need = total * pw + (groups.length - 1) * sep; }
-
+    const a = ctx.globalAlpha;
+    if (grey) ctx.globalAlpha = a * 0.5;
     let px = x;
     for (const g of groups) {
       for (let i = 0; i < g.max; i++) {
-        const spent = i < g.used;
-        ctx.fillStyle = spent ? 'rgba(30,34,48,0.9)' : g.color;
-        if (grey) ctx.globalAlpha = clamp(this.alpha, 0, 1) * 0.5;
-        ctx.fillRect(px, y, pw, 3);
-        if (spent) { ctx.fillStyle = 'rgba(90,96,120,0.6)'; ctx.fillRect(px, y + 1, pw, 1); }
-        if (grey) ctx.globalAlpha = clamp(this.alpha, 0, 1);
-        px += pw + gap;
-        if (px > x + w - pw) return true;   // out of room; the rest are implied
+        if (px > x + w - 1.5) { ctx.globalAlpha = a; return true; }   // out of room: the rest are implied
+        const spent = i >= g.max - g.used;
+        ctx.fillStyle = '#07060a'; ctx.fillRect(px - 0.5, y - 0.5, 2.5, 2.5);
+        ctx.fillStyle = spent ? '#2a2834' : g.color; ctx.fillRect(px, y, 1.5, 1.5);
+        if (!spent) { ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(px, y, 0.5, 0.5); }
+        px += 2;
       }
-      px += sep;
+      px += 1.5;
     }
+    ctx.globalAlpha = a;
     return true;
   }
 
-  // --- purse, clock, weather ---------------------------------------------
-
-  _drawPurseClock(ctx) {
-    const st = Game.state || {};
-    panel(ctx, TR.x, TR.y, TR.w, TR.h, { style: 'dark' });
-
-    const night = timeOfDay(st.time || 0) === 'night';
-    drawWeatherBadge(ctx, TR.x + 5, TR.y + 4, st.weather || 'clear', night);
-    txt(ctx, TR.x + 17, TR.y + 4, clockText(st.time == null ? 480 : st.time), { size: 'sm', color: night ? '#a5bfea' : C('ink') });
-    const date = dateText(st.day || 1).replace(/,.*$/, '');
-    txt(ctx, TR.x + 5, TR.y + 16, fit(date, 72, 'sm'), { size: 'sm', color: C('dim') });
-    mark(ctx, 'coin', TR.x + 81, TR.y + 17, C('gold'));
-    txtR(ctx, TR.x + TR.w - 5, TR.y + 16, fit(String(Party.gold | 0), 27, 'sm'), { size: 'sm', color: C('gold') });
-    // A quiet day-progress track under the clock.
-    ctx.fillStyle = '#303442'; ctx.fillRect(TR.x + 4, TR.y + TR.h - 3, TR.w - 8, 1);
-    ctx.fillStyle = night ? '#7e9aca' : '#b89457';
-    ctx.fillRect(TR.x + 4, TR.y + TR.h - 3, Math.round((TR.w - 8) * ((st.time || 0) / 1440)), 1);
+  /** Condition and buff badges, right-aligned at `right`, never wider than `maxW`. */
+  _badges(ctx, right, y, m, maxW) {
+    const list = badgesOf(m);
+    if (!list.length) return;
+    const per = 6;
+    const n = Math.min(list.length, Math.max(1, Math.floor(maxW / per)));
+    let px = right - n * per + 1;
+    for (let i = 0; i < n; i++) {
+      const b = list[i];
+      // Blessings sit on a lit chip, afflictions on a dark one, so the two read
+      // apart without relying on colour.
+      ctx.fillStyle = b.good ? 'rgba(150,220,170,0.28)' : 'rgba(6,5,8,0.85)';
+      ctx.fillRect(px - 0.5, y, 6, 6);
+      mark(ctx, b.mark, px, y + 0.5, b.color);
+      px += per;
+    }
+    if (list.length > n) txt(ctx, right - n * per - 0.5, y + 1.5, `+${list.length - n}`, 'xs', C('dim'), { align: 'right' });
   }
 
-  // --- tracked quest ------------------------------------------------------
+  // --- party pips (the minimal preset) -------------------------------------
 
-  _trackedQuest() {
-    const st = Game.state;
-    if (!st || !st.quests) return null;
-    const active = st.quests.active || [];
-    if (!active.length) return null;
-    return active.find((q) => q && q.id === st.quests.tracked) || active[0] || null;
+  _drawPips(ctx, r) {
+    const members = (Party.members || []).slice(0, 4);
+    frame(ctx, r.x, r.y, r.w, r.h, { alpha: 0.8 });
+    for (let i = 0; i < members.length; i++) {
+      const m = members[i];
+      const y = r.y + 1.5 + i * PIPS.row;
+      const dead = !!m.dead, down = !dead && (m.hp || 0) <= 0;
+      const initial = String(m.name || '?').trim().charAt(0).toUpperCase();
+      txt(ctx, r.x + 2.5, y + 1, initial, 'fineb', i === 0 ? GILT.hi : C('ink'));
+      if (down || dead) markKeyed(ctx, 'skull', r.x + 7, y + 0.5, dead ? '#b0a8a0' : C('red'), 0.5);
+      const pct = clamp((m.hp || 0) / Math.max(1, m.maxHp || 1), 0, 1);
+      const g = this.ghosts[m.uid];
+      meter(ctx, r.x + 11, y + 1.5, r.w - 13.5, 2, pct, hpColor(m), { ghost: g ? g.v : pct, notches: false });
+    }
   }
 
-  _drawQuest(ctx) {
-    const q = this._trackedQuest();
-    if (!q) return;
-    const steps = Array.isArray(q.steps) ? q.steps : [];
-    const step = steps.find((s) => s && !s.done) || steps[steps.length - 1] || null;
+  // --- clock, date, weather, purse ----------------------------------------
 
-    panel(ctx, QUEST.x, QUEST.y, QUEST.w, QUEST.h, { style: 'dark' });
-    icon(ctx, 'quest', QUEST.x + 5, QUEST.y + 4, 7, C('gold'), (c, x, y, s, col) => mark(c, 'scroll', x, y, col));
-    txt(ctx, QUEST.x + 15, QUEST.y + 4, fit(q.title || 'Untitled Task', QUEST.w - 22, 'sm'),
-      { size: 'sm', color: C('gold') });
+  _drawClock(ctx, r, st) {
+    frame(ctx, r.x, r.y, r.w, r.h);
+    const time = st.time == null ? 480 : st.time;
+    const phase = timeOfDay(time);
+    const night = phase === 'night';
+    const weather = st.weather || 'clear';
+    // The sky dial redraws every ten minutes of game time, not every frame.
+    const cv = cached(`dial:${Math.floor(time / 10)}:${weather}`, 13, 13, (g) => paintDial(g, time, weather));
+    blit(ctx, cv, r.x + 1, r.y + 1);
+    txt(ctx, r.x + 16, r.y + 2.5, clockText(time), 'fineb', night ? '#b4c8f0' : '#f2e6c8');
+    txt(ctx, r.x + 16, r.y + 9, fit(dateText(st.day || 1).replace(',', ''), r.w - 44, 'xs'), 'xs', C('dim'));
+    const ph = PHASE_WORD[phase];
+    if (ph) txt(ctx, r.x + 16 + tw(clockText(time), 'fineb') + 3, r.y + 3, ph, 'xs', night ? '#7a8ab0' : '#a89a7c');
+    const right = r.x + r.w - 2.5;
+    const gold = String(Party.gold | 0);
+    txt(ctx, right, r.y + 2.5, gold, 'fineb', GILT.hi, { align: 'right' });
+    const cx = right - tw(gold, 'fineb') - 4.5;
+    coin(ctx, cx, r.y + 2.5);
+    txt(ctx, right, r.y + 9, WEATHER_WORD[weather] || titleCase(weather), 'xs', '#8a8272', { align: 'right' });
+  }
 
-    if (!step) {
-      // Every other string in this panel is wrapped in fit(); this one was
-      // missed, and 'Return to the one who sent you.' is 185px in a 168px
-      // panel — 25px of it printed onto the map.
-      // 185px of text; QUEST.x+8 to the panel's inner right edge is 186.
-      txt(ctx, QUEST.x + 8, QUEST.y + 15, fit('Return to the one who sent you.', QUEST.w - 14, 'sm'),
-        { size: 'sm', color: C('green') });
-      return;
+  // --- quest compass ------------------------------------------------------
+
+  /** The tracked quest, its current step and the objective wrapped to two lines at most. */
+  _questLines(st) {
+    const q = trackedQuest(st);
+    if (!q) return null;
+    const step = currentStep(q);
+    const line = step ? objectiveText(step) : 'Return to the one who sent you.';
+    const c = this._qlCache;
+    if (c && c.line === line) return { q, step, lines: c.lines };
+    let lines;
+    try { lines = UI.wrapLines(line, QUEST.w - 19.5, 'fine', undefined, 2); } catch (e) { lines = [line]; }
+    if (lines.length > 2) lines = [lines[0], fit(lines.slice(1).join(' '), QUEST.w - 19.5, 'fine')];
+    this._qlCache = { line, lines };
+    return { q, step, lines };
+  }
+
+  _drawQuest(ctx, r, st) {
+    const ql = this._questLines(st);
+    if (!ql) return;
+    const { q, step, lines } = ql;
+    const hover = this._hover === 'hud.quest';
+    frame(ctx, r.x, r.y, r.w, r.h, { tone: hover ? 'gilt' : null });
+    const goal = this._goal;
+    const pl = this.scene && this.scene.player;
+    const tx = r.x + 17, tw2 = r.w - 19.5;
+
+    // The needle: a little brass compass pointing at the goal, or the quest
+    // seal when the goal is not somewhere the HUD can point.
+    let dist = null, wind = '';
+    if (goal && goal.here && pl) {
+      const dx = goal.x + 0.5 - pl.px / TILE, dy = goal.y + 0.5 - pl.py / TILE;
+      const ang = Math.atan2(dy, dx);
+      // The needle swings to a new heading on a damped spring, as a real one
+      // settles, rather than snapping.
+      const dt = clamp(Game.dt || 0, 0, 0.1);
+      if (this._na == null) { this._na = ang; this._nv = 0; }
+      const d = Math.atan2(Math.sin(ang - this._na), Math.cos(ang - this._na));
+      this._nv += (d * 70 - this._nv * 9) * dt;
+      this._na += this._nv * dt;
+      const k = ((Math.round(this._na / (Math.PI / 8)) % 16) + 16) % 16;
+      blit(ctx, cached(`needle:${k}`, 14, 14, (g) => paintNeedle(g, k)), r.x + 1.5, r.y + snap((r.h - 14) / 2));
+      dist = Math.round(Math.max(Math.abs(dx), Math.abs(dy))) * 5;
+      wind = WINDS[Math.round(((ang + Math.PI / 2) / (Math.PI / 4)) + 8) % 8];
+    } else {
+      const wy = r.y + snap((r.h - 13) / 2);
+      well(ctx, r.x + 2, wy, 13, 13);
+      safe(() => UI.icon(ctx, 'quest', r.x + 4, wy + 2, 9, GILT.base));
     }
 
-    const count = Math.max(1, step.count || 1);
-    const prog = clamp(step.progress || 0, 0, count);
-    const counter = count > 1 ? `${prog}/${count}` : (step.done ? 'done' : '');
-    const counterW = counter ? tw(counter, 'sm') + 4 : 0;
+    txt(ctx, tx, r.y + 2.5, fit(q.title || 'Untitled Task', tw2, 'fineb'), 'fineb', GILT.hi);
+    lines.forEach((s, i) => txt(ctx, tx, r.y + 8 + i * 5, s, 'fine', step ? '#e8dcc0' : C('green')));
+    const ly = r.y + 14 + (lines.length - 1) * 5;
 
-    txt(ctx, QUEST.x + 8, QUEST.y + 15, fit(objectiveText(step), QUEST.w - 16 - counterW, 'sm'),
-      { size: 'sm', color: step.done ? C('green') : C('ink') });
-    if (counter) txtR(ctx, QUEST.x + QUEST.w - 6, QUEST.y + 15, counter, { size: 'sm', color: step.done ? C('green') : C('dim') });
-
-    // A hair-thin progress rule across the whole quest, not just this step.
-    const doneSteps = steps.filter((s) => s && s.done).length;
-    const overall = steps.length ? (doneSteps + (count > 1 ? prog / count : 0)) / steps.length : 0;
-    bar(ctx, QUEST.x + 8, QUEST.y + 25, QUEST.w - 16, 3, clamp(overall, 0, 1),
-      { color: C('gold'), bg: 'rgba(0,0,0,0.6)', border: false });
+    // The last line: how far and which way, what it goes through, and a count.
+    const count = step ? Math.max(1, step.count || 1) : 1;
+    const counter = step && count > 1 ? `${clamp(step.progress || 0, 0, count)}/${count}` : '';
+    let where = '';
+    if (dist != null) where = dist <= 5 ? 'here' : `${dist} ft ${wind}`;
+    if (goal && goal.via) where += `${where ? ' · ' : ''}via ${goal.via}`;
+    else if (goal && !goal.here && goal.label) where = `toward ${goal.label}`;
+    const cw = counter ? tw(counter, 'xs') + 3 : 0;
+    if (where) txt(ctx, tx, ly, fit(where, tw2 - cw, 'xs'), 'xs', '#a89a7c');
+    if (counter) txt(ctx, r.x + r.w - 2.5, ly, counter, 'xs', GILT.base, { align: 'right' });
   }
 
   // --- minimap ------------------------------------------------------------
 
-  _discovered() {
-    const st = Game.state;
-    if (!st || !st.discovered) return null;
-    const raw = st.discovered[st.mapId];
-    if (!raw) return null;
-    if (raw instanceof Set) return raw;
-    if (!Array.isArray(raw)) return null;
-    const key = `${st.mapId}:${raw.length}`;
-    if (this._discKey !== key) { this._disc = new Set(raw); this._discKey = key; }
-    return this._disc;
-  }
-
-  _drawMinimap(ctx) {
-    const map = this.map;
-    const st = Game.state || {};
-    const cx = MAP.cx, cy = MAP.cy, r = MAP.r, px = MAP.px;
-
-    // Dial: dark glass with a gold rim.
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(8,10,18,0.86)';
-    ctx.fill();
-    ctx.clip();
-
-    if (map) {
-      const pxT = Math.round(st.x || 0), pyT = Math.round(st.y || 0);
-      const disc = this._discovered();
-      const span = Math.ceil(r / px) + 1;
-      for (let dy = -span; dy <= span; dy++) {
-        for (let dx = -span; dx <= span; dx++) {
-          const tx = pxT + dx, ty = pyT + dy;
-          const sx = cx + dx * px, sy = cy + dy * px;
-          if ((sx - cx) * (sx - cx) + (sy - cy) * (sy - cy) > r * r) continue;
-          let inB = true;
-          try { inB = map.inBounds ? map.inBounds(tx, ty) : true; } catch (e) { inB = true; }
-          if (!inB) continue;
-          if (disc && !disc.has(`${tx},${ty}`)) continue;   // unexplored stays dark
-          let flags = 0, solid = false;
-          try { flags = map.flagAt ? map.flagAt(tx, ty) | 0 : 0; } catch (e) { flags = 0; }
-          try { solid = map.solid ? !!map.solid(tx, ty) : !!(flags & TF_SOLID); } catch (e) { solid = !!(flags & TF_SOLID); }
-          let col;
-          if (flags & TF_WATER) col = '#2c5a8a';
-          else if (flags & TF_DOOR) col = '#c08a3a';
-          else if (solid) col = '#4a4a58';
-          else col = '#2f4030';
-          ctx.fillStyle = col;
-          ctx.fillRect(Math.round(sx), Math.round(sy), px, px);
-        }
-      }
-
-      // Warps, doors and other travel markers.
-      const trigs = Array.isArray(map.triggers) ? map.triggers : [];
-      for (const tg of trigs) {
-        if (!tg) continue;
-        const kind = tg.kind || '';
-        if (kind !== 'warp' && kind !== 'door' && kind !== 'inn' && kind !== 'shop') continue;
-        const sx = cx + ((tg.x || 0) - Math.round(st.x || 0)) * px;
-        const sy = cy + ((tg.y || 0) - Math.round(st.y || 0)) * px;
-        if ((sx - cx) * (sx - cx) + (sy - cy) * (sy - cy) > r * r) continue;
-        ctx.fillStyle = kind === 'warp' ? '#7fe08a' : '#e0c060';
-        ctx.beginPath();
-        ctx.moveTo(sx + 1, sy - 2); ctx.lineTo(sx + 4, sy + 1);
-        ctx.lineTo(sx + 1, sy + 4); ctx.lineTo(sx - 2, sy + 1);
-        ctx.closePath(); ctx.fill();
-      }
-
-      // NPCs and roaming monsters.
-      const ents = this.entities || (Array.isArray(map.entities) ? map.entities : []);
-      for (const e of ents) {
-        if (!e || e.hidden) continue;
-        const sx = cx + ((e.x || 0) - Math.round(st.x || 0)) * px;
-        const sy = cy + ((e.y || 0) - Math.round(st.y || 0)) * px;
-        if ((sx - cx) * (sx - cx) + (sy - cy) * (sy - cy) > r * r) continue;
-        const kind = e.kind || '';
-        if (kind === 'monster') ctx.fillStyle = '#e05a4a';
-        else if (kind === 'npc') ctx.fillStyle = '#7fd0f0';
-        else if (kind === 'chest') ctx.fillStyle = '#e0b040';
-        else continue;
-        ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
-      }
-    } else {
-      // No map bound yet — say so rather than showing an empty dial.
-      txtC(ctx, cx, cy - 3, 'no map', { size: 'sm', color: 'rgba(154,145,127,0.45)' });
+  _drawMinimap(ctx, r) {
+    const pl = this.scene && this.scene.player;
+    const R = Math.floor(Math.min(r.w, r.h) / 2);
+    drawMinimap(ctx, r.x, r.y, R, {
+      map: this.map,
+      player: pl ? { px: pl.px, py: pl.py, dir: pl.dir } : null,
+      entities: this._ents(),
+      markers: this._markers(),
+      goal: this._goal,
+      zoom: this._zoom(),
+      t: this.t,
+    });
+    // The compass rose's letters, on the rim: north in rubric, the rest in gilt.
+    const cx = r.x + R, cy = r.y + R;
+    txt(ctx, cx, r.y - 3.5, 'N', 'fineb', RUBRIC.hi, { align: 'center', keyline: '#0a0705' });
+    if (this._hover === 'hud.minimap') {
+      const z = this._zoom();
+      const label = `${z >= 1 ? '×' + z : '×½'}  click to zoom`;
+      const w = tw(label, 'xs') + 5;
+      // Below the roundel, or above it when that would run off the screen.
+      const ly = r.y + r.h + 6 <= VIEW_H - 1 ? r.y + r.h : r.y - 11;
+      frame(ctx, cx - w / 2, ly, w, 6, { alpha: 0.9 });
+      txt(ctx, cx, ly + 1.5, label, 'xs', C('ink'), { align: 'center' });
     }
-
-    // Locate Object's pin, and anything else the Weave is pointing at.
-    if (map) this._drawMarkerPips(ctx, cx, cy, r, px);
-
-    // The party, always dead centre, pulsing.
-    const pulse = 0.6 + 0.4 * Math.sin(this.t * 4);
-    ctx.globalAlpha = clamp(this.alpha, 0, 1) * pulse;
-    ctx.fillStyle = '#fff2c0';
-    ctx.fillRect(cx - 2, cy - 2, 4, 4);
-    ctx.globalAlpha = clamp(this.alpha, 0, 1);
-    ctx.fillStyle = C('gold');
-    ctx.fillRect(cx - 1, cy - 1, 2, 2);
-
-    ctx.restore();
-
-    // Rim and compass tick.
-    ctx.strokeStyle = 'rgba(92,74,42,0.95)';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(224,179,82,0.55)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, cy, r - 2, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = C('gold');
-    ctx.fillRect(cx - 1, cy - r - 1, 2, 3);
-    txtC(ctx, cx, cy - r - 10, 'N', { size: 'sm', color: 'rgba(224,179,82,0.75)' });
-
-    this._drawMarkerLabel(ctx, cx, cy, r);
+    if (!this.map) txt(ctx, cx, cy - 2, 'no map', 'fine', 'rgba(154,145,127,0.6)', { align: 'center' });
+    this._markerLabel(ctx, r);
   }
 
-  /** The live spell markers, nearest first, as an array — never null. */
+  /** The live spell markers — never null. */
   _markers() {
     const m = this.markers;
     return Array.isArray(m) ? m.filter((k) => k && Number.isFinite(k.x) && Number.isFinite(k.y)) : [];
   }
 
-  /**
-   * A pulsing pip per spell marker, drawn inside the dial's clip. A marker
-   * beyond the rim is pinned TO the rim on its true bearing — Locate Object
-   * says "north-east, four hundred feet" and the dial should agree, rather
-   * than dropping the pin because the chest is off the edge of the glass.
-   */
-  _drawMarkerPips(ctx, cx, cy, r, px) {
+  /** What the nearest spell pin is, spelled out above the roundel. */
+  _markerLabel(ctx, r) {
     const list = this._markers();
-    if (!list.length) return;
-    const st = Game.state || {};
-    const ox = Math.round(st.x || 0), oy = Math.round(st.y || 0);
-    const pulse = 0.45 + 0.55 * Math.abs(Math.sin(this.t * 3));
-
-    for (const m of list) {
-      let sx = (m.x - ox) * px, sy = (m.y - oy) * px;
-      const d = Math.hypot(sx, sy);
-      let edge = false;
-      if (d > r - 3) { const k = (r - 3) / (d || 1); sx *= k; sy *= k; edge = true; }
-      const x = Math.round(cx + sx), y = Math.round(cy + sy);
-      const col = m.color || '#b07af0';
-
-      ctx.globalAlpha = clamp(this.alpha, 0, 1) * pulse;
-      ctx.fillStyle = col;
-      if (edge) {
-        // On the rim it is a wedge pointing outward, not a dot you could
-        // mistake for something standing there.
-        ctx.fillRect(x - 1, y - 1, 3, 3);
-      } else {
-        ctx.fillRect(x, y - 2, 1, 5);
-        ctx.fillRect(x - 2, y, 5, 1);
-      }
-      ctx.globalAlpha = clamp(this.alpha, 0, 1) * pulse * 0.4;
-      ctx.fillRect(x - 3, y - 3, 7, 7);
-    }
-    ctx.globalAlpha = clamp(this.alpha, 0, 1);
-  }
-
-  /** What the nearest pin is, spelled out above the dial. */
-  _drawMarkerLabel(ctx, cx, cy, r) {
-    const list = this._markers();
-    if (!list.length) return;
-    const st = Game.state || {};
-    const ox = Math.round(st.x || 0), oy = Math.round(st.y || 0);
-    const near = list.slice().sort((a, b) => (
-      Math.max(Math.abs(a.x - ox), Math.abs(a.y - oy)) - Math.max(Math.abs(b.x - ox), Math.abs(b.y - oy))
-    ))[0];
+    const pl = this.scene && this.scene.player;
+    if (!list.length || !pl) return;
+    const ox = pl.px / TILE, oy = pl.py / TILE;
+    const cheb = (k) => Math.max(Math.abs(k.x - ox), Math.abs(k.y - oy));
+    const near = list.slice().sort((a, b) => cheb(a) - cheb(b))[0];
     if (!near || !near.label) return;
-
-    const feet = Math.max(Math.abs(near.x - ox), Math.abs(near.y - oy)) * 5;
-    const line = `${near.label} ${feet}ft`;
-    const w = Math.min(112, tw(line, 'sm') + 12);
-    const x = VIEW_W - 3 - w, y = cy - r - 21;
-    ctx.save();
-    ctx.globalAlpha = clamp(this.alpha, 0, 1) * 0.92;
-    panel(ctx, x, y, w, 11, { style: 'dark' });
-    ctx.fillStyle = near.color || '#b07af0';
-    ctx.fillRect(x + 4, y + 4, 3, 3);
-    txt(ctx, x + 10, y + 2, fit(line, w - 14, 'sm'), { size: 'sm', color: C('ink') });
-    ctx.restore();
+    const line = `${near.label} ${Math.round(cheb(near)) * 5} ft`;
+    const w = Math.min(100, tw(line, 'fine') + 9);
+    const x = clamp(r.x + r.w - w, 2, VIEW_W - 2 - w), y = Math.max(2, r.y - 13);
+    frame(ctx, x, y, w, 8);
+    ctx.fillStyle = near.color || '#9a6ae0';
+    ctx.fillRect(snap(x + 2.5), snap(y + 3), 2, 2);
+    txt(ctx, x + 6, y + 2.5, fit(line, w - 8, 'fine'), 'fine', C('ink'));
   }
 
-  // --- message log ribbon -------------------------------------------------
+  // --- the log ------------------------------------------------------------
 
-  _drawLog(ctx) {
-    const l = this.logLine;
-    if (!l) return;
-    const fade = l.t > LOG_LIFE - 0.7 ? clamp((LOG_LIFE - l.t) / 0.7, 0, 1) : 1;
-    ctx.save();
-    ctx.globalAlpha = clamp(this.alpha, 0, 1) * fade;
-    panel(ctx, RIBBON.x, RIBBON.y, RIBBON.w, RIBBON.h, { style: 'dark' });
-    ctx.fillStyle = logColor(l.kind);
-    ctx.fillRect(RIBBON.x + 2, RIBBON.y + 2, 2, RIBBON.h - 4);
-    txt(ctx, RIBBON.x + 8, RIBBON.y + 3, fit(l.text, RIBBON.w - 14, 'sm'), { size: 'sm', color: C('ink') });
-    ctx.restore();
+  _drawLog(ctx, r) {
+    if (!this.log.length) return;
+    // Newest at the bottom; every entry wraps to at most two lines.
+    const rows = [];
+    for (const l of this.log) {
+      if (!l.lines) {
+        let lines;
+        try { lines = UI.wrapLines(l.text, r.w - 7, 'fine', undefined, 2); } catch (e) { lines = [l.text]; }
+        if (lines.length > 2) { lines = lines.slice(0, 2); lines[1] = fit(lines[1] + '…', r.w - 7, 'fine'); }
+        l.lines = lines;
+      }
+      l.lines.forEach((s, i) => rows.push({ s, l, first: i === 0 }));
+    }
+    const shown = rows.slice(-LOG.lines);
+    const y0 = r.y + r.h - shown.length * 5 - 1.5;
+    scrim(ctx, r.x - 1, y0 - 1.5, r.w + 12, shown.length * 5 + 3, 0.62);
+    const a = ctx.globalAlpha;
+    shown.forEach((row, i) => {
+      const age = row.l.t;
+      ctx.globalAlpha = a * (age > LOG.life - 0.8 ? clamp((LOG.life - age) / 0.8, 0, 1) : 1) * clamp(age / 0.15, 0, 1);
+      const y = y0 + i * 5;
+      if (row.first) { ctx.fillStyle = logColor(row.l.kind); ctx.fillRect(snap(r.x + 1), snap(y + 1), 1.5, 1.5); }
+      txt(ctx, r.x + 4.5, y, row.s, 'fine', '#eadfc6', { shadow: 'rgba(0,0,0,0.6)' });
+    });
+    ctx.globalAlpha = a;
   }
 
-  // --- toasts -------------------------------------------------------------
+  // --- toasts (on 'overlay') -------------------------------------------------
 
-  _drawToasts(ctx) {
+  /**
+   * The toasts, on the 'overlay' layer so they read above the world, its
+   * readouts and the HUD. The overworld calls this from drawUI while it is the
+   * top scene; under a menu or a conversation nothing calls it, so the toasts
+   * wait, un-aged, and come up when you are back in the world.
+   */
+  drawToasts(ctx) {
+    if (!this.toasts.length || !Layout.visible('hud.toasts')) return;
+    this._syncDialogue();
+    if (this._dialogue || !this.visible || this.hidden) return;
+    const dt = clamp(Game.dt || 0, 0, 0.1);
+    const r = Layout.rect('hud.toasts');
+    for (let i = this.toasts.length - 1; i >= 0; i--) {
+      const t = this.toasts[i];
+      t.t += dt;
+      if (t.t >= t.life) this.toasts.splice(i, 1);
+    }
+    const step = TOAST.h + TOAST.gap;
+    const shown = this._toastRects = [];
     for (let i = 0; i < this.toasts.length; i++) {
       const t = this.toasts[i];
-      const inT = clamp(t.t / TOAST_SLIDE, 0, 1);
-      const outT = t.t > t.life - 0.55 ? clamp((t.life - t.t) / 0.55, 0, 1) : 1;
-      const ease = 1 - (1 - inT) * (1 - inT);          // ease-out on the slide in
-      const w = Math.min(TOAST_W, Math.max(56, tw(t.text, 'sm') + (t.mark ? 20 : 12)));
-      // Keep notifications below the location banner, clear of both corner widgets.
-      const bandL = PARTY.x + PARTY.w + 4, bandR = TR.x - 4;
-      const x = Math.round(clamp((bandL + bandR) / 2 - w / 2, bandL, Math.max(bandL, bandR - w)));
-      const y = Math.round(36 + t.slot - (1 - ease) * 14);
-
+      const target = i * step;
+      t.slot = t.slot < 0 ? target : approach(t.slot, target, dt * 90);
+      const inT = clamp(t.t / TOAST.slide, 0, 1);
+      const outT = t.t > t.life - 0.5 ? clamp((t.life - t.t) / 0.5, 0, 1) : 1;
+      const ease = 1 - (1 - inT) * (1 - inT);
+      const hasMark = !!t.mark;
+      const label = fit(t.text, r.w - (hasMark ? 14 : 8), 'fine');
+      const w = snap(Math.max(40, tw(label, 'fine') + (hasMark ? 14 : 8)));
+      // Hug whichever side of the screen the notices were put on; centred in
+      // the middle third. They slide in from that side.
+      const side = r.x + r.w / 2 > VIEW_W * 0.66 ? 1 : r.x + r.w / 2 < VIEW_W * 0.33 ? -1 : 0;
+      const x0 = side > 0 ? r.x + r.w - w : side < 0 ? r.x : r.x + r.w / 2 - w / 2;
+      const x = snap(x0 + side * (1 - ease) * 10);
+      const y = snap(r.y + t.slot - (side ? 0 : (1 - ease) * 6));
+      shown.push({ x: x - 1, y: y - 1, w: w + 2, h: TOAST.h + 2 });
       ctx.save();
-      ctx.globalAlpha = ctx.globalAlpha * ease * outT;
-      panel(ctx, x, y, w, 13, { style: 'window' });
-      // An undefined colour leaves fillStyle at whatever the last widget set,
-      // so a plain toast used to take its accent stripe from the minimap.
-      const accent = t.color || C('gold');
+      ctx.globalAlpha = ease * outT;
+      frame(ctx, x, y, w, TOAST.h, { alpha: 0.95 });
+      const accent = t.color || kindColor(t.kind);
       ctx.fillStyle = accent;
-      ctx.fillRect(x + 1, y + 1, 2, 11);
-      let tx = x + 6;
-      if (t.mark) { mark(ctx, t.mark, tx, y + 4, accent); tx += 8; }
-      txt(ctx, tx, y + 3, fit(t.text, w - (tx - x) - 5, 'sm'), { size: 'sm', color: C('ink'), shadow: true });
+      ctx.fillRect(x + 1, y + 1, 1, TOAST.h - 2);
+      let tx = x + 3.5;
+      if (hasMark) { toastMark(ctx, t.mark, tx, y + 1, accent); tx += 7; }
+      txt(ctx, tx, y + 2.5, label, 'fine', '#f2e8d0');
       ctx.restore();
     }
+  }
+
+  // --- barks (on 'world-ui') -----------------------------------------------
+
+  /** Speech bubbles, kept clear of every visible HUD widget and the interact hint. */
+  drawBarks(ctx, cam) {
+    // Last frame's toasts and banner: they are drawn after the world, so this
+    // frame's are not placed yet, and a frame late is invisible.
+    const avoid = Object.values(this._rectsNow || {});
+    if (this._hint) avoid.push(this._hint);
+    if (this.toasts.length && this._toastRects) avoid.push(...this._toastRects);
+    if (this._bannerRect) avoid.push(this._bannerRect);
+    if (this._exitRect) avoid.push(this._exitRect);
+    safe(() => drawBarks(ctx, cam, avoid, clamp(Game.dt || 0, 0, 0.1)));
+  }
+
+  // --- the place banner ---------------------------------------------------
+
+  /**
+   * A heraldic banner unfurling from a gilt rod with the place name in the
+   * display face; its field is the tincture of the kind of place (gules for a
+   * town, vert for the wild, azure for a city or the coast, sable underground).
+   * b: { text, sub, t } from the overworld; it lives 3.2 s.
+   */
+  drawBanner(ctx, b, map) {
+    this._bannerRect = null;
+    if (!b || !Layout.visible('hud.banner')) return;
+    const at = Layout.rect('hud.banner');
+    const T = 3.2;
+    const unroll = b.t < 0.4 ? easeOut(b.t / 0.4) : b.t > T - 0.5 ? clamp((T - b.t) / 0.5, 0, 1) : 1;
+    const fade = b.t > T - 0.35 ? clamp((T - b.t) / 0.35, 0, 1) : clamp(b.t / 0.12, 0, 1);
+    if (unroll <= 0.02 || fade <= 0.02) return;
+    const name = String(b.text || '');
+    const size = tw(name, 'title') > at.w - 28 ? 'lgb' : 'title';
+    const tw0 = Math.min(at.w - 28, tw(name, size));
+    const w = Math.round(Math.max(72, tw0 + 28));
+    const full = b.sub ? 30 : 25;
+    const h = Math.max(6, Math.round(full * unroll));
+    const cx = at.x + at.w / 2;
+    const x = Math.round(cx - w / 2), y = at.y + 2;
+    this._bannerRect = { x: x - 4, y: y - 4, w: w + 8, h: h + 5 };
+    ctx.save();
+    ctx.globalAlpha = fade;
+    safe(() => UI.panel(ctx, x, y, w, h, { style: 'banner', color: tinctureOf(map) }));
+    // The lettering is uncovered by the cloth as it drops, never drawn past it.
+    const body = h - Math.max(3, Math.min(8, Math.round(h / 5)));
+    ctx.beginPath(); ctx.rect(x, y, w, body); ctx.clip();
+    safe(() => UI.text(ctx, cx, y + 5, fit(name, w - 20, size), { size, gilt: true, align: 'center' }));
+    if (b.sub) txt(ctx, cx, y + 17.5, String(b.sub).toUpperCase(), 'xs', '#f0d8c0', { align: 'center' });
+    ctx.restore();
   }
 }
 
@@ -998,12 +881,21 @@ export class HUD {
 // helpers
 // ===========================================================================
 
+function safe(fn, fb) { try { const v = fn(); return v === undefined ? fb : v; } catch (e) { return fb; } }
+
+const reported = new Set();
+function reportOnce(id, e) {
+  if (reported.has(id)) return;
+  reported.add(id);
+  console.warn(`[hud] ${id} failed to draw:`, e);
+}
+
+const easeOut = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+
 /**
- * HP bar colour by remaining fraction. Deliberately NOT UI.COLORS.hp — that
- * token is the game's arterial red, and a bar that is red at full health is
- * indistinguishable from one that is red at 10%. The whole point of the strip
- * is that a glance tells you who is in trouble, so the ramp runs
- * green -> amber -> red as the pool drains.
+ * HP colour by remaining fraction: green, amber, red. Deliberately not the
+ * kit's arterial red — a bar that is red at full health cannot say who is in
+ * trouble at a glance, which is the whole point of the strip.
  */
 function hpColor(m) {
   const pct = clamp((m.hp || 0) / Math.max(1, m.maxHp || 1), 0, 1);
@@ -1017,23 +909,179 @@ function logColor(kind) {
   switch (kind) {
     case 'damage': case 'crit': return '#d4553f';
     case 'heal': return '#6fc36a';
-    case 'quest': return '#e3b34a';
+    case 'quest': return GILT.base;
     case 'loot': case 'item': return '#6aa8e8';
     case 'warn': case 'fail': return '#c08a3a';
-    default: return 'rgba(92,74,42,0.9)';
+    default: return '#8a7a5a';
   }
 }
 
+function kindColor(kind) {
+  switch (kind) {
+    case 'gold': return GILT.base;
+    case 'quest': return GILT.hi;
+    case 'level': return '#e3b34a';
+    case 'party': return '#6aa8e8';
+    case 'item': return '#88c89b';
+    case 'warn': case 'crime': return '#d4553f';
+    default: return GILT.mid;
+  }
+}
+
+// Old callers pass the HUD's 5x5 mark names; the kit's icon names read better
+// on the fine grid, so the familiar ones are translated.
+const MARK_TO_ICON = { scroll: 'quest', person: 'helm', sword: 'sword', coin: 'coin', star: 'star', skull: 'skull', heart: 'heart', shield: 'shield' };
+
+function toastMark(ctx, name, x, y, color) {
+  const icon = MARK_TO_ICON[name] || name;
+  if (UI.iconNames && UI.iconNames.includes(icon)) {
+    safe(() => UI.icon(ctx, icon, snap(x), snap(y), 6, color));
+    return;
+  }
+  mark(ctx, name, x + 0.5, y + 1, color, 0.5);
+}
+
+/** A gilt coin on the fine grid. */
+function coin(ctx, x, y) {
+  x = snap(x); y = snap(y);
+  ctx.fillStyle = '#1a0f06'; ctx.fillRect(x, y - 0.5, 3, 4); ctx.fillRect(x - 0.5, y, 4, 3);
+  ctx.fillStyle = GILT.base; ctx.fillRect(x + 0.5, y, 2, 3); ctx.fillRect(x, y + 0.5, 3, 2);
+  ctx.fillStyle = GILT.hi; ctx.fillRect(x + 0.5, y + 0.5, 1, 1);
+  ctx.fillStyle = GILT.lo; ctx.fillRect(x + 1.5, y + 1.5, 1, 1);
+}
+
+const WEATHER_WORD = { clear: 'Clear', rain: 'Rain', storm: 'Storm', snow: 'Snow', fog: 'Fog', ash: 'Ashfall', cloudy: 'Overcast' };
+const WINDS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const PHASE_WORD = { night: 'night', dawn: 'dawn', morning: 'morning', afternoon: 'afternoon', dusk: 'dusk' };
+
+/** The sky's colour at `time` (minutes): night, dawn, day, dusk, blended. */
+function skyAt(time) {
+  const keys = [[0, [22, 28, 64]], [300, [30, 36, 78]], [390, [200, 130, 108]], [480, [110, 160, 208]],
+    [960, [110, 160, 208]], [1110, [176, 92, 118]], [1230, [30, 36, 78]], [1440, [22, 28, 64]]];
+  const m = ((time % 1440) + 1440) % 1440;
+  for (let i = 1; i < keys.length; i++) {
+    if (m > keys[i][0]) continue;
+    const [t0, a] = keys[i - 1], [t1, b] = keys[i];
+    const k = (m - t0) / Math.max(1, t1 - t0);
+    return `rgb(${a.map((v, j) => Math.round(v + (b[j] - v) * k)).join(',')})`;
+  }
+  return 'rgb(22,28,64)';
+}
+
 /**
- * The item catalogue is only ever used to put a pretty name on a pickup toast,
- * so it is pulled in lazily: a half-authored data/ barrel must never be the
- * reason the overworld HUD fails to load. Until it lands, toasts fall back to
- * the title-cased item id.
+ * The clock's dial, in device px (26 across): a round window on the sky with
+ * the sun or moon riding an arc above a dark horizon, under a gilt ring, with
+ * the weather laid over it.
+ */
+function paintDial(g, time, weather) {
+  const c = 13, r = 12;
+  disc(g, c, c, r, skyAt(time));
+  const m = ((time % 1440) + 1440) % 1440;
+  const night = m < 330 || m > 1170;
+  if (night) {
+    g.fillStyle = 'rgba(255,250,230,0.8)';
+    for (const [sx, sy] of [[7, 7], [16, 5], [19, 10], [10, 4], [5, 11]]) g.fillRect(sx, sy, 1, 1);
+  }
+  // Sun by day, moon by night, both on the same arc: noon (or midnight) at the top.
+  const k = night ? ((m + 720) % 1440) / 1440 : m / 1440;
+  const a = k * Math.PI * 2;
+  const bx = c - Math.sin(a) * 8.5, by = c + Math.cos(a) * 8.5 + 1;
+  if (night) {
+    disc(g, bx, by, 3, '#e8ecf8');
+    disc(g, bx + 1.5, by - 1, 2.6, skyAt(time));
+  } else {
+    disc(g, bx, by, 3.6, 'rgba(255,220,120,0.35)');
+    disc(g, bx, by, 2.6, '#ffd862');
+    g.fillStyle = '#fff4c0'; g.fillRect(Math.round(bx) - 1, Math.round(by) - 1, 1, 1);
+  }
+  // Weather over the sky.
+  if (weather === 'rain' || weather === 'storm') {
+    disc(g, c - 3, 8, 4.5, weather === 'storm' ? '#4a4e60' : '#8a90a4'); disc(g, c + 3, 8.5, 4, weather === 'storm' ? '#40445a' : '#7a8096');
+    g.fillStyle = '#9ac0f0';
+    for (const [sx, sy] of [[8, 13], [12, 14], [16, 13], [10, 16], [14, 17]]) g.fillRect(sx, sy, 1, 2);
+    if (weather === 'storm') { g.fillStyle = '#ffe86a'; g.fillRect(14, 11, 1, 3); g.fillRect(13, 13, 1, 2); }
+  } else if (weather === 'snow') {
+    disc(g, c - 2, 8, 4.5, '#b8bccb'); disc(g, c + 3, 8.5, 4, '#a8aebf');
+    g.fillStyle = '#ffffff';
+    for (const [sx, sy] of [[8, 14], [13, 13], [17, 15], [11, 17]]) g.fillRect(sx, sy, 1, 1);
+  } else if (weather === 'fog' || weather === 'cloudy' || weather === 'ash') {
+    g.fillStyle = weather === 'ash' ? 'rgba(150,130,120,0.7)' : 'rgba(210,214,222,0.55)';
+    g.fillRect(3, 9, 20, 2); g.fillRect(5, 13, 16, 2);
+  }
+  // The horizon: dark hills across the lower third.
+  g.fillStyle = '#1e1a14';
+  for (let x = 0; x < 26; x++) {
+    const hy = 17 + Math.round(1.2 * Math.sin(x * 0.55) + 0.8 * Math.sin(x * 1.3));
+    g.fillRect(x, hy, 1, 26 - hy);
+  }
+  // Trim to the round window in ONE composite: under destination-in every
+  // separate fill would erase everything outside itself.
+  g.globalCompositeOperation = 'destination-in';
+  g.drawImage(cached('dial-mask', 13, 13, (mk) => disc(mk, c, c, r, '#000')), 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  ring(g, c, c, r - 1.5, r + 0.5, GILT.hi, GILT.lo);
+  ring(g, c, c, r - 2.2, r - 1.5, 'rgba(8,6,4,0.7)');
+}
+
+/**
+ * The quest compass, in device px (28 across): a brass ring round a dark face,
+ * a needle in rubric pointing to direction k (sixteenths of a turn, 0 = east,
+ * clockwise as the screen runs), an ivory tail and a gilt pin.
+ */
+function paintNeedle(g, k) {
+  const c = 14, r = 12.5;
+  disc(g, c, c, r + 1, '#0a0705');
+  disc(g, c, c, r, '#2a2018');
+  disc(g, c, c, r - 3, '#1a1410');
+  ring(g, c, c, r - 1.5, r, GILT.hi, GILT.lo);
+  g.fillStyle = 'rgba(242,210,122,0.55)';
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2;
+    g.fillRect(Math.round(c + Math.cos(a) * (r - 3.5)), Math.round(c + Math.sin(a) * (r - 3.5)), 1, 1);
+  }
+  const a = (k / 16) * Math.PI * 2;
+  const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux;
+  // The needle is a lozenge: widest a little behind the pin, narrowing to the tip.
+  for (let t = -6; t <= 9; t += 0.5) {
+    const half = t >= 0 ? Math.max(0, 1.6 * (1 - t / 9)) : Math.max(0, 1.6 * (1 + t / 6));
+    for (let s = -half; s <= half; s += 0.5) {
+      const x = c + ux * t + vx * s, y = c + uy * t + vy * s;
+      g.fillStyle = t >= 0 ? (s < 0 ? '#e0503a' : '#a8281e') : (s < 0 ? '#efe6d0' : '#a89e8a');
+      g.fillRect(Math.round(x - 0.5), Math.round(y - 0.5), 1, 1);
+    }
+  }
+  g.fillStyle = GILT.hi; g.fillRect(c - 1, c - 1, 2, 2);
+  g.fillStyle = GILT.lo; g.fillRect(c, c, 1, 1);
+}
+
+/** The heraldic tincture for a map, by what kind of place it is. */
+function tinctureOf(map) {
+  const b = String((map && (map.biome || map.meta?.biome)) || '');
+  const k = String((map && (map.kind || map.meta?.kind)) || '');
+  if (/dungeon|crypt|cave|mine|underdark|ruins/.test(b) || /dungeon|cave|ruins/.test(k)) return '#2e2a30';
+  // A TileMap carries biome and music but not the catalogue's kind; its
+  // music says whether a 'city' biome is a market town or a great city.
+  const mus = String((map && map.music) || '');
+  if (k === 'interior' || (map && map.indoor)) return '#6a3a1e';
+  if (k === 'town' || k === 'village' || /town|village/.test(mus)) return '#9a2a20';
+  if (/coast|city/.test(b) || k === 'city') return '#28408a';
+  if (/forest|marsh|plains|road|hills|wild/.test(b) || k === 'wild' || k === 'road') return '#2e6a3a';
+  if (/mountain|tundra|snow/.test(b)) return '#4a5a78';
+  if (/ash/.test(b)) return '#6a2a1e';
+  if (map && map.indoor) return '#6a3a1e';
+  return '#9a2a20';
+}
+
+/**
+ * The item catalogue is only used to put a pretty name on a pickup toast, so
+ * it is pulled in lazily: a half-authored data barrel must never be the reason
+ * the HUD fails to load. Until then toasts fall back to the title-cased id.
  */
 let ITEM_LOOKUP = null;
-softImport('../data/items.js').then((m) => {
-  if (m && typeof m.resolveItem === 'function') ITEM_LOOKUP = m.resolveItem;
-});
+import('../data/items.js').then((m) => { if (m && typeof m.resolveItem === 'function') ITEM_LOOKUP = m.resolveItem; }).catch(() => {});
+// The XP hairline on each card, loaded late for the same reason.
+let PROG = null;
+import('../rules/progression.js').then((m) => { PROG = m; }).catch(() => {});
 
 function safeItem(id) {
   if (!ITEM_LOOKUP) return null;
@@ -1060,34 +1108,6 @@ function objectiveText(step) {
     case 'explore': return t ? `Explore ${t}` : 'Explore';
     case 'flag': case 'event': return t || 'Follow the trail';
     default: return t ? `${PRETTY(step.kind || 'Objective')}: ${t}` : PRETTY(step.kind || 'Objective');
-  }
-}
-
-/** A 9x9 weather badge: sun or moon by default, with the current sky over it. */
-function drawWeatherBadge(ctx, x, y, weather, night) {
-  ctx.fillStyle = 'rgba(8,10,16,0.75)';
-  ctx.fillRect(x, y, 9, 9);
-  const base = night ? 'moon' : 'sun';
-  const baseCol = night ? '#c8d0f0' : '#e8c25a';
-  switch (weather) {
-    case 'rain':
-      mark(ctx, 'rain', x + 2, y + 2, '#6aa8e8');
-      break;
-    case 'snow':
-      mark(ctx, 'snow', x + 2, y + 2, '#d8ecff');
-      break;
-    case 'fog':
-      mark(ctx, 'fog', x + 2, y + 2, '#9aa0b0');
-      break;
-    case 'ash':
-      mark(ctx, 'ash', x + 2, y + 2, '#a89888');
-      break;
-    case 'storm':
-      mark(ctx, 'cloud', x + 2, y + 1, '#6a7086');
-      mark(ctx, 'bang', x + 2, y + 3, '#e8d24a');
-      break;
-    default:
-      mark(ctx, base, x + 2, y + 2, baseCol);
   }
 }
 

@@ -29,6 +29,8 @@
 
 import { SOUTH_CAST, SOUTH_RECRUITS } from './npcs_south.js';
 import { EXTRA_CAST } from './npcs_extra.js';
+import { LEGEND_CAST } from './legends.js';
+import { BLACKSTAFF_CAST } from './blackstaff.js';
 
 // ---------------------------------------------------------------------------
 // deepFreeze — recursive Object.freeze for the exported catalogues (HARD RULE 8).
@@ -704,7 +706,7 @@ const CAST = [
 // ===========================================================================
 
 /** Every placed NPC in the game, keyed by id — the North, then the south. */
-const ALL = CAST.concat(SOUTH_CAST, EXTRA_CAST);
+const ALL = CAST.concat(SOUTH_CAST, EXTRA_CAST, LEGEND_CAST, BLACKSTAFF_CAST);
 export const NPCS = deepFreeze(Object.fromEntries(ALL.map((n) => [n.id, n])));
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));
 

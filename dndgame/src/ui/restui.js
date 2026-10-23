@@ -35,6 +35,7 @@
 //   * No Math.random() anywhere — core/rng.js only.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Game } from '../engine.js';
@@ -945,7 +946,7 @@ export class RestScene {
 
   enter() {
     safe(() => Input.flush());
-    safe(() => Audio.music(this.inn ? 'inn' : 'town'));
+    safe(() => Audio.music(this.inn ? 'inn' : 'camp'));
     if (this.kind === 'short') this._beginShort();
     else this._askLong();
   }
@@ -1471,7 +1472,7 @@ export class RestScene {
 
     safe(() => bus.emit(EV.REST, { kind: 'long' }));
     safe(() => bus.emit(EV.PARTY_CHANGE, { members: Party.members }));
-    safe(() => Audio.music(this.inn ? 'inn' : 'town'));
+    safe(() => Audio.music(this.inn ? 'inn' : 'camp'));
     sfx('levelup');
     this.phase = 'summary';
     this.phaseT = 0;
@@ -2201,7 +2202,7 @@ export class CampScene {
 
   enter() {
     safe(() => Input.flush());
-    safe(() => Audio.music(this.where.sheltered ? 'inn' : 'town'));
+    safe(() => Audio.music(this.where.sheltered ? 'inn' : 'camp'));
     this.talkSeed = num(S() && S().day, 1);
   }
 

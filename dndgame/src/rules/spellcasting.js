@@ -12,6 +12,7 @@ import { bus, EV } from '../core/events.js';
 import * as ClassData from '../data/classes.js';
 import * as SubclassData from '../data/subclasses.js';
 import * as SpellData from '../data/spells.js';
+import { resolveItem } from '../data/items.js';
 
 const CLASSES = ClassData.CLASSES || {};
 const SUBCLASSES = SubclassData.SUBCLASSES || {};
@@ -443,7 +444,9 @@ export function spellDC(ch) {
   return 8 + profOf(ch) + (c ? abilityModOf(ch, c.ability) : 0);
 }
 
-export function spellAtk(ch) {
+export function spellAtk(ch, spellId) {
+  const grant=equipmentCantrips(ch).find(g=>g.spellId===spellId);
+  if(grant?.ability&&!ch?.spells?.cantrips?.includes(spellId))return profOf(ch)+abilityModOf(ch,grant.ability);
   if (ch?.spells && typeof ch.spells.atk === 'number') return ch.spells.atk;
   const c = castingClasses(ch)[0];
   return profOf(ch) + (c ? abilityModOf(ch, c.ability) : 0);
@@ -485,6 +488,16 @@ export function spellListForChar(ch, classId, subclassId) {
  * Everything the character can actually cast: cantrips, spells known/prepared,
  * subclass and species grants, and chosen Mystic Arcanum. Deduplicated.
  */
+export function equipmentCantrips(ch){
+  const out=[];
+  for(const inst of Object.values(ch?.equipment||{})){
+    const item=resolveItem(typeof inst==='string'?inst:inst?.id);
+    if(!item||item.attunement&&!inst?.attuned)continue;
+    const grants=Array.isArray(item.mech?.cantrip)?item.mech.cantrip:[item.mech?.cantrip];
+    for(const grant of grants)if(grant?.spellId)out.push(grant);
+  }
+  return out;
+}
 export function knownSpells(ch) {
   const out = new Set();
   const sp = ch?.spells || {};
@@ -507,6 +520,9 @@ export function knownSpells(ch) {
     for (const g of e?.mech?.spellPerRest || []) if (g?.spellId) out.add(g.spellId);
     if (e?.mech?.cantrip?.spellId) out.add(e.mech.cantrip.spellId);
   }
+  // Equipment cantrips exist only while that item is wielded/worn. Do not copy
+  // them into the permanent spellbook or consume a learned/prepared selection.
+  for(const grant of equipmentCantrips(ch))out.add(grant.spellId);
   return Array.from(out);
 }
 
@@ -544,9 +560,10 @@ export function canPrepare(ch, spellId) {
     const blk = castingBlock(c.id, c.subclassId);
     const list = blk?.list || c.id;
     if ((s.lists || []).includes(list)) {
-      // Wizards prepare only from their spellbook.
-      if (c.id === 'wizard' && Array.isArray(ch.spells?.book) && ch.spells.book.length) {
-        if (!ch.spells.book.includes(spellId)) continue;
+      // Creation and older saves keep starting wizard spells in `known`;
+      // advancement writes new entries to `book`. Both are owned spells.
+      if (c.id === 'wizard') {
+        if (!(ch.spells?.book || []).includes(spellId) && !(ch.spells?.known || []).includes(spellId)) continue;
       }
       return true;
     }

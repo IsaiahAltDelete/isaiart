@@ -96,7 +96,7 @@ import {
   sweepStanding, building, shell, room, fenceRect, bigOak, addSign,
   interiorMap as kitInteriorMap, finishInterior as kitFinishInterior, packDungeon,
   stallRow, awning, washingLine, wearPatches,
-  innFloor,
+  innFloor, tower, temple, noticeBoard,
 } from './mapkit.js';
 
 // ---------------------------------------------------------------------------
@@ -264,7 +264,7 @@ const HARBOUR = [['WATER_DEEP', 1]];
 function buildBlackgate(root) {
   const map = new TileMap({
     w: 56, h: 44, id: 'bg-blackgate', name: 'Blackgate', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'city', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-blackgate');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -399,7 +399,7 @@ function buildBlackgate(root) {
 function buildNorchapel(root) {
   const map = new TileMap({
     w: 48, h: 40, id: 'bg-norchapel', name: 'Norchapel', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'city', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-norchapel');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -495,7 +495,7 @@ function buildNorchapel(root) {
 function buildLittleCalimshan(root) {
   const map = new TileMap({
     w: 48, h: 42, id: 'bg-little-calimshan', name: 'Little Calimshan', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'market', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-little-calimshan');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -858,7 +858,7 @@ function buildSowsFoot(root) {
 function buildTwinSongs(root) {
   const map = new TileMap({
     w: 48, h: 42, id: 'bg-twin-songs', name: 'The Twin Songs', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'temple', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-twin-songs');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -960,7 +960,7 @@ function buildTwinSongs(root) {
 function buildWyrmsCrossing(root) {
   const map = new TileMap({
     w: 64, h: 26, id: 'bg-wyrms-crossing', name: "Wyrm's Crossing", biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'market', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-wyrms-crossing');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -1184,7 +1184,7 @@ function lowerHouse(map, o, res) {
 function buildGrayHarbour(root) {
   const map = new TileMap({
     w: 60, h: 42, id: 'bg-gray-harbour', name: 'Gray Harbour', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'coast', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-gray-harbour');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -1306,7 +1306,7 @@ function buildGrayHarbour(root) {
 function buildBloomridge(root) {
   const map = new TileMap({
     w: 48, h: 42, id: 'bg-bloomridge', name: 'Bloomridge', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'city', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-bloomridge');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -1400,7 +1400,7 @@ function buildBloomridge(root) {
 function buildHeapside(root) {
   const map = new TileMap({
     w: 52, h: 42, id: 'bg-heapside', name: 'Heapside', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'city', safe: true, encounterRate: 0, region: 'baldurs-gate',
     ambient: { color: '#1a1a20', alpha: 0.1 },
   });
   const res = reservedFor('bg-heapside');
@@ -1558,7 +1558,7 @@ function buildHeapside(root) {
 function buildEastway(root) {
   const map = new TileMap({
     w: 52, h: 42, id: 'bg-eastway', name: 'Eastway', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'city', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-eastway');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -1722,7 +1722,7 @@ function sealedGate(map, x, y, res) {
 function buildTheWide(root) {
   const map = new TileMap({
     w: 56, h: 44, id: 'bg-the-wide', name: 'The Wide', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'market', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-the-wide');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -1829,6 +1829,7 @@ function buildTheWide(root) {
 
   scatter(map, rd, 2, 4, 52, 36, table([['BENCH', 4], ['HEDGE', 3], ['CRATE', 2], ['BARREL', 2]]), 0.018, res);
 
+  noticeBoard(map, 26, 21, res);                 // the Wide's board, where the crowd reads it
   map.recomputeFlags({ keep: 0 });
   // WEAR. render/tiles.js has drawn COBBLE_ISLE and PATH_ISLE since the tileset
   // was written and no map had ever placed one, so every plaza in the game was a
@@ -1862,7 +1863,7 @@ function buildTheWide(root) {
 function buildTemplesDistrict(root) {
   const map = new TileMap({
     w: 48, h: 42, id: 'bg-temples-district', name: 'The Temples District', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'castle', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-temples-district');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -1870,55 +1871,11 @@ function buildTemplesDistrict(root) {
 
   grect(map, 0, 0, 48, 42, tid('FLAGSTONE', 'COBBLE'));
 
-  // --- the High Hall ----------------------------------------------------------
-  // Built as a fortress, kept as a palace, and used as whatever the Council of
-  // Four needs that tenday. It fills a third of the district on its own.
-  building(map, {
-    x: 16, y: 5, w: 18, h: 14, wall: 'STONE_WALL', roof: 'tile', base: 'FLAGSTONE',
-    roofRows: 3, peak: 9, band: 6, windows: [2, 5, 12, 15], upper: [4, 8, 13],
-    door: 8, sign: 12, lit: true, chimney: 2, chimney2: 15, approach: 1,
-  }, res);
-  // The colonnade stands in front of the Hall, not across its door.
-  for (const x of [17, 19, 21, 27, 29, 31]) prop(map, x, 19, tid('PILLAR', 'STONE_WALL'), res);
-  prop(map, 22, 19, tid('STATUE', 'PILLAR'), res);
-  prop(map, 26, 19, tid('STATUE', 'PILLAR'), res);
-  for (const x of [16, 20, 28, 33]) prop(map, x, 20, tid('BRAZIER', 'TORCH'), res);
-  // The Parliament of Peers keeps its own door in the Hall's east face. It goes
-  // to the same benches; the peers simply refuse to use the Council's steps.
-  dset(map, 34, 16, tid('IRON_DOOR', 'STONE_WALL'));
-  prop(map, 35, 17, tid('SIGN', 'CRATE'), res);
-  prop(map, 35, 15, tid('TORCH', 'CANDLE'), res);
-
-  // --- the Unrolling Scroll ---------------------------------------------------
-  // Oghma's, in white marble under a red roof with the gold trim the Order
-  // insists on. The smallest building on the street and the loudest.
-  building(map, {
-    x: 34, y: 22, w: 8, h: 5, wall: 'STONE_WALL', roof: 'shingle', base: 'FLAGSTONE',
-    roofRows: 1, peak: 4, band: 2, windows: [1, 6], upper: [2, 5], door: 4,
-    sign: 6, lit: true, approach: 1,
-  }, res);
-  for (const x of [34, 36, 40, 41]) prop(map, x, 27, tid('PILLAR', 'STONE_WALL'), res);
-  prop(map, 33, 24, tid('BOOKSHELF', 'SHELF_GOODS'), res);
-  prop(map, 38, 28, tid('CANDLE', 'TORCH'), res);
-
-  // --- the lesser shrines along the south -------------------------------------
-  for (const [x, y, w, h, roof, wall] of [
-    [4, 24, 7, 5, 'tile', 'STONE_WALL'], [4, 33, 7, 5, 'shingle', 'BRICK_WALL'],
-    [14, 33, 7, 5, 'tile', 'STONE_WALL'], [24, 33, 7, 5, 'shingle', 'STONE_WALL'],
-    [34, 33, 8, 5, 'tile', 'BRICK_WALL'],
-  ]) {
-    building(map, {
-      x, y, w, h, wall, roof, base: 'FLAGSTONE', roofRows: 1, peak: w >> 1,
-      band: 2, windows: [1, w - 2], upper: [2, w - 3], sign: w - 2, door: null,
-      lit: ((x + y) & 1) === 0,
-    }, res);
-  }
-  for (const [x, y, t] of [[6, 30, 'ALTAR'], [9, 30, 'CANDLE'], [6, 39, 'SHRINE'],
-    [16, 39, 'STATUE'], [26, 39, 'ALTAR'], [36, 39, 'SHRINE'], [19, 39, 'CANDLE'],
-    [29, 39, 'CANDLE'], [39, 39, 'CANDLE']]) prop(map, x, y, tid(t, 'SHRINE'), res);
-  for (let x = 3; x <= 43; x += 5) prop(map, x, 31, tid('HEDGE', 'BUSH'), res);
-
   // --- the processional -------------------------------------------------------
+  // Streets first, buildings second: `floor()` sweeps the deco and over planes,
+  // so a lane painted after a house cuts a hole through it (it did: the
+  // processional was carving two columns out of the south chapels) and takes
+  // the tip off any spire whose point stands over it.
   for (let y = 19; y <= 21; y++) for (let x = 1; x <= 46; x++) floor(map, x, y, pickT(rg, cobble));
   floorRect(map, 1, 20, 46, 1, tid('MOSAIC', 'FLAGSTONE'));
   for (let y = 3; y <= 4; y++) for (let x = 2; x <= 45; x++) floor(map, x, y, pickT(rg, flag));
@@ -1928,6 +1885,60 @@ function buildTemplesDistrict(root) {
   for (let y = 40; y <= 40; y++) for (let x = 2; x <= 45; x++) floor(map, x, y, pickT(rg, flag));
   for (let x = 24; x <= 25; x++) for (let y = 21; y <= 40; y++) floor(map, x, y, pickT(rg, flag));
   for (let x = 2; x <= 11; x++) for (let y = 10; y <= 12; y++) floor(map, x, y, pickT(rg, flag));
+
+  // --- the High Hall ----------------------------------------------------------
+  // Built as a fortress, kept as a palace, and used as whatever the Council of
+  // Four needs that tenday. It fills a third of the district on its own.
+  // A palace block between two towers that were a fortress's before they were
+  // anybody's: red tile over dressed stone, buttressed bays, lit windows on
+  // both storeys, and a spire on each tower the harbour steers by.
+  building(map, {
+    x: 18, y: 11, w: 14, h: 8, wall: 'STONE_WALL', roof: 'tile', base: 'FLAGSTONE',
+    roofRows: 3, band: 4, windows: [2, 4, 9, 11], upper: [2, 4, 9, 11], buttress: [3, 10],
+    door: 6, lit: true, chimney: 2, chimney2: 11, approach: 1, dormer: [4, 9], rose: 6,
+  }, res);
+  tower(map, { x: 15, y: 5, w: 3, h: 14, wall: 'STONE_WALL', roof: 'tile', windows: [3, 6, 9, 12], lit: true, base: 'FLAGSTONE' }, res);
+  tower(map, { x: 32, y: 5, w: 3, h: 14, wall: 'STONE_WALL', roof: 'tile', windows: [3, 6, 9, 12], lit: true, base: 'FLAGSTONE' }, res);
+  // The colonnade stands in front of the Hall, not across its door.
+  for (const x of [17, 19, 21, 27, 29, 31]) prop(map, x, 19, tid('PILLAR', 'STONE_WALL'), res);
+  prop(map, 22, 19, tid('STATUE', 'PILLAR'), res);
+  prop(map, 26, 19, tid('STATUE', 'PILLAR'), res);
+  for (const x of [16, 20, 28, 33]) prop(map, x, 20, tid('BRAZIER', 'TORCH'), res);
+  // The Parliament of Peers keeps its own door in the Hall's east face. It goes
+  // to the same benches; the peers simply refuse to use the Council's steps.
+  dset(map, 33, 18, tid('IRON_DOOR', 'STONE_WALL'));
+  prop(map, 35, 17, tid('SIGN', 'CRATE'), res);
+  prop(map, 35, 15, tid('TORCH', 'CANDLE'), res);
+
+  // --- the Unrolling Scroll ---------------------------------------------------
+  // Oghma's, in white marble under a red roof with the gold trim the Order
+  // insists on. The smallest building on the street and the loudest.
+  building(map, {
+    x: 34, y: 22, w: 8, h: 5, wall: 'STONE_WALL', roof: 'tile', base: 'FLAGSTONE',
+    roofRows: 2, windows: [], stained: [1, 6], door: 4, dormer: [2, 5],
+    sign: 6, trade: 'book', lit: true, approach: 1, buttress: [3],
+  }, res);
+  for (const x of [34, 36, 40, 41]) prop(map, x, 27, tid('PILLAR', 'STONE_WALL'), res);
+  prop(map, 33, 24, tid('BOOKSHELF', 'SHELF_GOODS'), res);
+  prop(map, 38, 28, tid('CANDLE', 'TORCH'), res);
+
+  // --- the lesser shrines along the south -------------------------------------
+  // Each a chapel of its own god, and each with a tower: a street of spires is
+  // what makes this the Temples and not a row of warehouses.
+  for (const [x, y, w, h, roof, wall, side, spire] of [
+    [4, 24, 7, 5, 'slate', 'STONE_WALL', 'W', 'slate'], [4, 33, 7, 5, 'tile', 'BRICK_WALL', 'E', 'tile'],
+    [14, 33, 7, 5, 'slate', 'STONE_WALL', 'W', 'slate'], [24, 33, 7, 5, 'tile', 'STONE_WALL', 'E', 'tile'],
+    [34, 33, 8, 5, 'slate', 'BRICK_WALL', 'W', 'slate'],
+  ]) {
+    temple(map, {
+      x, y, w, h, wall, roof, spire, tower: side, tw: 2, th: h + 1, base: 'FLAGSTONE',
+      stained: [1, w - 4], lit: ((x + y) & 1) === 0,
+    }, res);
+  }
+  for (const [x, y, t] of [[6, 30, 'ALTAR'], [9, 30, 'CANDLE'], [6, 39, 'SHRINE'],
+    [16, 39, 'STATUE'], [26, 39, 'ALTAR'], [36, 39, 'SHRINE'], [19, 39, 'CANDLE'],
+    [29, 39, 'CANDLE'], [39, 39, 'CANDLE']]) prop(map, x, y, tid(t, 'SHRINE'), res);
+  for (let x = 3; x <= 43; x += 5) prop(map, x, 31, tid('HEDGE', 'BUSH'), res);
 
   // The forecourt: a walled garden of oaks and hedges either side of the Hall.
   bigOak(map, 6, 14); bigOak(map, 9, 16); bigOak(map, 38, 8); bigOak(map, 41, 11);
@@ -1958,7 +1969,7 @@ function buildTemplesDistrict(root) {
 function buildCitadelStreets(root) {
   const map = new TileMap({
     w: 46, h: 40, id: 'bg-citadel-streets', name: 'Citadel Streets', biome: 'city',
-    indoor: false, music: 'town', safe: true, encounterRate: 0, region: 'baldurs-gate',
+    indoor: false, music: 'castle', safe: true, encounterRate: 0, region: 'baldurs-gate',
   });
   const res = reservedFor('bg-citadel-streets');
   const rg = root.fork('ground'), rd = root.fork('detail');
@@ -2097,6 +2108,16 @@ function buildBaldursMouth(root) {
   tableAt(map, r, 6, 12, res); tableAt(map, r, 14, 12, res);
   for (const [x, y] of [[3, 6], [16, 6], [8, 6]]) prop(map, x, y, tid('CRATE', 'BARREL'), res);
   prop(map, 8, 3, tid('CANDLE', 'TORCH'), res);
+  // Composing, proofing and dispatch each occupy a working bay. Keep the
+  // middle two columns open from the street to the press and bell rope.
+  run(map, 3, 6, 6, 'COUNTER', res);
+  run(map, 13, 16, 6, 'COUNTER', res);
+  run(map, 3, 5, 10, 'SHELF_GOODS', res);
+  run(map, 14, 16, 10, 'BOOKSHELF', res);
+  run(map, 3, 5, 13, 'COUNTER', res);
+  prop(map, 3, 12, tid('SACK', 'CRATE'), res);
+  prop(map, 16, 13, tid('CRATE', 'BARREL'), res);
+  prop(map, 17, 13, tid('SACK', 'CRATE'), res);
   // the bell rope, up through the roof
   prop(map, 10, 1, tid('SHRINE', 'STATUE'), res);
   oset(map, 10, 6, tid('CHANDELIER', 'CANDLE'));
@@ -2111,7 +2132,7 @@ function buildBaldursMouth(root) {
 // --- the High Hall: the Council's table, the Parliament's benches -----------
 function buildHighHall(root) {
   const map = interiorMap({
-    id: 'high-hall', name: 'The High Hall', w: 30, h: 24, music: 'town',
+    id: 'high-hall', name: 'The High Hall', w: 30, h: 24, music: 'castle',
     ambient: { color: '#1a1c2e', alpha: 0.12 },
   });
   const res = reservedFor('high-hall');
@@ -2152,6 +2173,23 @@ function buildHighHall(root) {
   prop(map, 28, 12, tid('BOOKSHELF', 'SHELF_GOODS'), res);
   runV(map, 28, 7, 11, 'BOOKSHELF', res);
   for (const [x, y] of [[26, 4], [26, 20]]) prop(map, x, y, tid('CHEST_CLOSED', 'CRATE'), res);
+  // Clerks' bays behind the colonnades turn the long empty side aisles into
+  // an active civic building; transverse gaps keep each bay accessible.
+  for (const y of [8, 14, 19]) {
+    run(map, 2, 4, y, 'TABLE', res);
+    prop(map, 3, y - 1, tid('CHAIR', 'BENCH'), res);
+    run(map, 25, 27, y, 'TABLE', res);
+    prop(map, 26, y - 1, tid('CHAIR', 'BENCH'), res);
+  }
+  for (const y of [11, 17]) {
+    run(map, 2, 3, y, 'BOOKSHELF', res);
+    run(map, 26, 27, y, 'SHELF_GOODS', res);
+  }
+  // Petitioners gather beside the entrance, outside the processional aisle.
+  run(map, 8, 10, 21, 'BENCH', res);
+  run(map, 19, 21, 21, 'BENCH', res);
+  prop(map, 7, 21, tid('PLANTER', 'STATUE'), res);
+  prop(map, 22, 21, tid('PLANTER', 'STATUE'), res);
   for (let x = 8; x <= 21; x += 5) oset(map, x, 10, tid('CHANDELIER', 'CANDLE'));
   oset(map, 14, 6, tid('CHANDELIER', 'CANDLE'));
 
@@ -2232,7 +2270,7 @@ function buildWatchCitadel(root) {
 function buildSeatower(root) {
   const map = interiorMap({
     id: 'seatower-of-balduran', name: 'The Seatower of Balduran', w: 28, h: 22,
-    music: 'tense', ambient: { color: '#15202c', alpha: 0.14 },
+    music: 'castle', ambient: { color: '#15202c', alpha: 0.14 },
   });
   const res = reservedFor('seatower-of-balduran');
   const r = root.fork('seatower');
@@ -2304,7 +2342,7 @@ function buildWaterQueensHouse(root) {
 
 // --- the Low Lantern: three decks, no last orders --------------------------
 function buildLowLantern(root) {
-  const map = interiorMap({ id: 'low-lantern', name: 'The Low Lantern', w: 22, h: 16, music: 'inn' });
+  const map = interiorMap({ id: 'low-lantern', name: 'The Low Lantern', w: 22, h: 16, music: 'tavern' });
   const res = reservedFor('low-lantern');
   const r = root.fork('lantern');
   const rm = room(map, {
@@ -2368,7 +2406,7 @@ function buildCountingHouse(root) {
 
 // --- the Blushing Mermaid: nothing surprises Kethra Buckman ----------------
 function buildBlushingMermaid(root) {
-  const map = interiorMap({ id: 'blushing-mermaid', name: 'The Blushing Mermaid', w: 24, h: 20, music: 'inn' });
+  const map = interiorMap({ id: 'blushing-mermaid', name: 'The Blushing Mermaid', w: 24, h: 20, music: 'tavern' });
   const res = reservedFor('blushing-mermaid');
   const r = root.fork('mermaid');
   const rm = room(map, {
@@ -2416,7 +2454,7 @@ function buildBlushingMermaid(root) {
 
 // --- the High House of Wonders: Gond's temple, and Gond's workshop ---------
 function buildHighHouseOfWonders(root) {
-  const map = interiorMap({ id: 'high-house-of-wonders', name: 'The High House of Wonders', w: 24, h: 20, music: 'shop' });
+  const map = interiorMap({ id: 'high-house-of-wonders', name: 'The High House of Wonders', w: 24, h: 20, music: 'temple' });
   const res = reservedFor('high-house-of-wonders');
   const r = root.fork('gond');
   const rm = room(map, { w: 24, h: 20, floor: 'STONE_FLOOR', wall: 'STONE_WALL' });
@@ -2457,7 +2495,7 @@ function buildHighHouseOfWonders(root) {
 function buildShrineOfSuffering(root) {
   const map = interiorMap({
     id: 'shrine-of-suffering', name: 'The Shrine of the Suffering', w: 18, h: 16,
-    music: 'town', ambient: { color: '#241c18', alpha: 0.14 },
+    music: 'temple', ambient: { color: '#241c18', alpha: 0.14 },
   });
   const res = reservedFor('shrine-of-suffering');
   const r = root.fork('ilmater');
@@ -2519,7 +2557,7 @@ function buildUndercellar(root) {
 
 // --- the Elfsong Tavern: the best room in the Lower City -------------------
 function buildElfsongTavern(root) {
-  const map = interiorMap({ id: 'elfsong-tavern', name: 'The Elfsong Tavern', w: 26, h: 20, music: 'inn' });
+  const map = interiorMap({ id: 'elfsong-tavern', name: 'The Elfsong Tavern', w: 26, h: 20, music: 'tavern' });
   const res = reservedFor('elfsong-tavern');
   const r = root.fork('elfsong');
   const rm = room(map, {
@@ -2543,10 +2581,24 @@ function buildElfsongTavern(root) {
   prop(map, 1, 9, tid('HEARTH', 'BRAZIER'), res);
   prop(map, 1, 10, tid('HEARTH', 'BRAZIER'), res);
   floorRect(map, 2, 7, 4, 6, tid('MOSAIC', 'WOOD_FLOOR'));
-  // the common room: more tables than any other room in the game
-  tableAt(map, r, 7, 9, res); tableAt(map, r, 12, 8, res); tableAt(map, r, 18, 9, res);
-  tableAt(map, r, 5, 15, res); tableAt(map, r, 10, 14, res); tableAt(map, r, 15, 16, res);
+  // Shared trestles and booths, with a three-tile central service aisle.
+  // Larger groups read as a crowded tavern without scatter in walking lanes.
+  for (const [x,y,len] of [[6,9,3],[17,9,3],[8,14,3],[16,16,3]]) {
+    run(map, x, x+len-1, y, 'TABLE', res);
+    run(map, x, x+len-1, y-1, 'BENCH', res);
+    run(map, x, x+len-1, y+1, 'BENCH', res);
+  }
+  tableAt(map, r, 12, 8, res);
+  tableAt(map, r, 5, 15, res);
   tableAt(map, r, 21, 14, res);
+  // Hearth nook, serving station and a quiet east-wall booth.
+  run(map, 3, 4, 10, 'TABLE', res);
+  run(map, 3, 4, 12, 'BENCH', res);
+  run(map, 8, 10, 17, 'SHELF_GOODS', res);
+  run(map, 22, 24, 7, 'BENCH', res);
+  run(map, 22, 24, 8, 'TABLE', res);
+  prop(map, 23, 10, tid('PLANTER', 'BARREL'), res);
+  run(map, 2, 3, 17, 'BARREL', res);
   // the snug where a duchess was murdered in 1492, and nobody sits in it
   for (let y = 2; y <= 3; y++) prop(map, 22, y, tid('BRICK_WALL', 'STONE_WALL'), res);
   prop(map, 23, 3, tid('TABLE', 'BENCH'), res);
@@ -2590,6 +2642,16 @@ function buildSorcerousSundries(root) {
   for (const [x, y] of [[9, 3], [12, 3], [5, 13], [16, 13]]) prop(map, x, y, tid('CANDLE', 'TORCH'), res);
   prop(map, 2, 16, tid('CHEST_CLOSED', 'CRATE'), res);
   prop(map, 19, 16, tid('BARREL', 'CRATE'), res);
+  // Appraisal and packing occupy the formerly empty entrance wings. Shelf
+  // backs define the bays, while the central runner remains a broad route.
+  run(map, 4, 7, 13, 'TABLE', res);
+  run(map, 4, 7, 12, 'BOOKSHELF', res);
+  prop(map, 5, 14, tid('CHAIR', 'BENCH'), res);
+  prop(map, 7, 15, tid('CHEST_CLOSED', 'CRATE'), res);
+  run(map, 14, 17, 14, 'COUNTER', res);
+  run(map, 14, 17, 12, 'SHELF_GOODS', res);
+  prop(map, 16, 15, tid('CHAIR', 'BENCH'), res);
+  prop(map, 18, 13, tid('CRATE', 'BARREL'), res);
   oset(map, 10, 8, tid('CHANDELIER', 'CANDLE'));
   oset(map, 5, 14, tid('CHANDELIER', 'CANDLE'));
   oset(map, 16, 14, tid('CHANDELIER', 'CANDLE'));
@@ -2603,7 +2665,7 @@ function buildSorcerousSundries(root) {
 // --- Wyrm's Rock: the Fist's fortress in the middle of the river -----------
 function buildWyrmsRock(root) {
   const map = interiorMap({
-    id: 'wyrms-rock', name: "Wyrm's Rock", w: 26, h: 20, music: 'tense',
+    id: 'wyrms-rock', name: "Wyrm's Rock", w: 26, h: 20, music: 'castle',
     ambient: { color: '#16202a', alpha: 0.14 },
   });
   const res = reservedFor('wyrms-rock');
@@ -2637,7 +2699,7 @@ function buildWyrmsRock(root) {
 
 // --- Sharess' Caress: the festhall on the Rivington road ------------------
 function buildSharessCaress(root) {
-  const map = interiorMap({ id: 'sharess-caress', name: "Sharess' Caress", w: 24, h: 18, music: 'inn' });
+  const map = interiorMap({ id: 'sharess-caress', name: "Sharess' Caress", w: 24, h: 18, music: 'festival' });
   const res = reservedFor('sharess-caress');
   const r = root.fork('caress');
   const rm = room(map, {
@@ -2711,17 +2773,17 @@ export const REGION_MAPS = {
   // --- the Outer City -------------------------------------------------------
   'bg-blackgate': {
     name: 'Blackgate', kind: 'city', biome: 'city', w: 56, h: 44, safe: true,
-    music: 'town', level: 11, region: 'baldurs-gate', build: buildBlackgate,
+    music: 'city', level: 11, region: 'baldurs-gate', build: buildBlackgate,
     desc: 'The Trade Way’s last mile: caravan yards, ox pens, shanties against the Old Wall, and the Black Dragon Gate at the end of it.',
   },
   'bg-norchapel': {
     name: 'Norchapel', kind: 'city', biome: 'city', w: 48, h: 40, safe: true,
-    music: 'town', level: 11, region: 'baldurs-gate', build: buildNorchapel,
+    music: 'city', level: 11, region: 'baldurs-gate', build: buildNorchapel,
     desc: 'Twenty chapels raised outside the walls and nineteen let out as lodgings. Whitkeep and Stonyeyes lie beyond the lane.',
   },
   'bg-little-calimshan': {
     name: 'Little Calimshan', kind: 'city', biome: 'city', w: 48, h: 42, safe: true,
-    music: 'town', level: 11, region: 'baldurs-gate', build: buildLittleCalimshan,
+    music: 'market', level: 11, region: 'baldurs-gate', build: buildLittleCalimshan,
     desc: 'The Calishite quarter: a bazaar under awnings, spice and silk out of Memnon, and a domed shrine that keeps two doors.',
   },
   'bg-tumbledown': {
@@ -2736,12 +2798,12 @@ export const REGION_MAPS = {
   },
   'bg-twin-songs': {
     name: 'The Twin Songs', kind: 'city', biome: 'city', w: 48, h: 42, safe: true,
-    music: 'town', level: 11, region: 'baldurs-gate', build: buildTwinSongs,
+    music: 'temple', level: 11, region: 'baldurs-gate', build: buildTwinSongs,
     desc: 'Six shrines down one paved avenue, every god legal and every god watched, and the pilgrim road south forming up at the far end.',
   },
   'bg-wyrms-crossing': {
     name: "Wyrm's Crossing", kind: 'city', biome: 'city', w: 64, h: 26, safe: true,
-    music: 'town', level: 11, region: 'baldurs-gate', build: buildWyrmsCrossing,
+    music: 'market', level: 11, region: 'baldurs-gate', build: buildWyrmsCrossing,
     desc: 'The double bridge over the Chionthar, shops built out over both parapets, and the Flaming Fist’s fortress on the rock between them.',
   },
   'bg-rivington': {
@@ -2753,39 +2815,39 @@ export const REGION_MAPS = {
   // --- the Lower City -------------------------------------------------------
   'bg-gray-harbour': {
     name: 'Gray Harbour', kind: 'city', biome: 'city', w: 60, h: 42, safe: true,
-    music: 'town', level: 12, region: 'baldurs-gate', build: buildGrayHarbour,
+    music: 'coast', level: 12, region: 'baldurs-gate', build: buildGrayHarbour,
     desc: 'Quays, chandleries and the Oberon dry docks, the Water Queen’s House above them, and the Seatower of Balduran on its rock in the water.',
   },
   'bg-bloomridge': {
     name: 'Bloomridge', kind: 'city', biome: 'city', w: 48, h: 42, safe: true,
-    music: 'town', level: 12, region: 'baldurs-gate', build: buildBloomridge,
+    music: 'city', level: 12, region: 'baldurs-gate', build: buildBloomridge,
     desc: 'Merchant terraces stepping down from the Old Wall to the harbour road, the Counting House among them, and a flower market that gave the district its name.',
   },
   'bg-heapside': {
     name: 'Heapside', kind: 'city', biome: 'city', w: 52, h: 42, safe: true,
-    music: 'town', level: 12, region: 'baldurs-gate', build: buildHeapside,
+    music: 'city', level: 12, region: 'baldurs-gate', build: buildHeapside,
     desc: 'The most mixed district in the city: the Blushing Mermaid and the High House of Wonders on the same crooked street, and a stair down into the Undercellar between them.',
   },
   'bg-eastway': {
     name: 'Eastway', kind: 'city', biome: 'city', w: 52, h: 42, safe: true,
-    music: 'town', level: 12, region: 'baldurs-gate', build: buildEastway,
+    music: 'city', level: 12, region: 'baldurs-gate', build: buildEastway,
     desc: 'A broad cobbled avenue in from the Basilisk Gate, the Elfsong Tavern on one side of it and Sorcerous Sundries on the other.',
   },
 
   // --- the Upper City -------------------------------------------------------
   'bg-the-wide': {
     name: 'The Wide', kind: 'city', biome: 'city', w: 56, h: 44, safe: true,
-    music: 'town', level: 13, region: 'baldurs-gate', build: buildTheWide,
+    music: 'market', level: 13, region: 'baldurs-gate', build: buildTheWide,
     desc: 'The city’s only great civic space and its market, between the Black Dragon Gate and the Baldur’s Gate, with Balduran in bronze over the fountain.',
   },
   'bg-temples-district': {
     name: 'The Temples District', kind: 'city', biome: 'city', w: 48, h: 42, safe: true,
-    music: 'town', level: 13, region: 'baldurs-gate', build: buildTemplesDistrict,
+    music: 'castle', level: 13, region: 'baldurs-gate', build: buildTemplesDistrict,
     desc: 'A processional avenue to the High Hall — ducal palace, Council chamber and Parliament benches — with the Unrolling Scroll and the lesser shrines beyond it.',
   },
   'bg-citadel-streets': {
     name: 'Citadel Streets', kind: 'city', biome: 'city', w: 46, h: 40, safe: true,
-    music: 'town', level: 13, region: 'baldurs-gate', build: buildCitadelStreets,
+    music: 'castle', level: 13, region: 'baldurs-gate', build: buildCitadelStreets,
     desc: 'Straight, over-lit streets between walled patriar manors, with the Watch Citadel and its drill yard sitting in the middle of them.',
   },
 
@@ -2798,7 +2860,7 @@ export const REGION_MAPS = {
   },
   'high-hall': {
     name: 'The High Hall', kind: 'interior', biome: 'city', w: 30, h: 24, indoor: true,
-    safe: true, music: 'town', level: 13, region: 'baldurs-gate', parent: 'bg-temples-district',
+    safe: true, music: 'castle', level: 13, region: 'baldurs-gate', parent: 'bg-temples-district',
     build: buildHighHall,
     desc: 'The Council of Four’s table, the Parliament of Peers’ benches, and Grand Duke Ravengard’s map room behind the colonnade.',
   },
@@ -2816,7 +2878,7 @@ export const REGION_MAPS = {
   },
   'seatower-of-balduran': {
     name: 'The Seatower of Balduran', kind: 'interior', biome: 'city', w: 28, h: 22, indoor: true,
-    safe: true, music: 'tense', level: 12, region: 'baldurs-gate', parent: 'bg-gray-harbour',
+    safe: true, music: 'castle', level: 12, region: 'baldurs-gate', parent: 'bg-gray-harbour',
     build: buildSeatower,
     desc: 'Flaming Fist headquarters on its rock in Gray Harbour: the map table, the arms wall, and the southern contract board.',
   },
@@ -2828,7 +2890,7 @@ export const REGION_MAPS = {
   },
   'low-lantern': {
     name: 'The Low Lantern', kind: 'interior', biome: 'city', w: 22, h: 16, indoor: true,
-    safe: true, music: 'inn', level: 12, region: 'baldurs-gate', parent: 'bg-gray-harbour',
+    safe: true, music: 'tavern', level: 12, region: 'baldurs-gate', parent: 'bg-gray-harbour',
     build: buildLowLantern,
     desc: 'A merchant ship that stopped sailing and started serving: three decks, no last orders, and the house always wins.',
   },
@@ -2840,19 +2902,19 @@ export const REGION_MAPS = {
   },
   'blushing-mermaid': {
     name: 'The Blushing Mermaid', kind: 'interior', biome: 'city', w: 24, h: 20, indoor: true,
-    safe: true, music: 'inn', level: 12, region: 'baldurs-gate', parent: 'bg-heapside',
+    safe: true, music: 'tavern', level: 12, region: 'baldurs-gate', parent: 'bg-heapside',
     build: buildBlushingMermaid,
     desc: 'Rough beds, rougher company, the city’s hiring board by the door, and a back room the Harpers have kept for longer than the landlady admits.',
   },
   'high-house-of-wonders': {
     name: 'The High House of Wonders', kind: 'interior', biome: 'city', w: 24, h: 20, indoor: true,
-    safe: true, music: 'shop', level: 12, region: 'baldurs-gate', parent: 'bg-heapside',
+    safe: true, music: 'temple', level: 12, region: 'baldurs-gate', parent: 'bg-heapside',
     build: buildHighHouseOfWonders,
     desc: 'Gond’s temple and Gond’s workshop, where the altar is an anvil and is still warm.',
   },
   'shrine-of-suffering': {
     name: 'The Shrine of the Suffering', kind: 'interior', biome: 'city', w: 18, h: 16, indoor: true,
-    safe: true, music: 'town', level: 12, region: 'baldurs-gate', parent: 'bg-heapside',
+    safe: true, music: 'temple', level: 12, region: 'baldurs-gate', parent: 'bg-heapside',
     build: buildShrineOfSuffering,
     desc: 'Ilmater’s: one altar, one candle, rows of pallets, and a door that is never barred to anybody who can reach it.',
   },
@@ -2864,7 +2926,7 @@ export const REGION_MAPS = {
   },
   'elfsong-tavern': {
     name: 'The Elfsong Tavern', kind: 'interior', biome: 'city', w: 26, h: 20, indoor: true,
-    safe: true, music: 'inn', level: 12, region: 'baldurs-gate', parent: 'bg-eastway',
+    safe: true, music: 'tavern', level: 12, region: 'baldurs-gate', parent: 'bg-eastway',
     build: buildElfsongTavern,
     desc: 'The best room in the Lower City, and the corner table nobody has sat at since 1492.',
   },
@@ -2876,13 +2938,13 @@ export const REGION_MAPS = {
   },
   'wyrms-rock': {
     name: "Wyrm's Rock", kind: 'interior', biome: 'city', w: 26, h: 20, indoor: true,
-    safe: true, music: 'tense', level: 11, region: 'baldurs-gate', parent: 'bg-wyrms-crossing',
+    safe: true, music: 'castle', level: 11, region: 'baldurs-gate', parent: 'bg-wyrms-crossing',
     build: buildWyrmsRock,
     desc: 'The Flaming Fist fortress in the middle of the Chionthar: customs, toll, interrogation, and records kept since 1368 DR.',
   },
   'sharess-caress': {
     name: "Sharess' Caress", kind: 'interior', biome: 'city', w: 24, h: 18, indoor: true,
-    safe: true, music: 'inn', level: 11, region: 'baldurs-gate', parent: 'bg-rivington',
+    safe: true, music: 'festival', level: 11, region: 'baldurs-gate', parent: 'bg-rivington',
     build: buildSharessCaress,
     desc: 'The festhall on the Rivington road, with a lamp kept burning at the door and rooms on the bridge side.',
   },
@@ -2896,7 +2958,7 @@ export const REGION_MAPS = {
   },
   'tumbledown-crypts': {
     name: 'The Tumbledown Crypts', kind: 'dungeon', biome: 'crypt', w: 0, h: 0,
-    indoor: true, music: 'dungeon', level: 12, region: 'baldurs-gate',
+    indoor: true, music: 'crypt', level: 12, region: 'baldurs-gate',
     build: buildTumbledownCrypts,
     desc: 'The vaults under the burying ground, where the register is three names longer than the graves are.',
   },

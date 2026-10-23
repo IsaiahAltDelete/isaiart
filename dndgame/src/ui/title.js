@@ -1,8 +1,9 @@
 // ui/title.js — the animated title card (with its Load / Bestiary / Credits
 // sub-screens) and the game-over screen. Both are engine Scenes.
 //
-// Everything textual goes through ui/kit.js (UI.* / drawGlyphs); the night sky,
-// the Sword Mountains, the campfire and the embers are hand-drawn Canvas2D shapes.
+// The title card is the Sword Coast at dusk (ui/title_vista.js, one world layer
+// per depth) under the gilt logotype (ui/title_logo.js) and a vellum menu on
+// the menu layer. Everything textual goes through ui/kit.js (UI.* / drawGlyphs).
 // Sibling modules that may not exist yet (charcreate, menus, overworld, character)
 // are pulled in with a soft dynamic import so a half-built tree still boots.
 
@@ -14,12 +15,16 @@ import { Save, SLOT_COUNT } from '../core/save.js';
 import { toast } from '../core/events.js';
 import { makeRNG } from '../core/rng.js';
 import {
-  VIEW_W, VIEW_H, VERSION, clamp, lerp, playtimeText, crText,
+  VIEW_W, VIEW_H, VERSION, clamp, playtimeText, crText,
 } from '../constants.js';
 import { newGameState, loadState } from '../state.js';
 import { Party } from '../world/party.js';
 import { drawActor } from '../render/actor.js';
 import { drawSpriteAt, hasSprite, spriteFrames, spriteSize, getSilhouette } from '../render/sprites.js';
+import { Stage } from '../render/stage.js';
+import { TitleVista } from './title_vista.js';
+import { TitleLogo } from './title_logo.js';
+import { MK } from './menukit.js';
 
 // ===========================================================================
 // Small kit shims. The kit is authoritative; these only keep a missing helper
@@ -27,7 +32,7 @@ import { drawSpriteAt, hasSprite, spriteFrames, spriteSize, getSilhouette } from
 // ===========================================================================
 
 const K = {
-  ink: '#efe6d0', dim: '#9a917f', gold: '#e3b34a', red: '#d4553f', green: '#6fc36a',
+  ink: '#efe6d0', dim: '#9a917f', gold: '#e3b34a', goldBright: '#f6d77a', red: '#d4553f', green: '#6fc36a',
   blue: '#6aa8e8', purple: '#b07ae0', bg: '#0b0d16', panel: '#181b28', border: '#5c4a2a',
   hp: '#c8452f', mp: '#4a7ad0', xp: '#e3b34a',
 };
@@ -84,6 +89,12 @@ function wrapped(ctx, x, y, w, s, o) {
   }
   if (line) { txt(ctx, x, ly, line, o); n++; }
   return n;
+}
+/** A screen's name in the display face: gilt Lombardic capital, the rest in gold. */
+function heading(ctx, x, y, s, align = 'left') {
+  try { UI.heading(ctx, Math.round(x), Math.round(y), s, { size: 'title', align }); } catch (e) {
+    (align === 'center' ? txtC : txt)(ctx, x, y, s.toUpperCase(), { size: 'md', color: C('gold'), shadow: true });
+  }
 }
 /** Truncate to fit `w` pixels, appending an ellipsis. */
 function fit(s, w, size) {
@@ -179,6 +190,10 @@ const MENU_ITEMS = [
 ];
 
 const MENU_X = 24, MENU_Y = 112, MENU_W = 136, ROW_H = 15;
+/** Where the logotype's top sits (logical px). */
+const LOGO_Y = 8;
+/** Seconds idle before night starts to fall, how long it takes, and how long dusk takes to come back. */
+const NIGHT_AFTER = 20, NIGHT_FALL = 24, NIGHT_LIFT = 5;
 
 export class TitleScene {
   /**
@@ -196,7 +211,6 @@ export class TitleScene {
     this.mode = 'menu';          // 'menu' | 'load' | 'bestiary' | 'credits'
     this.gated = false;          // true once the audio gate has been passed
     this.busy = false;           // a scene push / load is in flight
-    this.shimmer = 1.4;
     this.hasSave = false;
     this.creditScroll = 0;
     this.slots = [];
@@ -205,14 +219,16 @@ export class TitleScene {
     this.beast = [];
     this.beastIndex = 0;
     this.beastScroll = 0;
-    this.stars = null;
+    this.vista = null;           // the Sword Coast behind the menu (ui/title_vista.js)
+    this.logo = null;
+    this.idle = 0;               // seconds without input; the evening wears on
     this.hero = null;
   }
 
   // --- lifecycle ----------------------------------------------------------
 
   enter() {
-    if (!this.stars) this._buildScenery();
+    if (!this.vista) this._buildScenery();
     this.slots = safeSlots();
     const newest = safeNewest();
     this.hasSave = newest >= 0;
@@ -225,56 +241,11 @@ export class TitleScene {
   exit() { this.busy = true; }
 
   _buildScenery() {
-    const r = makeRNG('sword-coast-title');
-    // Night sky
-    this.stars = [];
-    for (let i = 0; i < 110; i++) {
-      this.stars.push({
-        x: r.int(0, VIEW_W), y: r.int(0, 150),
-        b: r.float(0.25, 1), sp: r.float(0.6, 2.4), ph: r.float(0, 6.28),
-        big: r.chance(0.08),
-      });
-    }
-    // Selûne's Tears — the seven small stars that trail the Moonmaiden.
-    // Set high and to the right so the logo never fights the moon for space.
-    this.moon = { x: 350, y: 32, r: 12 };
-    this.tears = [];
-    for (let i = 0; i < 7; i++) {
-      const a = -2.62 + i * 0.10;
-      const d = 24 + i * 6.4;
-      this.tears.push({
-        x: Math.round(this.moon.x + Math.cos(a) * d),
-        y: Math.round(this.moon.y + Math.sin(a) * d * 0.8),
-        s: i < 3 ? 2 : 1,
-      });
-    }
-    // Drifting cloud banks
-    this.clouds = [];
-    for (let i = 0; i < 7; i++) {
-      const puffs = [];
-      const n = r.int(3, 6);
-      let px = 0;
-      for (let p = 0; p < n; p++) {
-        puffs.push({ dx: px, dy: r.int(-3, 3), rx: r.int(9, 20), ry: r.int(4, 8) });
-        px += r.int(10, 18);
-      }
-      this.clouds.push({
-        x: r.float(-60, VIEW_W + 60), y: r.int(16, 108),
-        v: r.float(2.4, 7.5) * (r.chance(0.5) ? 1 : 0.6),
-        a: r.float(0.22, 0.5), w: px, puffs,
-      });
-    }
-    // Three ridges of the Sword Mountains
-    this.ranges = [
-      { peaks: makeRange(r, 150, 30, 58, 6), base: 150, color: '#232a46', snow: '#5a6690' },
-      { peaks: makeRange(r, 170, 24, 46, 4), base: 170, color: '#161c31', snow: '#39415f' },
-      { peaks: makeRange(r, 190, 14, 30, 3), base: 190, color: '#0c1020', snow: null },
-    ];
-    // Campfire embers
-    this.embers = [];
-    for (let i = 0; i < 46; i++) this.embers.push(this._newEmber(r, true));
-    this._erng = r;
-    // The lone adventurer: a plain layered actor, no equipment, facing the fire.
+    this.vista = new TitleVista();
+    this.logo = new TitleLogo();
+
+    // The lone traveller on the cliff road, looking up the coast at Neverwinter:
+    // a plain layered actor in a travelling cloak.
     this.hero = {
       uid: 'title-hero', name: 'Adventurer', kind: 'pc', size: 'medium',
       classes: [{ id: 'fighter', level: 1 }], equipment: {}, inventory: [],
@@ -287,37 +258,28 @@ export class TitleScene {
     };
   }
 
-  _newEmber(r, seeded) {
-    return {
-      x: 296 + r.float(-4, 4),
-      y: seeded ? r.float(150, 228) : 226 + r.float(-2, 2),
-      vy: r.float(9, 26), vx: r.float(-4, 4),
-      life: seeded ? r.float(0.2, 1) : 1,
-      fade: r.float(0.22, 0.5),
-      s: r.chance(0.18) ? 2 : 1,
-      ph: r.float(0, 6.28),
-      warm: r.chance(0.5),
-    };
-  }
-
   // --- update -------------------------------------------------------------
+
+  /**
+   * Left alone for a while, the evening wears on: the sun goes into the sea,
+   * the windows of Neverwinter light one by one and Selune rises. A key, a
+   * click or a moved mouse brings the dusk back, a little faster than it left.
+   */
+  _driftToNight(dt) {
+    const m = Input.mouse;
+    const moved = m && m.over && (m.x !== this._mx || m.y !== this._my);
+    if (m) { this._mx = m.x; this._my = m.y; }
+    if (Input.anyPressed() || (m && m.clicked) || moved) this.idle = 0;
+    else this.idle += dt;
+    const v = this.vista;
+    if (this.idle > NIGHT_AFTER) v.night = Math.min(1, v.night + dt / NIGHT_FALL);
+    else v.night = Math.max(0, v.night - dt / NIGHT_LIFT);
+  }
 
   update(dt) {
     this.t += dt;
-    this.shimmer += dt;
-
-    // Scenery motion runs regardless of which sub-screen is up.
-    for (const c of this.clouds) {
-      c.x -= c.v * dt;
-      if (c.x + c.w < -70) { c.x = VIEW_W + 40; c.y = 16 + ((c.y * 7 + 31) % 92); }
-    }
-    const r = this._erng;
-    for (const e of this.embers) {
-      e.y -= e.vy * dt;
-      e.x += (e.vx + Math.sin(this.t * 2.1 + e.ph) * 7) * dt;
-      e.life -= e.fade * dt;
-      if (e.life <= 0 || e.y < 120) Object.assign(e, this._newEmber(r, false));
-    }
+    this._driftToNight(dt);
+    this.vista.update(dt);
 
     if (this.busy) return;
 
@@ -558,10 +520,12 @@ export class TitleScene {
 
   // --- draw ---------------------------------------------------------------
 
-  draw(ctx) {
-    this._drawSky(ctx);
-    this._drawMountains(ctx);
-    this._drawForeground(ctx);
+  draw() {
+    // The vista paints its own world layers (sky to near cliff, then the glow);
+    // the interface goes on the menu layer, fetched only once they are done so
+    // it lands above them.
+    this.vista.draw((g, x, y) => this._drawTraveller(g, x, y));
+    const ctx = Stage.ctx('menu');
 
     if (this.mode === 'menu') {
       this._drawLogo(ctx);
@@ -575,226 +539,90 @@ export class TitleScene {
       else if (this.mode === 'credits') this._drawCredits(ctx);
     }
 
-    txtR(ctx, VIEW_W - 4, VIEW_H - 9, `v${VERSION}`, { size: 'sm', color: 'rgba(154,145,127,0.55)' });
+    txtR(ctx, VIEW_W - 4, VIEW_H - 6, `v${VERSION}`, { size: 'fine', color: 'rgba(214,200,172,0.7)', shadow: 'rgba(10,6,14,0.9)' });
 
     if (!this.gated) {
-      const a = 0.45 + Math.sin(this.t * 3.2) * 0.35;
+      const a = 0.55 + Math.sin(this.t * 3.2) * 0.4;
       ctx.save(); ctx.globalAlpha = clamp(a, 0, 1);
-      txtC(ctx, VIEW_W / 2, VIEW_H - 20, 'PRESS ANY KEY', { size: 'sm', color: C('gold'), shadow: true });
+      try {
+        UI.heading(ctx, VIEW_W / 2, VIEW_H - 17, 'Press any key', { size: 'title', color: '#f3e4c4', align: 'center', shadow: 'rgba(16,6,18,0.95)' });
+      } catch (e) { txtC(ctx, VIEW_W / 2, VIEW_H - 17, 'PRESS ANY KEY', { size: 'sm', color: C('gold'), shadow: true }); }
       ctx.restore();
     }
   }
 
-  // --- scenery ------------------------------------------------------------
-
-  _drawSky(ctx) {
-    const g = ctx.createLinearGradient(0, 0, 0, 200);
-    g.addColorStop(0, '#070917');
-    g.addColorStop(0.45, '#121834');
-    g.addColorStop(0.78, '#26294a');
-    g.addColorStop(1, '#4a3c52');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, VIEW_W, 200);
-
-    // Stars
-    for (const s of this.stars) {
-      const tw2 = 0.55 + 0.45 * Math.sin(this.t * s.sp + s.ph);
-      ctx.globalAlpha = clamp(s.b * tw2 * (1 - s.y / 210), 0, 1);
-      ctx.fillStyle = s.big ? '#fff6d8' : '#cfd8f0';
-      ctx.fillRect(s.x | 0, s.y | 0, s.big ? 2 : 1, s.big ? 2 : 1);
-    }
-    ctx.globalAlpha = 1;
-
-    // Selûne — the Moonmaiden — with her Tears trailing behind.
-    const mo = this.moon;
-    const halo = ctx.createRadialGradient(mo.x, mo.y, mo.r * 0.7, mo.x, mo.y, mo.r * 3.4);
-    halo.addColorStop(0, 'rgba(226,232,255,0.30)');
-    halo.addColorStop(1, 'rgba(226,232,255,0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(mo.x, mo.y, mo.r * 3.4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f2eedb';
-    ctx.beginPath(); ctx.arc(mo.x, mo.y, mo.r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#dcd6be';
-    ctx.beginPath(); ctx.arc(mo.x - 4, mo.y - 3, 2.6, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(mo.x + 4, mo.y + 4, 3.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(mo.x + 5, mo.y - 6, 1.8, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < this.tears.length; i++) {
-      const t2 = this.tears[i];
-      ctx.globalAlpha = clamp(0.55 + 0.4 * Math.sin(this.t * 1.6 + i), 0, 1);
-      ctx.fillStyle = '#f0f2ff';
-      ctx.fillRect(t2.x | 0, t2.y | 0, t2.s, t2.s);
-    }
-    ctx.globalAlpha = 1;
-
-    // Cloud banks, silvered on their moonward edge.
-    for (const c of this.clouds) {
-      ctx.globalAlpha = c.a;
-      for (const p of c.puffs) {
-        ctx.fillStyle = '#2a3152';
-        ctx.beginPath(); ctx.ellipse(c.x + p.dx, c.y + p.dy, p.rx, p.ry, 0, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.globalAlpha = c.a * 0.6;
-      for (const p of c.puffs) {
-        ctx.fillStyle = '#5a628c';
-        ctx.beginPath(); ctx.ellipse(c.x + p.dx, c.y + p.dy - p.ry * 0.42, p.rx * 0.82, p.ry * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  _drawMountains(ctx) {
-    for (const rg of this.ranges) drawRange(ctx, rg.peaks, rg.base, rg.color, rg.snow);
-    // Moonlight catches the crest of the farthest ridge.
-    ctx.globalAlpha = 0.25;
-    ctx.strokeStyle = '#6a74a0';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    const far = this.ranges[0];
-    ctx.moveTo(-30, far.base);
-    for (const p of far.peaks) { ctx.lineTo(p.x - p.halfW, far.base); ctx.lineTo(p.x, far.base - p.h); ctx.lineTo(p.x + p.halfW, far.base); }
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
-  _drawForeground(ctx) {
-    // Ground the campfire sits on.
-    ctx.fillStyle = '#090b12';
-    ctx.fillRect(0, 212, VIEW_W, VIEW_H - 212);
-    ctx.fillStyle = '#101522';
-    ctx.fillRect(0, 212, VIEW_W, 2);
-
-    const fx = 296, fy = 228;
-    const flick = 0.82 + Math.sin(this.t * 11.3) * 0.09 + Math.sin(this.t * 5.1) * 0.09;
-
-    // Firelight pooled on the ground.
-    const glow = ctx.createRadialGradient(fx, fy - 3, 2, fx, fy - 3, 44 * flick);
-    glow.addColorStop(0, 'rgba(255,168,70,0.42)');
-    glow.addColorStop(0.5, 'rgba(220,110,40,0.16)');
-    glow.addColorStop(1, 'rgba(220,110,40,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(fx, fy - 3, 44 * flick, 0, Math.PI * 2); ctx.fill();
-
-    // The lone adventurer, warming their hands, facing the flames.
-    const bob = Math.round(Math.sin(this.t * 1.5) * 0.5);
+  /** The traveller stands on the road with their back to us, looking up the coast. */
+  _drawTraveller(g, x, y) {
     let drew = false;
-    try {
-      drew = drawActor(ctx, this.hero, 320, 232 + bob, { dir: 'left', shadow: true, scale: 1 });
-    } catch (e) { drew = false; }
-    if (!drew) drawFallbackHero(ctx, 320, 232 + bob);
-
-    // Stacked logs and flame.
-    ctx.fillStyle = '#3a2617';
-    ctx.fillRect(fx - 9, fy - 3, 18, 3);
-    ctx.fillStyle = '#4a3120';
-    ctx.fillRect(fx - 7, fy - 6, 5, 4);
-    ctx.fillRect(fx + 2, fy - 6, 5, 4);
-    ctx.fillStyle = '#1e1710';
-    ctx.fillRect(fx - 11, fy, 22, 2);
-
-    const fh = 13 * flick;
-    ctx.fillStyle = '#e2521c';
-    ctx.beginPath();
-    ctx.moveTo(fx - 6, fy - 5); ctx.quadraticCurveTo(fx - 7, fy - 5 - fh * 0.7, fx, fy - 5 - fh);
-    ctx.quadraticCurveTo(fx + 7, fy - 5 - fh * 0.7, fx + 6, fy - 5);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ff9b2c';
-    ctx.beginPath();
-    ctx.moveTo(fx - 4, fy - 5); ctx.quadraticCurveTo(fx - 4, fy - 5 - fh * 0.55, fx + 1, fy - 5 - fh * 0.78);
-    ctx.quadraticCurveTo(fx + 5, fy - 5 - fh * 0.5, fx + 4, fy - 5);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ffe08a';
-    ctx.fillRect(fx - 2, fy - 9, 4, 4);
-
-    // Embers rising into the dark.
-    for (const e of this.embers) {
-      ctx.globalAlpha = clamp(e.life, 0, 1) * 0.9;
-      ctx.fillStyle = e.warm ? '#ffb03a' : '#ff6a2a';
-      ctx.fillRect(e.x | 0, e.y | 0, e.s, e.s);
-    }
-    ctx.globalAlpha = 1;
+    try { drew = drawActor(g, this.hero, x, y, { dir: 'up', shadow: true, scale: 1 }); } catch (e) { drew = false; }
+    if (!drew) drawFallbackHero(g, x, y);
   }
 
-  // --- logo ---------------------------------------------------------------
-
-  _logoPaint(ctx, top, mid, bottom) {
-    glyphRun(ctx, 'SWORD COAST', VIEW_W / 2, 44, 4, top, 1);
-    glyphRun(ctx, 'CHRONICLES', VIEW_W / 2, 78, 2, mid, 7);
-    txtC(ctx, VIEW_W / 2, 94, 'A Tale of the Forgotten Realms — 1496 DR', { size: 'sm', color: bottom });
-  }
+  // --- logo and menu --------------------------------------------------------
 
   _drawLogo(ctx) {
-    // Drop shadow, then the gold plate.
-    ctx.save();
-    ctx.translate(1, 2);
-    this._logoPaint(ctx, 'rgba(0,0,0,0.75)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.7)');
-    ctx.restore();
-    this._logoPaint(ctx, '#e0b352', '#c8a05a', '#a89a7c');
-
-    // A gold shimmer sweeps the letters every few seconds.
-    const PERIOD = 5.2, SWEEP = 1.15;
-    const phase = this.shimmer % PERIOD;
-    if (phase < SWEEP) {
-      const p = phase / SWEEP;
-      const sx = lerp(-80, VIEW_W + 80, p);
-      const bw = 30, skew = 20, y0 = 36, y1 = 100;
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(sx, y0); ctx.lineTo(sx + bw, y0);
-      ctx.lineTo(sx + bw - skew, y1); ctx.lineTo(sx - skew, y1);
-      ctx.closePath();
-      ctx.clip();
-      this._logoPaint(ctx, '#fff6cf', '#ffeeb4', '#e8dcb8');
-      ctx.restore();
-    }
-
-    // Crossed-sword rule under the title.
-    ctx.strokeStyle = 'rgba(224,179,82,0.42)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(96, 103.5); ctx.lineTo(186, 103.5);
-    ctx.moveTo(214, 103.5); ctx.lineTo(304, 103.5);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(224,179,82,0.75)';
-    ctx.beginPath();
-    ctx.moveTo(200, 100); ctx.lineTo(203, 103.5); ctx.lineTo(200, 107); ctx.lineTo(197, 103.5);
-    ctx.closePath(); ctx.fill();
+    this.logo.draw(ctx, VIEW_W / 2, LOGO_Y, this.t);
+    const y = LOGO_Y + Math.ceil(this.logo.size.h);
+    txt(ctx, VIEW_W / 2, y, 'A Tale of the Forgotten Realms', { size: 'fineb', color: '#f6e8c8', shadow: 'rgba(30,8,24,0.95)', align: 'center' });
   }
 
-  // --- menu ---------------------------------------------------------------
+  /**
+   * The kit paints a panel with hundreds of small fills (grain, brass edging).
+   * The menu's never changes, so it is painted once per theme and resolution
+   * into a canvas of its own and blitted: the title stays light on a laptop.
+   */
+  _drawPanel(ctx, x, y, w, h) {
+    const res = ctx.getTransform().a >= 2 ? 2 : 1;
+    const key = `${UI.theme}|${w}x${h}|${res}`;
+    let c = this._panel;
+    if (!c || c.key !== key) {
+      const cv = document.createElement('canvas');
+      cv.width = w * res; cv.height = h * res;
+      const g = cv.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.setTransform(res, 0, 0, res, 0, 0);
+      panel(g, 0, 0, w, h, { style: 'window' });
+      c = this._panel = { key, cv };
+    }
+    ctx.drawImage(c.cv, x, y, w, h);
+  }
 
+  /** The menu: a vellum panel, each entry a rubricated heading, the chosen one lamplit. */
   _drawMenu(ctx) {
     const h = 10 + MENU_ITEMS.length * ROW_H;
-    panel(ctx, MENU_X, MENU_Y, MENU_W, h, { style: 'window' });
+    this._drawPanel(ctx, MENU_X, MENU_Y, MENU_W, h);
+    const m = Input.mouse;
+    const rx = MENU_X + 5, rw = MENU_W - 10, rh = ROW_H - 2;
     for (let i = 0; i < MENU_ITEMS.length; i++) {
       const it = MENU_ITEMS[i];
-      const ry = MENU_Y + 8 + i * ROW_H;
+      const ry = MENU_Y + 5 + i * ROW_H;
       const on = i === this.index;
       const off = !this._enabled(i);
-      if (on) {
-        ctx.fillStyle = 'rgba(224,179,82,0.13)';
-        ctx.fillRect(MENU_X + 3, ry - 3, MENU_W - 6, ROW_H - 2);
-        cursor(ctx, MENU_X + 6, ry - 1, this.t);
-      }
-      const color = off ? 'rgba(154,145,127,0.45)' : (on ? C('gold') : C('ink'));
-      txt(ctx, MENU_X + 17, ry, it.label, { size: 'md', color, shadow: true });
-      if (off) txtR(ctx, MENU_X + MENU_W - 6, ry + 1, 'no save', { size: 'sm', color: 'rgba(154,145,127,0.4)' });
+      if (on) MK.selRow(ctx, rx, ry, rw, rh, this.t);
+      else if (!off && m && m.over && m.x >= rx && m.x < rx + rw && m.y >= ry && m.y < ry + rh) MK.hoverRow(ctx, rx, ry, rw, rh);
+      const ink = off ? 'rgba(154,145,127,0.5)' : on ? C('goldBright') : C('ink');
+      try {
+        UI.heading(ctx, rx + 10, ry + 3, it.label, { size: 'title', color: ink, capGilt: !off, capColor: off ? ink : undefined });
+      } catch (e) { txt(ctx, rx + 10, ry + 3, it.label, { size: 'md', color: ink }); }
+      if (off) txtR(ctx, rx + rw - 3, ry + 5, 'no save', { size: 'fine', color: 'rgba(154,145,127,0.55)' });
       else if (it.id === 'continue') {
         const s = this.slots[safeNewest()];
-        if (s && !s.empty) txtR(ctx, MENU_X + MENU_W - 6, ry + 1, fit(s.label, 42, 'sm'), { size: 'sm', color: C('dim') });
+        if (s && !s.empty) txtR(ctx, rx + rw - 3, ry + 5, fit(s.label, 44, 'fine'), { size: 'fine', color: C('dim') });
       }
     }
-    // Hint line for the highlighted entry. Suppressed until the audio gate is
-    // passed, because "PRESS ANY KEY" sits on the same baseline.
+    // Hint line for the highlighted entry. Held back until the audio gate is
+    // passed, while "Press any key" has the foot of the screen.
     const hint = this.gated && MENU_ITEMS[this.index] && MENU_ITEMS[this.index].hint;
-    if (hint) txt(ctx, MENU_X, MENU_Y + h + 5, fit(hint, 250, 'sm'), { size: 'sm', color: 'rgba(154,145,127,0.8)', shadow: true });
+    if (hint) txt(ctx, MENU_X + 2, MENU_Y + h + 4, fit(hint, 250, 'fine'), { size: 'fine', color: '#e8d8b8', shadow: 'rgba(16,6,18,0.95)' });
   }
+
 
   // --- load screen --------------------------------------------------------
 
   _drawLoad(ctx) {
     panel(ctx, 30, 18, 340, 204, { style: 'window' });
-    txt(ctx, 40, 25, 'LOAD GAME', { size: 'md', color: C('gold'), shadow: true });
-    txtR(ctx, 360, 26, 'Z load    X back', { size: 'sm', color: C('dim') });
+    heading(ctx, 40, 24, 'Load Game');
+    txtR(ctx, 360, 26, 'Z load    X back', { size: 'fine', color: C('dim') });
 
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
@@ -859,8 +687,8 @@ export class TitleScene {
 
   _drawBestiary(ctx) {
     panel(ctx, 8, 8, 384, 224, { style: 'window' });
-    txt(ctx, 16, 14, 'BESTIARY', { size: 'md', color: C('gold'), shadow: true });
-    txtR(ctx, 384, 15, `Recorded ${this.beastKnown || 0} / ${this.beast.length}`, { size: 'sm', color: C('dim') });
+    heading(ctx, 16, 13, 'Bestiary');
+    txtR(ctx, 384, 15, `Recorded ${this.beastKnown || 0} / ${this.beast.length}`, { size: 'fine', color: C('dim') });
 
     if (!this.beast.length) {
       if (!BESTIARY.ready) {
@@ -952,8 +780,8 @@ export class TitleScene {
 
   _drawCredits(ctx) {
     panel(ctx, 62, 22, 276, 196, { style: 'window' });
-    txtC(ctx, 200, 30, 'SWORD COAST CHRONICLES', { size: 'md', color: C('gold'), shadow: true });
-    txtC(ctx, 200, 42, 'A Tale of the Forgotten Realms — 1496 DR', { size: 'sm', color: C('dim') });
+    heading(ctx, 200, 29, 'Sword Coast Chronicles', 'center');
+    txtC(ctx, 200, 42, 'A Tale of the Forgotten Realms — 1496 DR', { size: 'fine', color: C('dim') });
     ctx.fillStyle = 'rgba(92,74,42,0.7)';
     ctx.fillRect(74, 52, 252, 1);
 
@@ -961,13 +789,13 @@ export class TitleScene {
     for (const [head, lines] of CREDITS) {
       txt(ctx, 76, y, head, { size: 'sm', color: C('gold') });
       y += 10;
-      for (const ln of lines) { txt(ctx, 84, y, ln, { size: 'sm', color: C('ink') }); y += 9; }
-      y += 3;
+      for (const ln of lines) { txt(ctx, 84, y, ln, { size: 'fine', color: C('ink') }); y += 7; }
+      y += 4;
     }
     ctx.fillStyle = 'rgba(92,74,42,0.7)';
     ctx.fillRect(74, 196, 252, 1);
-    txtC(ctx, 200, 201, 'May Tymora smile on you, and Beshaba look away.', { size: 'sm', color: C('gold') });
-    txtC(ctx, 200, 210, 'X  back', { size: 'sm', color: C('dim') });
+    txtC(ctx, 200, 201, 'May Tymora smile on you, and Beshaba look away.', { size: 'fineb', color: C('gold') });
+    txtC(ctx, 200, 209, 'X  back', { size: 'fine', color: C('dim') });
   }
 }
 
@@ -989,8 +817,8 @@ const CREDITS = [
   ]],
   ['ART & SOUND', [
     'Every sprite is drawn from text grids',
-    'at runtime. Every note is procedural',
-    'chiptune, synthesised by WebAudio.',
+    'at runtime. Every tune is medieval',
+    'polyphony, synthesised by WebAudio.',
   ]],
 ];
 
@@ -1224,48 +1052,6 @@ export class GameOverScene {
 // ===========================================================================
 // Drawing helpers
 // ===========================================================================
-
-/** A row of overlapping peaks. Union-filled, so overlaps read as one ridge. */
-function makeRange(r, baseY, minH, maxH, spacing) {
-  const peaks = [];
-  let x = -24;
-  while (x < VIEW_W + 34) {
-    const h = r.int(minH, maxH);
-    const halfW = Math.round(h * r.float(0.72, 1.3));
-    peaks.push({ x: Math.round(x), h, halfW });
-    x += Math.round(halfW * r.float(0.7, 1.25)) + spacing;
-  }
-  return peaks;
-}
-
-function drawRange(ctx, peaks, baseY, color, snowColor) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(-34, baseY);
-  for (const p of peaks) {
-    ctx.lineTo(p.x - p.halfW, baseY);
-    ctx.lineTo(p.x, baseY - p.h);
-    ctx.lineTo(p.x + p.halfW, baseY);
-  }
-  ctx.lineTo(VIEW_W + 34, baseY);
-  ctx.lineTo(VIEW_W + 34, VIEW_H);
-  ctx.lineTo(-34, VIEW_H);
-  ctx.closePath();
-  ctx.fill();
-
-  if (!snowColor) return;
-  ctx.fillStyle = snowColor;
-  for (const p of peaks) {
-    if (p.h < 30) continue;
-    const cw = Math.max(2, Math.round(p.halfW * 0.28));
-    ctx.beginPath();
-    ctx.moveTo(p.x - cw, baseY - p.h + cw * 1.7);
-    ctx.lineTo(p.x, baseY - p.h);
-    ctx.lineTo(p.x + cw, baseY - p.h + cw * 1.7);
-    ctx.closePath();
-    ctx.fill();
-  }
-}
 
 /** Used when no hero sprite family has been defined yet. */
 function drawFallbackHero(ctx, x, y) {

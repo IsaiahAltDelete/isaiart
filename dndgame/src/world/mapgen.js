@@ -497,7 +497,7 @@ export function dungeonThemes() {
     },
     // Natural rock: no doors, mushrooms and crystal seams instead of furniture.
     cave: {
-      id: 'cave', biome: 'cave', music: 'dungeon', indoor: true,
+      id: 'cave', biome: 'cave', music: 'cave', indoor: true,
       name: 'Cavern',
       floor: tidTable([['CAVE_FLOOR', 8], ['CAVE_FLOOR_RUBBLE', 3], ['GRAVEL', 2]]),
       corridor: tidTable([['CAVE_FLOOR', 6], ['CAVE_FLOOR_RUBBLE', 4]]),
@@ -514,7 +514,7 @@ export function dungeonThemes() {
     },
     // Old Owl Well and the Neverwinter barrows: tombs, sarcophagi, bone dust.
     crypt: {
-      id: 'crypt', biome: 'crypt', music: 'dungeon', indoor: true,
+      id: 'crypt', biome: 'crypt', music: 'crypt', indoor: true,
       name: 'The Barrows',
       floor: tidTable([['STONE_FLOOR', 7], ['BONE_FLOOR', 3], ['STONE_FLOOR_CRACKED', 3]]),
       corridor: tidTable([['STONE_FLOOR', 5], ['BONE_FLOOR', 3], ['STONE_FLOOR_CRACKED', 3]]),
@@ -530,7 +530,7 @@ export function dungeonThemes() {
     },
     // Wave Echo Cave: ore seams, timber props, minecart rails.
     mine: {
-      id: 'mine', biome: 'mine', music: 'dungeon', indoor: true,
+      id: 'mine', biome: 'mine', music: 'cave', indoor: true,
       name: 'Wave Echo Cave',
       floor: tidTable([['CAVE_FLOOR', 7], ['GRAVEL', 4], ['CAVE_FLOOR_RUBBLE', 2]]),
       corridor: tidTable([['GRAVEL', 5], ['CAVE_FLOOR', 5]]),
@@ -859,7 +859,9 @@ function paintCell(map, g, th, r, x, y) {
       return;
     case CELL.DOOR:
       carveFloor(map, x, y, pickTid(r, th.corridor));
-      if (th.door) setDeco(map, x, y, th.door);
+      // Ordinary passage doors have no lock/interaction trigger. Keep them
+      // open so the runtime's SOLID collision agrees with connectivity checks.
+      if (th.door) setDeco(map, x, y, tid('DOOR_OPEN'));
       return;
     case CELL.LOCKED:
       carveFloor(map, x, y, pickTid(r, th.corridor));
@@ -1003,6 +1005,10 @@ export function generateDungeon(opts = {}) {
     biome: opts.biome || th.biome,
     indoor: opts.indoor != null ? opts.indoor : th.indoor,
     music: milestone ? 'boss' : th.music,
+    // Indoor TileMaps default to peaceful; generated dungeon danger patches
+    // need an explicit rate. Preserve an intentionally disabled encounter rate.
+    encounterRate: opts.encounterRate ?? 0.06,
+    encounterTable: opts.encounterTable || null,
   });
   const rp = root.fork('paint');
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) paintCell(map, g, th, rp, x, y);
@@ -1023,7 +1029,8 @@ export function generateDungeon(opts = {}) {
     dir: 'up', depth: depth - 1, theme: th.id, exit: depth <= 1,
   });
   setGround(map, exit.x, exit.y, tid('STAIRS_DOWN'), TRIGGER);
-  addTrigger(map, exit.x, exit.y, 'warp', { dir: 'down', depth: depth + 1, theme: th.id });
+  addTrigger(map, exit.x, exit.y, 'warp', { dir: 'down', depth: depth + 1, theme: th.id,
+    guarded: milestone ? { boss: true, depth, biome: map.biome, theme: th.id, encounterKey: 'guardian' } : null });
 
   if (secret) {
     addTrigger(map, secret.door.x, secret.door.y, 'script', {
@@ -1070,9 +1077,11 @@ export function generateDungeon(opts = {}) {
       const x = bx + dx, y = by + dy;
       if (walkable(map, x, y) && !hasProp(map, x, y)) place(map, x, y, pickTid(rd, th.lights));
     }
-    addTrigger(map, bx, by, 'battle', {
-      boss: true, depth, biome: map.biome, theme: th.id, seed: rd.int(1, 1 << 30),
-    });
+    const guardian = {
+      boss: true, depth, biome: map.biome, theme: th.id, seed: rd.int(1, 1 << 30), encounterKey: 'guardian',
+    };
+    addTrigger(map, bx, by, 'battle', guardian);
+    map.triggers.find(t => t.kind === 'warp' && t.x === exit.x && t.y === exit.y).data.guarded = guardian;
     if (th.id === 'dungeon') {
       // Halaster likes an audience.
       addTrigger(map, entry.x, entry.y, 'script', { kind: 'halaster-taunt', depth });
@@ -1141,6 +1150,35 @@ export function generateDungeon(opts = {}) {
   validateConnectivity(map, mustReach, {
     paint: (x, y) => carveFloor(map, x, y, pickTid(rp, th.corridor)),
   });
+  // Two occupied rooms break up long empty floors. These are authored patrol
+  // encounters, not extra random ambushes; defeated patrols stay cleared.
+  const occupied = triggerKeySet(map);
+  const ordinary = rooms.filter(r => !['entry','exit','boss'].includes(r.kind) && r !== vault && r !== secret);
+  let patrol = 0, discovery = 0;
+  for (const room of ordinary) {
+    const spots = [];
+    for (let y=room.y;y<room.y+room.h;y++) for(let x=room.x;x<room.x+room.w;x++)
+      if(walkable(map,x,y) && !hasProp(map,x,y) && !occupied.has(`${x},${y}`)) spots.push({x,y});
+    if (!spots.length) continue;
+    const p = spots.sort((a,b)=>Math.abs(a.x-room.cx)+Math.abs(a.y-room.cy)-Math.abs(b.x-room.cx)-Math.abs(b.y-room.cy))[0];
+    if (patrol < 2) {
+      const data = {depth,biome:map.biome,theme:th.id,difficulty:'easy',
+        encounterKey:`patrol-${patrol++}`,seed:root.seed + ':' + room.id};
+      for (const q of spots) {
+        addTrigger(map,q.x,q.y,'battle',data);
+        occupied.add(`${q.x},${q.y}`);
+      }
+      setGround(map,p.x,p.y,th.encounterGround,TRIGGER);
+    } else if (discovery < 2 && safeToBlock(map,p.x,p.y)) {
+      const notes = [
+        'A rota lists the late watch, two missing lanterns, and a firm reminder: whoever borrows the kettle must return it. Fresh bootprints lead deeper.',
+        'Someone has scratched a game of knucklebones into the table. The tally ends with: "You still owe me supper." A folded blanket waits beside it.'
+      ];
+      place(map,p.x,p.y,tid('SIGN'));
+      addTrigger(map,p.x,p.y,'sign',{title:'Signs of life',text:notes[discovery++]});
+    }
+    occupied.add(`${p.x},${p.y}`);
+  }
   return map;
 }
 
@@ -1515,7 +1553,7 @@ export function generateForest(opts = {}) {
   const map = new TileMap({
     w, h,
     name: opts.name || (pine ? 'Neverwinter Wood' : 'Kryptgarden Forest'),
-    biome, indoor: false, music: 'field',
+    biome, indoor: false, music: biome === 'marsh' ? 'marsh' : 'forest',
   });
   map.seed = root.seed;
   map.triggers = [];

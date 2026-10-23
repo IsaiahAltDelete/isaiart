@@ -1,8 +1,8 @@
 // ui/charcreate.js — CharCreateScene: the twelve-step character creation wizard.
 //
 // Layout (400x240 logical):
-//   y 2..14    step tab strip (12 tabs, 33px each)
-//   y 16..216  three panels: options list | detail pane | live character preview
+//   y 2..33    chapter navigation and full step names
+//   y 35..216  options | explanation | portrait / character sheet
 //   y 218..238 footer: BACK / hint or validation reason / NEXT
 //
 // The wizard keeps ONE `draft` object. Every change bumps `_version`, and the next
@@ -15,13 +15,14 @@
 // data/tables.js is loaded lazily because nothing else in the graph requires it.
 
 import { UI } from './kit.js';
+import { MK } from './menukit.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Game } from '../engine.js';
-import { VIEW_W, VIEW_H, DIRS, clamp, signed, ordinal } from '../constants.js';
+import { clamp, signed, ordinal } from '../constants.js';
 import { rng, makeRNG } from '../core/rng.js';
 import {
-  drawActor, randomAppearance, APPEARANCE_OPTIONS, GENERIC_PALETTES,
+  drawActor, drawPortrait, randomAppearance, APPEARANCE_OPTIONS, GENERIC_PALETTES,
 } from '../render/actor.js';
 import {
   ABILITIES, ABILITY_NAMES, ABILITY_ABBR, ABILITY_DESC, SKILLS, SKILL_IDS,
@@ -295,8 +296,9 @@ const HORN_PALETTE = ['#8c8377', '#6a6058', '#b8ab97', '#3a3630', '#d8cdb4', '#5
 // 3. LAYOUT
 // ===========================================================================
 
-const TAB_X = 2, TAB_Y = 2, TAB_W = 396, TAB_H = 12;
-const BODY_Y = 16, BODY_H = 200, BODY_B = BODY_Y + BODY_H;     // 16 .. 216
+const TAB_X = 2, TAB_Y = 12, TAB_W = 396, TAB_H = 10;
+const BODY_Y = 35, BODY_H = 181;     // 35 .. 216
+const PREVIEW_DIRECTIONS = ['down', 'left', 'up', 'right'];
 const LP_X = 2, LP_W = 137;      // left panel
 const MP_X = 141, MP_W = 138;    // middle panel
 const RP_X = 281, RP_W = 117;    // right panel
@@ -332,7 +334,13 @@ const STEPS = [
   { id: 'equipment', tab: 'GEAR', title: 'Equipment' },
   { id: 'appearance', tab: 'LOOK', title: 'Appearance' },
   { id: 'identity', tab: 'NAME', title: 'Identity' },
-  { id: 'summary', tab: 'DONE', title: 'Summary' },
+  { id: 'summary', tab: 'DONE', title: 'Review' },
+];
+const CHAPTERS = [
+  {label:'Origins', steps:[0,1,2,3]},
+  {label:'Training', steps:[4,5,6,7]},
+  {label:'Personal', steps:[8,9,10]},
+  {label:'Review', steps:[11]},
 ];
 const STEP_INDEX = {};
 STEPS.forEach((s, i) => { STEP_INDEX[s.id] = i; });
@@ -509,16 +517,16 @@ function Doc(x, w) {
       const self = this; const op = obj(o);
       const GAP = 6;
       const val = String(v == null ? '' : v);
-      // The value used to claim 66% and the key took what was left, so in a
-      // narrow column "Resists  Necrotic, Radiant" printed as "Resis...
-      // Necrotic, Rad..." -- both halves cut, and the cut label is the half
-      // that says what the number even is. The key gets its natural width
-      // first (capped at half the column) and the value takes the remainder.
-      const keyW = Math.min(tw(k, 'sm'), Math.max(12, self.w * 0.5));
-      const valW = Math.max(12, self.w - keyW - GAP);
+      // Short pairs stay on one line. Long mechanical values must remain
+      // available through scrolling, rather than losing their suffix forever.
+      if (tw(k, 'sm') + GAP + tw(val, 'sm') > self.w) {
+        this.wrap(k, {color:op.keyColor || C.dim});
+        this.wrap(val, {indent:4,color:op.color || C.ink});
+        return this.gap(2);
+      }
       return this._push(DOC_LINE, (ctx, y) => {
-        txt(ctx, self.x, y, ellip(k, keyW, 'sm'), { size: 'sm', color: op.keyColor || C.dim, shadow: true });
-        rtxt(ctx, self.x + self.w, y, ellip(val, valW, 'sm'), { size: 'sm', color: op.color || C.ink, shadow: true });
+        txt(ctx, self.x, y, k, { size: 'sm', color: op.keyColor || C.dim, shadow: true });
+        rtxt(ctx, self.x + self.w, y, val, { size: 'sm', color: op.color || C.ink, shadow: true });
       });
     },
 
@@ -933,6 +941,9 @@ export class CharCreateScene {
 
     this.t = 0;
     this.step = 0;
+    this.previewMode = 'portrait';
+    this.previewDir = 0;
+    this.previewWalk = false;
     this.sub = 0;                 // species step: 0 = species, 1 = lineage
     this.bucket = 0;              // sub-section within a step (tab1..tab5)
     this.cursors = {};            // rowKey -> cursor index
@@ -1053,7 +1064,13 @@ export class CharCreateScene {
   }
 
   /** Mark the draft changed: the preview character rebuilds next frame. */
-  _touch() { this._version++; }
+  _touch() {
+    const picks = this.draft?.picks;
+    if (picks && Array.isArray(picks.wizardPrepared)) {
+      picks.wizardPrepared = picks.wizardPrepared.filter(id => (picks.spellbook || []).includes(id));
+    }
+    this._version++;
+  }
 
   // -------------------------------------------------------------------------
   // SCENE HOOKS
@@ -1083,7 +1100,11 @@ export class CharCreateScene {
     if (this._builtVersion !== this._version) {
       this._builtVersion = this._version;
       const built = safe(() => createCharacter(this.buildOpts(true)), null);
-      if (built) this.preview = built;
+      if (built) {
+        if (this.draft.classId === 'wizard') built.spells.prepared = arr(this.draft.picks.wizardPrepared)
+          .filter(id => arr(this.draft.picks.spellbook).includes(id)).slice(0, preparedMax(built));
+        this.preview = built;
+      }
       this._rowsKey = '';                        // force a row rebuild too
     }
     const key = this.step + ':' + this.sub + ':' + this.bucket + ':' + this._version;
@@ -1128,6 +1149,19 @@ export class CharCreateScene {
   // -------------------------------------------------------------------------
 
   _handleKeys() {
+    if (Input.down('run')) {
+      const direction = Input.consume('next') ? 1 : Input.consume('prev') ? -1 : 0;
+      if (direction) {
+        const current = CHAPTERS.findIndex(c => c.steps.includes(this.step));
+        const chapter = CHAPTERS[(current + direction + CHAPTERS.length) % CHAPTERS.length];
+        this.gotoStep(chapter.steps.find(i => this.stepEnabled(i)));
+        return;
+      }
+    }
+    if (Input.consume('inventory')) { this.previewMode = this.previewMode === 'portrait' ? 'sheet' : 'portrait'; return; }
+    if (Input.consume('journal')) { this.rotatePreview(-1); return; }
+    if (Input.consume('spells')) { this.rotatePreview(1); return; }
+    if (Input.consume('map')) { this.previewWalk = !this.previewWalk; return; }
     // --- step navigation ---------------------------------------------------
     if (safe(() => Input.consume('next'), false)) { this.goNext(); return; }
     if (safe(() => Input.consume('prev'), false)) { this.goPrev(); return; }
@@ -1287,18 +1321,8 @@ export class CharCreateScene {
 
   gotoStep(i) {
     if (i === this.step) return;
-    if (i > this.step) {
-      for (let k = this.step; k < i; k++) {
-        if (!this.stepEnabled(k)) continue;
-        const why = this.issue(k);
-        if (why) {
-          this.step = k; this.sub = 0; this.bucket = 0; this._rowsKey = '';
-          this.focusIssueBucket(k);
-          this.warn(STEPS[k].title + ': ' + why, 'tabs', k);
-          return;
-        }
-      }
-    }
+    // Browsing is free; goNext and finish still validate actual creation.
+    if (!this.stepEnabled(i)) { this.warn(this.lockedReason(i), 'tabs'); return; }
     this.step = clamp(i, 0, STEPS.length - 1);
     this.sub = 0;
     this.bucket = 0;
@@ -1856,6 +1880,9 @@ export class CharCreateScene {
     if (d.classId === 'wizard') {
       const ids = safe(() => spellsForList(list, 1, 1), []);
       if (ids.length) out.push({ key: 'spellbook', label: 'Spellbook', type: 'spell', count: spellbookSize(d.level), options: ids, note: 'Your spellbook. Prepared spells are drawn from it.' });
+      out.push({ key: 'wizardPrepared', label: 'Ready', type: 'spell', optional: true,
+        count: preparedCount(cls, d.level, abilMod), options: arr(d.picks.spellbook),
+        note: 'Optional: ready any book spells, or prepare later in Spells.' });
     } else if (sc.list || sc.ability) {
       const n = preparedCount(cls, d.level, abilMod);
       const ids = safe(() => spellsForList(list, maxLv, 1), []);
@@ -2160,6 +2187,7 @@ export class CharCreateScene {
     const extra = { subclassOptions: [], abilityPicks: [], feats: [] };
     const buckets = this.spellBuckets().concat(this.featureBuckets());
     for (const b of buckets) {
+      if (b.key === 'wizardPrepared') continue;
       const picks = arr(d.picks[b.key]);
       if (!picks.length) continue;
       switch (b.type) {
@@ -2243,6 +2271,9 @@ export class CharCreateScene {
     const bonds = bondsFor(d.backgroundId);
     ch.notes = bonds[clamp(d.bond, 0, bonds.length - 1)] || '';
     safe(() => recalc(ch));
+    if (d.classId === 'wizard') {
+      ch.spells.prepared = arr(d.picks.wizardPrepared).filter(id => arr(d.picks.spellbook).includes(id)).slice(0, preparedMax(ch));
+    }
     ch.hp = ch.maxHp;
     return ch;
   }
@@ -2301,6 +2332,7 @@ export class CharCreateScene {
       }
       case 'spells': {
         for (const b of this.spellBuckets()) {
+          if (b.optional) continue;
           const n = arr(d.picks[b.key]).length;
           if (n < b.count) return b.label + ': choose ' + (b.count - n) + ' more.';
         }
@@ -2338,7 +2370,8 @@ export class CharCreateScene {
       case 'skills': return Math.max(1, this.skillBuckets().length);
       case 'spells': return Math.max(1, this.spellBuckets().length);
       case 'features': return Math.max(1, this.featureBuckets().length);
-      case 'summary': return 4;
+      case 'summary': return 5;
+      case 'appearance': return 3;
       default: return 1;
     }
   }
@@ -2350,7 +2383,8 @@ export class CharCreateScene {
       case 'skills': return this.skillBuckets().map((b) => b.label);
       case 'spells': return this.spellBuckets().map((b) => b.label);
       case 'features': return this.featureBuckets().map((b) => b.label);
-      case 'summary': return ['Stat', 'Feat', 'Magi', 'Gear'];
+      case 'summary': return ['Story', 'Skill', 'Feat', 'Magic', 'Gear'];
+      case 'appearance': return ['Body', 'Hair', 'Dress'];
       default: return [];
     }
   }
@@ -2387,7 +2421,7 @@ export class CharCreateScene {
    */
   bucketComplete(i) {
     const d = this.draft;
-    const full = (b, picks) => (b ? picks >= b.count : null);
+    const full = (b, picks) => (b && !b.optional ? picks >= b.count : null);
     switch (STEPS[this.step].id) {
       case 'skills': {
         const b = this.skillBuckets()[i];
@@ -2409,13 +2443,18 @@ export class CharCreateScene {
   focusIssueBucket(i) {
     const d = this.draft;
     const id = STEPS[i] ? STEPS[i].id : '';
+    if (id === 'species' && speciesHasLineages(d.speciesId) && !getLineage(d.speciesId, d.lineageId)) {
+      this.sub = 1;
+      this._rowsKey = '';
+      return;
+    }
     const firstGap = (list, done) => {
       for (let k = 0; k < list.length; k++) if (!done(list[k])) return k;
       return -1;
     };
     let k = -1;
     if (id === 'skills') k = firstGap(this.skillBuckets(), (b) => this.skillPicksOf(b).length >= b.count);
-    else if (id === 'spells') k = firstGap(this.spellBuckets(), (b) => arr(d.picks[b.key]).length >= b.count);
+    else if (id === 'spells') k = firstGap(this.spellBuckets(), (b) => b.optional || arr(d.picks[b.key]).length >= b.count);
     else if (id === 'features') k = firstGap(this.featureBuckets(), (b) => arr(d.picks[b.key]).length >= b.count);
     // A background is always pre-selected, so its only real gap is the boost page.
     else if (id === 'background' && getBackground(d.backgroundId)) k = 1;
@@ -2471,10 +2510,12 @@ export class CharCreateScene {
    */
   grantedSpells(exceptKey) {
     const out = {};
+    if (exceptKey === 'wizardPrepared') return out;
     const all = arr(this.spellBuckets()).concat(arr(this.featureBuckets()));
     for (const b of all) {
       if (!b || (b.type !== 'spell' && b.type !== 'cantrip')) continue;
       if (b.key === exceptKey) continue;
+      if (b.key === 'wizardPrepared') continue;
       for (const id of this.picksOf(b.key)) {
         if (!(id in out)) out[id] = b.title || b.label || 'Another choice';
       }
@@ -2520,9 +2561,19 @@ export class CharCreateScene {
       case 'equipment': return this.rowsEquipment();
       case 'appearance': return this.rowsAppearance();
       case 'identity': return this.rowsIdentity();
-      case 'summary': return [];
+      case 'summary': return this.rowsReview();
       default: return [];
     }
+  }
+
+  rowsReview() {
+    return [{label:'Choose a page to edit',header:true}, ...STEPS.slice(0,-1).map((step,i)=>({
+      label:step.title, checked:this.stepEnabled(i)&&!this.issue(i),
+      hint:!this.stepEnabled(i)?'n/a':this.issue(i)?'needed':'ready',
+      hintColor:this.issue(i)?C.orange:C.green,
+      disabled:!this.stepEnabled(i),lockedWhy:this.lockedReason(i),
+      onConfirm:()=>this.gotoStep(i),
+    }))];
   }
 
   // --- 1. species ----------------------------------------------------------
@@ -2536,7 +2587,7 @@ export class CharCreateScene {
     const rows = [
       { label: 'In a hurry', header: true, color: C.goldD },
       {
-        label: 'Quick start', hint: 'roll and play', button: true, color: C.green,
+        label: 'Surprise me', hint: 'roll and review', button: true, color: C.green,
         onConfirm: () => this.quickStart(),
       },
       {
@@ -2563,13 +2614,12 @@ export class CharCreateScene {
   }
 
   /**
-   * Roll everything and walk straight into the world. finish() still validates
-   * every step, so if the roll ever leaves a bucket empty this lands the player
-   * on that step with a reason instead of failing quietly.
+   * Roll a complete draft for review. Creation still requires an explicit Create.
    */
   quickStart() {
     this.randomiseAll();
-    this.finish();
+    this.gotoStep(STEP_INDEX.summary);
+    this.note('Your rolled hero is ready to review and edit.');
   }
 
   rowsLineage() {
@@ -2819,6 +2869,14 @@ export class CharCreateScene {
       header: true, color: C.goldD,
     }];
     const opts = b.options.map((o) => (typeof o === 'string' ? optionEntry(b.type, o) : o));
+    if (this.draft.classId === 'wizard' && ['cantrips','spellbook','wizardPrepared'].includes(b.key))
+      rows.push({ label: 'Magic explained', help: true, onConfirm: () => {} });
+    if (b.key === 'wizardPrepared') rows.push({ label: 'Suggest spells', button: true,
+      onConfirm: () => {
+        const preferred = ['mage-armor', 'magic-missile', 'shield', 'sleep', 'detect-magic'];
+        this.draft.picks.wizardPrepared = [...preferred.filter(id => b.options.includes(id)), ...b.options.filter(id => !preferred.includes(id))].slice(0, b.count);
+        this._touch(); this.note('Suggested only: click any spell to change it.');
+      } });
     // spells sort by level then name so the list reads like a spellbook
     if (b.type === 'spell' || b.type === 'cantrip') {
       opts.sort((a, z) => {
@@ -2934,6 +2992,7 @@ export class CharCreateScene {
     const rows = [];
     const push = (r) => { if (r) rows.push(r); };
 
+    if (this.bucket === 0) {
     rows.push({ label: 'Body', header: true, color: C.goldD });
     // "Body type" is 62px of an 81px row before the value gets a look in, and
     // it sits directly under a "Body" header anyway — "Type" says the same
@@ -2950,11 +3009,6 @@ export class CharCreateScene {
     const heightNames = ['Very short', 'Short', 'Average', 'Tall', 'Very tall'];
     push(this._optRow('Height', 'height', heights, (v) => heightNames[Math.max(0, heights.indexOf(v))] || 'Average'));
     push(this._colorRow('Skin', 'skin', pal.skin));
-
-    rows.push({ label: 'Head', header: true, color: C.goldD });
-    push(this._optRow('Hair style', 'hairStyle', arr(AO.hairStyle)));
-    push(this._colorRow('Hair colour', 'hair', pal.hair));
-    if (mods.beard !== 'none') push(this._optRow('Beard', 'beard', arr(AO.beard).length ? AO.beard : ['none', 'stubble', 'goatee', 'full']));
     push(this._colorRow('Eyes', 'eye', pal.eye));
     if (mods.ears && mods.ears !== 'round') push(this._optRow('Ears', 'ears', arr(AO.ears)));
     if (mods.horns) {
@@ -2962,21 +3016,34 @@ export class CharCreateScene {
       push(this._colorRow('Horn colour', 'hornColor', pal.horn));
     }
     if (mods.tail) push(this._optRow('Tail', 'tail', arr(AO.tail)));
+    }
 
+    const styleName = (pre) => (v) => (v === 'auto' ? 'By Calling'
+      : v === pre + '-none' ? 'None' : cap(String(v).replace(pre + '-', '')));
+    if (this.bucket === 1) {
+    rows.push({ label: 'Hair & headwear', header: true, color: C.goldD });
+    push(this._optRow('Style', 'hairStyle', arr(AO.hairStyle), (v) => ({sidepart:'Side part',twinbraids:'Twin braids',lowbun:'Low bun',widowspeak:"Widow peak"}[v] || cap(v))));
+    push(this._colorRow('Hair colour', 'hair', pal.hair));
+    if (mods.beard !== 'none') push(this._optRow('Beard', 'beard', arr(AO.beard).length ? AO.beard : ['none', 'stubble', 'goatee', 'full']));
+    push(this._optRow('Headgear', 'helmStyle', arr(AO.helmStyle), styleName('helm')));
+    }
+
+    if (this.bucket === 2) {
     rows.push({ label: 'Dress', header: true, color: C.goldD });
-    push(this._colorRow('Outfit', 'outfit', CLOTH_PALETTE));
+    push(this._optRow('Cut', 'wardrobe', AO.wardrobe, (v) => v === 'auto' ? 'Equipment' : cap(v.replace('outfit-', ''))));
+    push(this._colorRow('Main', 'outfit', CLOTH_PALETTE));
     push(this._colorRow('Secondary', 'outfitAlt', CLOTH_PALETTE));
     push(this._colorRow('Accent', 'accent', ACCENT_PALETTE));
     push(this._colorRow('Metal', 'metal', METAL_PALETTE));
     push(this._colorRow('Leather', 'leather', LEATHER_PALETTE));
+    push(this._colorRow('Linen', 'cloth', CLOTH_PALETTE));
     // 'auto' reads as "By Calling": the class picks. It is a real value, not a
     // missing one, so choosing None below is honoured instead of being mistaken
     // for never having chosen.
-    const styleName = (pre) => (v) => (v === 'auto' ? 'By Calling'
-      : v === pre + '-none' ? 'None' : cap(String(v).replace(pre + '-', '')));
     push(this._optRow('Cloak', 'cloakStyle', arr(AO.cloakStyle), styleName('cloak')));
-    push(this._optRow('Headgear', 'helmStyle', arr(AO.helmStyle), styleName('helm')));
     push(this._optRow('Boots', 'bootStyle', arr(AO.bootStyle), styleName('boots')));
+    push(this._optRow('Emblem', 'classMarks', [true, false], (v) => v ? 'Calling' : 'None'));
+    }
 
     rows.push({ label: 'Chance', header: true, color: C.goldD });
     rows.push({ label: 'Randomise look', button: true, onConfirm: () => this._randomiseLook(true) });
@@ -3145,7 +3212,7 @@ export class CharCreateScene {
 
   draw(ctx) {
     this._hot = [];
-    fill(ctx, 0, 0, VIEW_W, VIEW_H, col('bgDeep', '#05060c'));
+    MK.desk(ctx);
     this.drawTabs(ctx);
     this.drawLeft(ctx);
     this.drawDetail(ctx);
@@ -3155,51 +3222,26 @@ export class CharCreateScene {
   }
 
   drawTabs(ctx) {
-    const shake = this.shakeX('tabs');
-    const items = STEPS.map((s, i) => {
-      const on = this.stepEnabled(i);
-      const done = on && !this.issue(i);
-      return {
-        label: s.tab,
-        disabled: !on,
-        // A red pip on ANY unfinished step, not just the ones already walked
-        // past: the strip should read as a checklist at a glance.
-        badge: on && !done,
-        color: done ? C.green : undefined,
-      };
+    txt(ctx, 7, 2, 'A LIFE BEFORE LEGEND', {size:'sm', color:C.goldB, shadow:true});
+    const pending = STEPS.filter((_,i)=>this.stepEnabled(i)&&this.issue(i)).length;
+    rtxt(ctx, 394, 2, pending ? pending + ' steps need choices' : 'Ready for the road', {size:'sm',color:pending?C.dim:C.green});
+    const chapter = CHAPTERS.findIndex(c=>c.steps.includes(this.step));
+    const cw = TAB_W / CHAPTERS.length;
+    CHAPTERS.forEach((c,i)=>{
+      const x=TAB_X+i*cw, done=i===3?this.firstIncomplete()<0:c.steps.every(k=>!this.stepEnabled(k)||!this.issue(k));
+      fill(ctx,x,TAB_Y,cw-2,TAB_H,i===chapter?'#463521':'rgba(0,0,0,0.4)');
+      ctxt(ctx,x+cw/2,TAB_Y+1,(i+1)+'. '+c.label,{size:'sm',color:i===chapter?C.goldB:C.dim});
+      fill(ctx,x+2,TAB_Y+TAB_H-1,cw-6,1,done?C.green:i===chapter?C.gold:C.border);
+      this.hit(x,TAB_Y,cw-2,TAB_H,()=>this.gotoStep(c.steps.find(k=>this.stepEnabled(k))));
     });
-    ctx.save();
-    ctx.translate(shake, 0);
-    safe(() => UI.tabs(ctx, TAB_X, TAB_Y, TAB_W, items, this.step, { h: TAB_H }));
-    const tw1 = Math.floor(TAB_W / STEPS.length);
-    for (let i = 0; i < STEPS.length; i++) {
-      const tx = TAB_X + i * tw1;
-      const on = this.stepEnabled(i);
-      const why = on ? this.issue(i) : null;
-
-      // A finished step gets a green underline; an unfinished one an amber
-      // dashed underline, so the strip works for a colour-blind player too.
-      if (i !== this.step) {
-        if (on && !why) fill(ctx, tx + 2, TAB_Y + TAB_H - 2, tw1 - 4, 1, C.green);
-        else if (on) {
-          for (let dx = 2; dx < tw1 - 3; dx += 3) fill(ctx, tx + dx, TAB_Y + TAB_H - 2, 2, 1, C.orange);
-        }
-      }
-      // The step a refusal named pulses red for a few seconds.
-      if (i === this.blameStep && this.blameT > 0 && Math.floor(this.t * 8) % 2 === 0) {
-        frame(ctx, tx, TAB_Y - 1, tw1 - 1, TAB_H + 1, C.red);
-      }
-    }
-    ctx.restore();
-
-    for (let i = 0; i < STEPS.length; i++) {
-      const tx = TAB_X + i * tw1;
-      this.hit(tx, TAB_Y, tw1, TAB_H, () => {
-        if (!this.stepEnabled(i)) { this.warn(this.lockedReason(i), 'tabs'); return; }
-        if (i === this.step) { this.note(STEPS[i].title + ' — you are here.'); return; }
-        this.gotoStep(i); sfx('select');
-      });
-    }
+    const steps=CHAPTERS[chapter].steps, sw=TAB_W/steps.length;
+    steps.forEach((k,i)=>{
+      const x=TAB_X+i*sw,on=this.stepEnabled(k),why=on&&this.issue(k);
+      if(k===this.step)fill(ctx,x,24,sw-2,9,'rgba(227,179,74,0.18)');
+      const label=(k===this.step?'> ':why?'! ':'')+STEPS[k].title;
+      ctxt(ctx,x+sw/2,25,label,{size:'sm',color:!on?C.off:k===this.step?C.goldB:why?C.orange:C.ink});
+      this.hit(x,24,sw-2,9,()=>this.gotoStep(k));
+    });
   }
 
   // --- left column ---------------------------------------------------------
@@ -3239,7 +3281,7 @@ export class CharCreateScene {
         if (on) frame(ctx, bx, y, bw - 1, 9, C.gold);
         // An unfinished sub-section burns orange so it is obvious where to go.
         const ink = on ? C.goldB : done === false ? C.orange : C.dim;
-        ctxt(ctx, bx + (bw - 1) / 2, y + 1, ellip(labels[bi], bw - 4, 'sm'), { size: 'sm', color: ink, shadow: true });
+        ctxt(ctx, bx + (bw - 1) / 2, y + 2, ellip(labels[bi], bw - 4, 'fine'), { size: 'fine', color: ink, shadow: true });
         this.hit(bx, y, bw - 1, 9, () => this.setBucket(bi));
       }
       if (more) {
@@ -3249,7 +3291,7 @@ export class CharCreateScene {
       y += 11;
     }
 
-    if (STEPS[this.step].id === 'summary') { this.drawSummaryVitals(ctx, y); return; }
+
 
     const listY = y;
     const listH = BODY_Y + BODY_H - 5 - listY;
@@ -3440,7 +3482,7 @@ export class CharCreateScene {
       : this.bucketCount() > 1
         ? 'Z Pick   TAB Section   R Next   Q Back'
         : 'Z Pick   ←→ Adjust   R Next   Q Back';
-    txt(ctx, 54, y + 7, ellip(keys, FOOT_LINE_W, 'sm'), { size: 'sm', color: 'rgba(150,140,115,0.65)', shadow: true });
+    txt(ctx, 54, y + 7, keys + '   Shift Q/R Chapters', { size: 'fine', color: C.dim, shadow: true });
   }
 
   /**
@@ -3464,9 +3506,9 @@ export class CharCreateScene {
         ? 'Tab walks all ' + this.bucketCount() + ' sets of choices.'
         : 'The last of your level-1 choices.';
       case 'equipment': return 'Take the kit, or coin to spend in Phandalin.';
-      case 'appearance': return row && row.palette ? 'Left/right walks the palette.' : 'Everything here shows live on the sprite.';
+      case 'appearance': return row && row.palette ? 'Left/right changes colour. J/K turns the model.' : 'J/K Turn   M Walk   I Hero / Sheet';
       case 'identity': return 'Z types the name. Z on Deity opens the list.';
-      case 'summary': return 'Check it over, then Create. Tabs jump back.';
+      case 'summary': return 'Review your sheet. Create begins your story.';
       default: return '';
     }
   }
@@ -3476,74 +3518,57 @@ export class CharCreateScene {
   // Character that createCharacter/recalc just produced.
   // =========================================================================
 
+  previewButton(ctx,x,y,w,label,fn) {
+    fill(ctx,x,y,w,11,'#272019');frame(ctx,x,y,w,11,C.border);
+    ctxt(ctx,x+w/2,y+3,label,{size:'fine',color:C.goldB});
+    this.hit(x,y,w,11,fn);
+  }
+
+  rotatePreview(dir) { this.previewDir = (this.previewDir + dir + PREVIEW_DIRECTIONS.length) % PREVIEW_DIRECTIONS.length; }
+
   drawPreview(ctx) {
-    const d = this.draft;
-    const ch = this.preview;
-    panel(ctx, RP_X, BODY_Y, RP_W, BODY_H, 'window');
-    const cx = RC_X + Math.round(RC_W / 2);
-    let y = BODY_Y + 4;
-
-    // The panel's interior floor. The column used to run to y=253 for a caster
-    // — the weapon line sat on the bottom frame, and MAGIC, the slot list, the
-    // senses line and the purse were all drawn BELOW the panel, over (and past)
-    // the footer. Everything below is clipped to the frame so nothing can leave
-    // it again, and the rhythm was tightened until a level-1 wizard, the
-    // tallest case, ends at 212 instead of 253.
-    const FLOOR = BODY_Y + BODY_H - 3;
-    safe(() => UI.pushClip(ctx, RP_X + 2, BODY_Y + 2, RP_W - 4, BODY_H - 4));
-
-    // --- identity ----------------------------------------------------------
-    const name = (d.name || '').trim() || 'Unnamed';
-    // A rolled name like "Westra Windriver" is wider than the column at md,
-    // and md is the same glyphs as sm with a bold pass -- so dropping to sm
-    // buys a character per 6px and shows the whole name instead of most of it.
-    const nameSize = tw(name, 'md') > RC_W ? 'sm' : 'md';
-    ctxt(ctx, cx, y, ellip(name, RC_W, nameSize), { size: nameSize, color: d.name ? C.goldB : C.dim, shadow: true });
-    y += 8;
-    const sp = getSpecies(d.speciesId);
-    const lin = getLineage(d.speciesId, d.lineageId);
-    const race = (lin ? lin.name : obj(sp).name || cap(d.speciesId));
-    ctxt(ctx, cx, y, ellip(race, RC_W, 'sm'), { size: 'sm', color: C.cyan, shadow: true });
-    y += 7;
-    const cls = getClass(d.classId);
-    const subN = d.subclassId ? obj(getSubclass(d.subclassId)).name : '';
-    const clsLine = (obj(cls).name || cap(d.classId)) + ' ' + d.level;
-    ctxt(ctx, cx, y, ellip(clsLine, RC_W, 'sm'), { size: 'sm', color: C.ink, shadow: true });
-    y += 7;
-    if (subN) {
-      ctxt(ctx, cx, y, ellip(subN + (this.subclassActive() ? '' : ' (lv3)'), RC_W, 'sm'), {
-        size: 'sm', color: this.subclassActive() ? C.purple : C.off, shadow: true,
-      });
-      y += 7;
-    } else {
-      y += 1;
+    const d=this.draft,ch=this.preview,cls=getClass(d.classId);
+    panel(ctx,RP_X,BODY_Y,RP_W,BODY_H,'window');
+    const cx=RC_X+RC_W/2,FLOOR=BODY_Y+BODY_H-3;
+    UI.pushClip(ctx,RP_X+2,BODY_Y+2,RP_W-4,BODY_H-4);
+    let y=BODY_Y+4;
+    ['portrait','sheet'].forEach((mode,i)=>{
+      const x=RC_X+i*55;
+      fill(ctx,x,y,53,10,this.previewMode===mode?'#463521':'#17120e');
+      ctxt(ctx,x+26,y+1,mode==='portrait'?'Hero':'Sheet',{size:'sm',color:this.previewMode===mode?C.goldB:C.dim});
+      this.hit(x,y,53,10,()=>{this.previewMode=mode;});
+    });
+    y+=14;
+    if(this.previewMode==='portrait'){
+      const name=d.name.trim()||'Your adventurer';
+      ctxt(ctx,cx,y,ellip(name,RC_W,'sm'),{size:'sm',color:C.goldB});y+=9;
+      ctxt(ctx,cx,y,ellip((getSpecies(d.speciesId)?.name||'')+' '+(cls?.name||''),RC_W,'fine'),{size:'fine',color:C.cyan});y+=10;
+      const stageY=y,stageH=68;
+      fill(ctx,RC_X,stageY,RC_W,stageH,'#11191d');
+      // A quiet portrait alcove beside the exact equipped sprite used in play.
+      frame(ctx,RC_X,stageY,RC_W,stageH,C.border);
+      if(ch)drawPortrait(ctx,ch,RC_X+1,stageY+2,60,{h:64});
+      fill(ctx,RC_X+63,stageY+4,1,stageH-8,C.border);
+      UI.pushClip(ctx,RC_X+65,stageY+1,RC_W-66,stageH-2);
+      if(ch)drawActor(ctx,ch,RC_X+86,stageY+58,{dir:PREVIEW_DIRECTIONS[this.previewDir],phase:Math.floor(this.t*7),moving:this.previewWalk,scale:1.65,shadow:true});
+      UI.popClip(ctx);
+      y+=stageH+3;
+      const controls=[['<',16,()=>this.rotatePreview(-1)],[PREVIEW_DIRECTIONS[this.previewDir].toUpperCase(),38,()=>this.rotatePreview(1)],['>',16,()=>this.rotatePreview(1)],[this.previewWalk?'Stop':'Walk',33,()=>{this.previewWalk=!this.previewWalk;}]];
+      let bx=RC_X;
+      for(const [label,w,fn]of controls){this.previewButton(ctx,bx,y,w,label,fn);bx+=w+1;}
+      y+=15;
+      const stats=[['HP',ch?.maxHp,C.hp],['AC',ch?.ac,C.blue],['Speed',ch?.speed,C.green]];
+      stats.forEach(([label,value,color],i)=>{const x=RC_X+i*36;ctxt(ctx,x+17,y,label,{size:'fine',color:C.dim});ctxt(ctx,x+17,y+7,String(value??'-'),{size:'md',color});});
+      y+=20;
+      const bg=getBackground(d.backgroundId);
+      ctxt(ctx,cx,y,ellip(bg?.name||'',RC_W,'sm'),{size:'sm',color:C.gold});
+      y+=10;
+      this.previewButton(ctx,RC_X,y,53,'Appearance',()=>this.gotoStep(STEP_INDEX.appearance));
+      this.previewButton(ctx,RC_X+56,y,53,'Identity',()=>this.gotoStep(STEP_INDEX.identity));
+      txt(ctx,RC_X,FLOOR-7,'I Sheet  J/K Turn',{size:'fine',color:C.dim});
+      UI.popClip(ctx);return;
     }
-
-    // --- animated sprite stage --------------------------------------------
-    // The sprite is 24px tall drawn at scale 2, so it needs 48px of stage. It
-    // used to get 44 with the feet 4px off the floor, which put 8px of head
-    // above the frame -- and a horned tiefling further still. The stage now
-    // fits the sprite, and clips, so nothing can climb out of it again.
-    const stageY = y, stageH = 50;
-    fill(ctx, RC_X, stageY, RC_W, stageH, 'rgba(0,0,0,0.42)');
-    frame(ctx, RC_X, stageY, RC_W, stageH, 'rgba(120,100,60,0.45)');
-    const dir = DIRS[Math.floor(this.t / 1.7) % DIRS.length];
-    const phase = Math.floor(this.t * 7);
-    const footY = stageY + stageH - 1;
-    // ground shadow
-    ctx.save();
-    ctx.globalAlpha = 0.35; ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.ellipse(cx, footY - 1, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    let drew = false;
-    safe(() => UI.pushClip(ctx, RC_X + 1, stageY + 1, RC_W - 2, stageH - 2));
-    if (ch) drew = safe(() => drawActor(ctx, ch, cx, footY, { dir, phase, moving: true, scale: 2, shadow: false }), false);
-    if (!drew && ch) safe(() => UI.portrait(ctx, ch, cx - 20, stageY + 6, 40));
-    safe(() => UI.popClip(ctx));
-    txt(ctx, RC_X + 3, stageY + 2, dir.toUpperCase(), { size: 'sm', color: 'rgba(160,150,120,0.6)', shadow: true });
-    this.hit(RC_X, stageY, RC_W, stageH, () => { this.gotoStep(STEP_INDEX.appearance); sfx('select'); });
-    y = stageY + stageH + 1;
-
+    txt(ctx,RC_X,y,(cls?.name||'')+' / Level '+d.level,{size:'fine',color:C.goldB});y+=12;
     // --- headline derived stats -------------------------------------------
     const third = Math.floor(RC_W / 3);
     const cell = (i, label, value, color) => {
@@ -3781,6 +3806,8 @@ export class CharCreateScene {
     const cls = (row && row.data) || getClass(this.draft.classId);
     if (!cls) { doc.line('No class data loaded.', { color: C.red }); return; }
     doc.head(cls.name || cap(cls.id));
+    doc.wrap(PLAYS_LIKE[cls.id] || '', {color:C.goldB});
+    doc.gap(4);
     doc.wrap(cls.desc || '', { color: C.ink });
     doc.gap(2);
     doc.rule('THE NUMBERS');
@@ -3800,8 +3827,7 @@ export class CharCreateScene {
       doc.kv('Subclass at', 'level ' + (cls.subclassLevel || 3));
     }
     doc.gap(2);
-    doc.rule('PLAYS LIKE');
-    doc.wrap(PLAYS_LIKE[cls.id] || 'A capable adventurer of the Sword Coast.', { color: C.gold });
+
     doc.gap(2);
     doc.rule('AT LEVEL 1');
     const f1 = arr(obj(cls.features)[1]);
@@ -4008,6 +4034,19 @@ export class CharCreateScene {
     doc.kv('Chosen', picks.length + ' / ' + b.count, { color: picks.length === b.count ? C.green : C.gold });
     if (b.desc) doc.wrap(b.desc, { color: C.ink });
     if (b.note) doc.wrap(b.note, { color: C.cyan });
+    if (isSpells && this.draft.classId === 'wizard' && row?.help) {
+      doc.rule('YOUR MAGIC');
+      for (const line of ['Cantrips: cast repeatedly, without slots.',
+        'Spellbook: spells you have learned.',
+        'Ready: the book spells available to cast. Change these in Spells.',
+        'Slots: fuel for spells. Long Rest restores them; learning a spell costs no slot.',
+        'Concentration: sustain one spell at a time.',
+        'Ritual: supported rituals outside battle need no slot.',
+        'Suggestions are optional. Mix defence, damage and utility, or follow your own idea.']) {
+        doc.wrap(line, { color: C.ink }); doc.gap(2);
+      }
+      return;
+    }
     doc.gap(2);
 
     const opt = row && row.option;
@@ -4105,7 +4144,10 @@ export class CharCreateScene {
     const row = this.currentRow();
     const a = obj(d.appearance);
     doc.head('Appearance');
-    doc.wrap('Left and right change the highlighted feature. Everything updates on the sprite immediately.', { color: C.ink });
+    doc.wrap('Left/right changes a feature. Tab switches Body, Hair and Dress. Both views update together.', { color: C.ink });
+    if (this.bucket === 2) doc.wrap('Cut is cosmetic. Armour still sets AC. Equipment restores your worn gear.', {color: C.cyan});
+    if (this.bucket === 2 && ['outfit-ranger', 'outfit-peasant', 'outfit-jerkin', 'outfit-leather'].includes(a.wardrobe)) doc.wrap(a.wardrobe === 'outfit-jerkin' || a.wardrobe === 'outfit-leather' ? 'Leather colours this cut. Linen colours the shirt underneath.' : 'Linen colours this cut. Leather colours its straps and belt.', {color: C.dim});
+    if (this.bucket === 1) doc.wrap('Choose Headgear: None to see all of your hairstyle.', {color: C.cyan});
     doc.gap(2);
     if (row && row.palette) {
       doc.rule(String(row.label).toUpperCase());
@@ -4122,6 +4164,7 @@ export class CharCreateScene {
     doc.kv('Body', ({ m: 'Masculine', f: 'Feminine', n: 'Androgynous' }[a.body] || 'Androgynous'));
     doc.kv('Build', cap(a.build || 'normal'));
     doc.kv('Hair', cap(a.hairStyle || 'short'));
+    doc.kv('Cut', !a.wardrobe || a.wardrobe === 'auto' ? 'Equipment' : cap(a.wardrobe.replace('outfit-', '')));
     if (a.beard && a.beard !== 'none') doc.kv('Beard', cap(a.beard));
     if (a.ears) doc.kv('Ears', cap(a.ears));
     if (a.horns) doc.kv('Horns', cap(a.horns));
@@ -4182,7 +4225,18 @@ export class CharCreateScene {
     const ch = this.preview;
     const d = this.draft;
     if (!ch) { doc.line('Building…', { color: C.dim }); return; }
-    const section = this.bucket;
+    const section = this.bucket - 1;
+    if (section < 0) {
+      doc.head(d.name.trim() || 'Your story begins');
+      doc.wrap([getLineage(d.speciesId,d.lineageId)?.name || getSpecies(d.speciesId)?.name, getClass(d.classId)?.name, getBackground(d.backgroundId)?.name].filter(Boolean).join(' / '), {color:C.goldB});
+      doc.gap(4);doc.rule('BEFORE THE ROAD');
+      doc.wrap(bondsFor(d.backgroundId)[d.bond] || '',{color:C.cyan});
+      doc.gap(4);doc.rule('READY TO DEPART?');
+      const issues=STEPS.map((step,i)=>({step,i,why:this.stepEnabled(i)&&this.issue(i)})).filter(x=>x.why);
+      if(issues.length)for(const item of issues)doc.wrap(item.step.title+': '+item.why,{color:C.orange});
+      else doc.wrap('Your choices are complete. Create begins your adventure. You can still edit any page on the left.',{color:C.green});
+      return;
+    }
 
     if (section === 0) {
       doc.head('Skills');

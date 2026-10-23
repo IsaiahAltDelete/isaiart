@@ -81,6 +81,8 @@ const PAD_DEFAULTS = {
 const PREVENT = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
   'Space', 'Tab', 'Backspace', "Quote", 'Slash',
+  // F10 would otherwise focus the browser's menu bar; F8 and F10 are ours.
+  'F8', 'F10',
 ]);
 
 const DEADZONE = 0.35;      // analog stick deadzone (spec §2)
@@ -337,6 +339,17 @@ export const Input = {
   /** Debug helper: which actions fired this frame. */
   pressedActions() { return Array.from(this._pressed); },
 
+  /**
+   * A physical key (KeyboardEvent.code) went down since the last update(). Only
+   * for the few keys that are deliberately NOT actions — F8 Arrange mode, F10
+   * the layer inspector, the letters Arrange mode listens for — so no rebinding
+   * can take them away. Scenes should keep using actions.
+   */
+  tapped(code) { return this._tapped.has(code); },
+
+  /** A physical key is held right now (see tapped()). */
+  keyHeld(code) { return this._codes.has(code); },
+
   /** Blank all state. Call on scene transitions, window blur, and after a modal. */
   flush() {
     this._codes.clear(); this._tapped.clear();
@@ -360,15 +373,21 @@ export const Input = {
 
   /**
    * Tell Input how the engine maps the logical canvas onto the page.
-   * @param {number} scale integer pixel scale (logical px -> backing-store px)
-   * @param {number} ox    letterbox offset X, in backing-store px
-   * @param {number} oy    letterbox offset Y, in backing-store px
+   * @param {number} scale CSS px per logical px
+   * @param {number} ox    letterbox offset X, in CSS px
+   * @param {number} oy    letterbox offset Y, in CSS px
+   * @param {number} lw    logical width the pointer is reported in (400)
+   * @param {number} lh    logical height (240)
    */
-  setMouseTransform(scale, ox = 0, oy = 0) {
+  setMouseTransform(scale, ox = 0, oy = 0, lw = 0, lh = 0) {
     this._scale = scale || 1;
     this._ox = ox || 0;
     this._oy = oy || 0;
+    this._lw = lw > 0 ? lw : 0;
+    this._lh = lh > 0 ? lh : 0;
   },
+
+  _lw: 0, _lh: 0,
 
   /** Client (CSS) px -> logical canvas px. Handles CSS-stretched canvases too. */
   _toLogical(clientX, clientY) {
@@ -376,12 +395,14 @@ export const Input = {
     if (!c) return { x: clientX, y: clientY };
     const r = c.getBoundingClientRect();
     // The rect already carries both the canvas's on-screen position AND its
-    // displayed size, so scaling by (backing store / displayed size) lands
-    // straight in logical canvas pixels. Applying the engine's scale/offset on
-    // top of that would correct for the same thing twice — which is exactly the
-    // bug that made every click land tens of pixels up and to the left.
-    const cssX = r.width > 0 ? (c.width / r.width) : 1;
-    const cssY = r.height > 0 ? (c.height / r.height) : 1;
+    // displayed size, so scaling by (logical size / displayed size) lands
+    // straight in logical pixels. Applying the engine's scale/offset on top of
+    // that would correct for the same thing twice — which is exactly the bug
+    // that made every click land tens of pixels up and to the left. The logical
+    // size is NOT the backing store any more: that is 800x480, twice the world.
+    const lw = this._lw || c.width, lh = this._lh || c.height;
+    const cssX = r.width > 0 ? (lw / r.width) : 1;
+    const cssY = r.height > 0 ? (lh / r.height) : 1;
     return {
       x: (clientX - r.left) * cssX,
       y: (clientY - r.top) * cssY,

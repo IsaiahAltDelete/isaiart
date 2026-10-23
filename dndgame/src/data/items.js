@@ -3,9 +3,11 @@
 
 import { GEAR, WEAPON_MASTERY, AMMO_TYPES, TOOL_KITS, SHOP_TABLES } from './items_gear.js';
 import { MAGIC_ITEMS, MAGIC_TIERS, LOOT_TABLES } from './items_magic.js';
+import { DIRECTOR_ITEMS } from './items_director.js';
+import { ARMORY_ITEMS } from './items_armory.js';
 import { RARITY } from '../constants.js';
 
-export const ITEMS = Object.freeze({ ...GEAR, ...MAGIC_ITEMS });
+export const ITEMS = Object.freeze({ ...GEAR, ...MAGIC_ITEMS, ...DIRECTOR_ITEMS, ...ARMORY_ITEMS });
 export const ITEM_IDS = Object.freeze(Object.keys(ITEMS));
 export { WEAPON_MASTERY, AMMO_TYPES, TOOL_KITS, SHOP_TABLES, MAGIC_TIERS, LOOT_TABLES, RARITY };
 

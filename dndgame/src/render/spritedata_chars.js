@@ -28,8 +28,25 @@
 //     rows 14-16  torso only, cols 5-10, NO outline (the body owns cols 3-4/11-12)
 //     rows 17+    hems span cols 4-11 with K at 4 and 11 (the arms are gone by then)
 
-import { defineSprite, shadeHex, makeColorway } from './sprites.js';
+import { defineSprite, makeColorway } from './sprites.js';
+import { RAMPS } from './palette.js';
 import { SATCHEL } from './satchel-art.js';
+import { ARMORY, LEGACY_WEAPON_ART } from './weapon-art.js';
+import NOBLE from './art/tailored-noble.js';
+import DOUBLET from './art/tailored-doublet.js';
+import COAT from './art/tailored-coat.js';
+import ROBE from './art/tailored-robe.js';
+import PLATE from './art/tailored-plate.js';
+import JERKIN from './art/tailored-jerkin.js';
+import SIDEPART from './art/coiffure-sidepart.js';
+import UNDERCUT from './art/coiffure-undercut.js';
+import LOCS from './art/coiffure-locs.js';
+import AFRO from './art/coiffure-afro.js';
+import LOWBUN from './art/coiffure-lowbun.js';
+import TWINBRAIDS from './art/coiffure-twinbraids.js';
+
+const TAILORED = { 'outfit-noble':NOBLE, 'outfit-doublet':DOUBLET,
+  'outfit-coat':COAT, 'outfit-robe':ROBE, 'outfit-plate':PLATE, 'outfit-jerkin':JERKIN };
 
 // --- palette --------------------------------------------------------------
 // Every humanoid layer shares this key map so layers can be flattened together.
@@ -46,6 +63,12 @@ const PAL = {
   x: 'ACCENT', X: 'ACCENT_D',
   o: 'HORN', O: 'HORN_D',
   W: 'WHITE', Z: 'BLACK',
+  // Materials that are the same for everyone -- a lute is spruce and walnut
+  // whatever the bard wears, a straw hat is straw -- so they come straight off
+  // the world's material ramps instead of a colorway token.
+  u: RAMPS.wood[2], U: RAMPS.wood[1], v: RAMPS.wood[4],
+  y: RAMPS.thatch[2], Y: RAMPS.thatch[1], Q: RAMPS.thatch[3],
+  i: RAMPS.bone[3], I: RAMPS.bone[2],   // bleached linen: coifs, aprons
 };
 
 const W = 16, H = 24;
@@ -224,12 +247,13 @@ function emptyLayer(name) {
  * back for `right`. Frames 1/2 bob the gear a pixel so it swings with the stride.
  */
 function gear(name, grid) {
-  const g = norm(grid);
+  const profile=LEGACY_WEAPON_ART[name];
+  const g = norm(profile?ARMORY.frames[profile]:grid);
   const m = mirror(g);
   const bob = (base) => ({ 1: rowsOf(shiftY(base, 1)), 2: rowsOf(shiftY(base, -1)), 3: rowsOf(shiftY(base, 1)) });
   return layer(name, { down: g, left: m, up: m }, {
     down: bob(g), left: bob(m), right: bob(g), up: bob(m),
-  });
+  },profile?ARMORY.palette:undefined);
 }
 
 /** Turn a whole grid into a patch object so `patch()` can swap every row at once. */
@@ -295,11 +319,11 @@ const BODY_N_DOWN = [
   '................',
   '.....KKKKKK.....',
   '....KllsssdK....',
-  '....KlssssdK....',
-  '....KsdssddK....',
-  '....KsessedK....',
-  '....KssddsdK....',
-  '....KsssssdK....',
+  '....KllsssdK....',
+  '....KlHssHdK....',
+  '....KlesledK....',
+  '....KlssdssK....',
+  '....KssddsK.....',
   '.....KssddK.....',
   '....KccccccK....',
   '...KsccccccsK...',
@@ -323,7 +347,7 @@ const BODY_N_LEFT = [
   '.....KKKKKK.....',
   '....KllsssdK....',
   '....KlssssdK....',
-  '....KlssssdK....',
+  '....KHssssdK....',
   '...KsesssddK....',
   '...KKsssdddK....',
   '....KsssdddK....',
@@ -577,6 +601,22 @@ layer('body-small',
     up: { ...LEGS_F, ...BREATHE_SM },
   });
 
+/**
+ * Where each build's arms are, for the pose frames actor.js derives. Facing the
+ * camera, `l` and `r` are the outline columns of the two arms (an arm is that
+ * column plus the one inside it); side-on, `f` is the outline column of the near
+ * arm when facing left (mirrored for right). Rows `top`..`bot` run from the
+ * shoulder to the hand; everything from row 0 to `bot` is the upper body.
+ */
+export const BODY_ARMS = Object.freeze({
+  'body-normal': { front: { l: 3, r: 12, top: 11, bot: 16 }, side: { f: 3, top: 12, bot: 16 } },
+  'body-slim': { front: { l: 4, r: 11, top: 11, bot: 16 }, side: { f: 3, top: 12, bot: 16 } },
+  'body-broad': { front: { l: 2, r: 13, top: 11, bot: 16 }, side: { f: 2, top: 12, bot: 16 } },
+  'body-tall': { front: { l: 2, r: 13, top: 11, bot: 17 }, side: { f: 2, top: 12, bot: 17 } },
+  'body-stout': { front: { l: 2, r: 13, top: 11, bot: 17 }, side: { f: 2, top: 12, bot: 17 } },
+  'body-small': { front: { l: 4, r: 11, top: 11, bot: 15 }, side: { f: 3, top: 12, bot: 15 } },
+});
+
 // ===========================================================================
 // EARS -- a thin overlay on the temples, drawn after the body, under the hair.
 // ===========================================================================
@@ -653,6 +693,21 @@ layer('ears-cat', {
 // Down frames leave the face open from row 4 down; up frames cover the skull.
 // ===========================================================================
 
+// Authored three-view cuts share the same palette and animation contract as
+// bodies. Braid/loc tips move a pixel on the stride, with their roots anchored.
+for (const [name, art] of Object.entries({sidepart:SIDEPART, undercut:UNDERCUT, locs:LOCS, afro:AFRO, lowbun:LOWBUN, twinbraids:TWINBRAIDS})) {
+  const motion = {};
+  if (name === 'locs' || name === 'twinbraids') for (const dir of ['down','left','up']) {
+    const rows = art.frames[dir], one = {}, two = {};
+    for (let y = 9; y < 14; y++) {
+      one[y] = rows[y].slice(1) + '.';
+      two[y] = '.' + rows[y].slice(0,-1);
+    }
+    motion[dir] = {1:one, 2:two};
+  }
+  layer('hair-' + name, art.frames, motion, art.palette);
+}
+
 layer('hair-short', {
   down: at(1, [
     '.....KKKKKK.....',
@@ -708,18 +763,20 @@ layer('hair-long', {
     '.........KHhHK..',
     '..........KHK...',
   ]),
+  // From behind, a long fall is most of the figure: a lit crown, a parting
+  // that drifts as it falls, and the shadow side deepening toward the ends.
   up: at(1, [
     '.....KKKKKK.....',
     '....KjjhhhhK....',
+    '...KjjjhhhhHK...',
     '...KjhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KhhhhhhhHK...',
-    '...KHhhhhhHHK...',
+    '...KhhhhHhhHK...',
+    '...KhjhhHhhHK...',
+    '...KhjhhHhHHK...',
+    '...KhhhhHhHHK...',
+    '...KhhhHhhHHK...',
+    '...KhhhHhhHHK...',
+    '...KHhhHhhHHK...',
     '....KHHHHHHK....',
     '.....KKKKKK.....',
   ]),
@@ -1234,12 +1291,48 @@ function insetRow(row) {
 }
 
 function outfit(name, rows, anim) {
+  const art=TAILORED[name];
+  if(art) {
+    const dirs=art.frames;
+    const motion={};
+    if(name==='outfit-robe')for(const dir of ['down','left','up']) {
+      const hem=dirs[dir][22];
+      motion[dir]={1:{22:hem.slice(1)+'.'},2:{22:'.'+hem.slice(0,-1)}};
+    }
+    return layer(name,dirs,motion);
+  }
   const g = norm(rows);
   // Every outfit's first authored row is the top of the sleeves, and it sits on
   // the body's sloped shoulder -- so it gets the same slope, without each
   // outfit having to remember to draw one.
   g[10] = insetRow(g[10]);
-  return layer(name, { down: g, left: g, up: g }, anim);
+  // Model the cloth and armour as separate planes. Keep the authored insignia,
+  // straps and equipment colours that also identify this person in a portrait.
+  const shade = { a: 'A', b: 'B', c: 'C', L: 'P', m: 'M', t: 'T' };
+  const light = { a: 'q', m: 'n' };
+  const tailored = (dir) => g.map((row, y) => {
+    if (y < 10) return row;
+    const r = [...row];
+    for (let x = 0; x < r.length; x++) {
+      const c = r[x];
+      if (x >= 10 || (dir === 'left' && x >= 8)) r[x] = shade[c] || c;
+      else if (x === 5 && y < 14) r[x] = light[c] || c;
+      // Long cloth hangs in folds, rather than a solid rectangle.
+      else if (y >= 16 && (x === 9 || (x === 6 && y >= 19))) r[x] = shade[c] || c;
+    }
+    if (dir === 'up') {
+      // Back seam; no duplicate front-facing buckle on the back of a coat.
+      if (y >= 11 && y <= 17 && shade[r[8]]) r[8] = shade[r[8]];
+    } else if (dir === 'down') {
+      if (y === 10 && /[aLcm]/.test(r[7])) { r[7] = 'C'; r[8] = 'C'; }
+      if (y === 14 && r[7] === 'L' && r[8] === 'L') { r[7] = 't'; r[8] = 'T'; }
+    } else {
+      // Near sleeve separates from the chest in profile.
+      if (y >= 11 && y <= 13 && shade[r[6]]) r[6] = shade[r[6]];
+    }
+    return r.join('');
+  });
+  return layer(name, { down: tailored('down'), left: tailored('left'), up: tailored('up') }, anim);
 }
 
 outfit('outfit-tunic', at(10, [
@@ -1517,11 +1610,11 @@ outfit('outfit-coat', at(10, [
 outfit('outfit-fur', at(10, [
   '...KLPLLLLPLK...',
   '...KPLLssLLPK...',
-  '...KsLssssLsK...',
-  '...KssssssssK...',
+  '...KssssssddK...',
+  '...KssdssdsdK...',
   '.....LLLLLL.....',
-  '.....ssdsds.....',
-  '.....ssssss.....',
+  '.....sssssd.....',
+  '.....ssdsdd.....',
   '....KLLLLLLK....',
   '....KPLPPLPK....',
 ]));
@@ -1538,6 +1631,233 @@ outfit('outfit-tabard', at(10, [
   '....KmaxxamK....',
   '....KMAxxAMK....',
 ]));
+
+// ===========================================================================
+// CLASS MARKS. At 16x24 a calling is read from across the room by one or two
+// things that stick out of the silhouette -- a pelt that widens the shoulders,
+// a lute neck beside the head, fletching over a shoulder. actor.js adds these
+// by class on top of whatever the character wears, so a paladin in plate is
+// still a paladin and not a knight.
+//
+// `mark-*` layers go over the outfit. `back-*` layers are slung on the back:
+// the compositor draws them behind the body (after the cloak) for every facing
+// but `up`, where they are drawn over the back -- so from the front only the
+// parts that clear the body show, which is exactly what a slung lute looks like.
+// ===========================================================================
+
+// Barbarian: a pelt over the shoulders, open on the chest, collar up round the
+// neck, tufts breaking its edge over the arms. In MAIN, the class's leather-brown.
+layer('mark-furs', {
+  down: at(9, [
+    '..KKq......aKK..',
+    '..KqqaqaaqaaAK..',
+    '..KqaA....aAAK..',
+    '....A......A....',
+  ]),
+  left: at(9, [
+    '...KK.....KaK...',
+    '...KqqaqaaaAK...',
+    '...KqaAaaaaAAK..',
+    '....A.....A.....',
+  ]),
+  up: at(9, [
+    '..KKqaaaaaaAKK..',
+    '..KqqaqaaqaaAK..',
+    '..KqaAaqaaaAAK..',
+    '..KAaAaaAaaAAK..',
+    '....A..A..A.....',
+  ]),
+});
+
+// Paladin over armour: the surcoat of the order, its device on the chest, and
+// the same on the back. (Unarmoured, outfit-tabard already is one.)
+layer('mark-tabard', {
+  down: at(11, [
+    '.....qaxxaA.....',
+    '.....axxxxA.....',
+    '.....aaxxaA.....',
+    '.....LLttLL.....',
+    '.....qaaaaA.....',
+    '.....qaaaaA.....',
+    '.....aaaaAA.....',
+    '.....aAaaAA.....',
+  ]),
+  left: at(11, [
+    '....qaxaA.......',
+    '....axxxA.......',
+    '....aaxaA.......',
+    '....LLLLL.......',
+    '....qaaaA.......',
+    '....qaaaA.......',
+    '....aaaAA.......',
+    '....aAaAA.......',
+  ]),
+  up: at(11, [
+    '.....qaxxaA.....',
+    '.....axxxxA.....',
+    '.....aaxxaA.....',
+    '.....LLLLLL.....',
+    '.....qaaaaA.....',
+    '.....qaaaaA.....',
+    '.....aaaaAA.....',
+    '.....aAaaAA.....',
+  ]),
+});
+
+// Cleric in armour: the holy symbol on its chain, gold on the grey of mail.
+// (Vestments carry the stole instead, which says the same thing louder.)
+layer('mark-symbol', {
+  down: at(10, [
+    '......T..T......',
+    '.......TT.......',
+    '.......Wx.......',
+    '.......xX.......',
+  ]),
+  left: at(11, [
+    '.....T..........',
+    '.....Wx.........',
+    '.....xX.........',
+  ]),
+  up: [],
+});
+
+// Bard: a lute slung across the back, bowl low, neck up past the shoulder.
+// Authored as seen from behind; the front view is its mirror.
+const LUTE_BACK = at(2, [
+  '.............KK.',
+  '............KUUK',
+  '............KuK.',
+  '............KuK.',
+  '...........KuK..',
+  '...........KuK..',
+  '..........KuK...',
+  '..........KuK...',
+  '.........KuK....',
+  '........KuK.....',
+  '...KKKKKuKK.....',
+  '..KvuvuuUuK.....',
+  '.KvuvuuUuUuK....',
+  '.KvuvuuUuUuK....',
+  '.KuuvuuUuUUK....',
+  '.KuuuuUuUUUK....',
+  '..KuuUuUUUK.....',
+  '...KKKKKKK......',
+]);
+layer('back-lute', {
+  down: mirror(LUTE_BACK),
+  left: at(3, [
+    '.............KK.',
+    '............KUUK',
+    '............KuK.',
+    '............KuK.',
+    '............KuK.',
+    '............KuK.',
+    '............KuK.',
+    '............KuK.',
+    '...........KKuKK',
+    '...........KvvuK',
+    '...........KvvuK',
+    '...........KvvuK',
+    '...........KvvuK',
+    '...........KvvuK',
+    '............KuK.',
+    '.............K..',
+  ]),
+  up: LUTE_BACK,
+});
+
+// Ranger: a quiver across the back, fletching showing over the shoulder.
+const QUIVER_BACK = at(4, [
+  '............KKK.',
+  '............WxW.',
+  '...........KLLLK',
+  '...........KLPK.',
+  '..........KLPK..',
+  '.........KLPK...',
+  '........KLPK....',
+  '.......KLPK.....',
+  '......KLPK......',
+  '.....KLPK.......',
+  '.....KPK........',
+  '......K.........',
+]);
+layer('back-quiver', {
+  down: mirror(QUIVER_BACK),
+  left: at(4, [
+    '............KKK.',
+    '............WxW.',
+    '...........KLLLK',
+    '............KLPK',
+    '............KLPK',
+    '............KLPK',
+    '............KLPK',
+    '............KLPK',
+    '............KLPK',
+    '............KPPK',
+    '.............KK.',
+  ]),
+  up: QUIVER_BACK,
+});
+
+// Porters and pedlars: a roped burlap pack high on the back. From the front it
+// is the straps and a pack wider than the shoulders; from the side, the load.
+const PACK_BACK = at(9, [
+  '...KKKKKKKKKK...',
+  '..KQQyyyyyyyYK..',
+  '..KQyyyyyyyyYK..',
+  '..KyyyyyyyyYYK..',
+  '..KLLLLLLLLLLK..',
+  '..KyyyyyyyyYYK..',
+  '..KyyyyyyyYYYK..',
+  '..KYyyyyyYYYYK..',
+  '...KYYYYYYYYK...',
+  '....KKKKKKKK....',
+]);
+layer('back-pack', {
+  down: PACK_BACK,
+  left: at(9, [
+    '..........KKKK..',
+    '.........KQyyYK.',
+    '.........KQyyYYK',
+    '.........KyyyYYK',
+    '.........KLLLLLK',
+    '.........KyyyYYK',
+    '.........KyyyYYK',
+    '.........KyyYYYK',
+    '..........KYYYK.',
+    '...........KKK..',
+  ]),
+  up: PACK_BACK,
+});
+
+// A bib apron: innkeepers, cooks, goodwives, anyone who works a hearth.
+layer('mark-apron', {
+  down: at(12, [
+    '......iiii......',
+    '......iiiI......',
+    '.....LiiiIL.....',
+    '.....iiiiiI.....',
+    '.....iiiiiI.....',
+    '.....iiiiII.....',
+    '.....iIiIII.....',
+  ]),
+  left: at(12, [
+    '.....ii.........',
+    '.....iI.........',
+    '....LiiL........',
+    '....iiI.........',
+    '....iiI.........',
+    '....iII.........',
+    '....IiI.........',
+  ]),
+  up: at(14, ['.......ii.......', '......i..i......']),
+});
+
+layer('mark-straps', {
+  down: at(10, ['.....L....L.....', '.....L....L.....', '.....P....P.....', '.....P....P.....']),
+  left: at(10, ['.........L......', '........LP......', '.......LP.......']),
+  up: [],
+});
 
 // ===========================================================================
 // SPECIES FEATURES. data/species.js has always declared snout, scales, tusks
@@ -1658,11 +1978,42 @@ const CLOAK_TOP = [
   '.KBbbbbbbbbBBBK.',
 ];
 
+// Seen from behind, the compositor draws the cloak OVER the back, so its back
+// view is a drape of its own: it falls from a collar round the neck, widens
+// over the shoulders (hiding the arms, as a cloak does) and breaks into folds.
+const CLOAK_BACK_TOP = [
+  '....KbbbbbbK....',
+  '...KbbbbbbbbK...',
+  '..KbbbbbbbbbBK..',
+  '.KbbbbbbBbbbBBK.',
+  '.KbbbbbbBbbbBBK.',
+  '.KBbbbbbBbbBBBK.',
+];
+const CLOAK_BACK_LONG = CLOAK_BACK_TOP.concat([
+  '.KbbbbbbBbbbBBK.',
+  '.KbbbbbBbBbbBBK.',
+  '.KBbbbbBbBbbBBK.',
+  '.KBbbbbBbBbBBBK.',
+  '.KBbbbBbbBbBBBK.',
+  '.KBBbBBBBBBBBBK.',
+  '.KKKKKKKKKKKKKK.',
+]);
+// A-line: fullest at the hem, which swings a pixel either way with the stride.
+const SWAY_LONG_BACK = {
+  1: { 20: 'KBbbbBbbBbBBBK..', 21: 'KBBbBBBBBBBBBK..', 22: 'KKKKKKKKKKKKKK..' },
+  2: { 20: '..KBbbbBbbBbBBBK', 21: '..KBBbBBBBBBBBBK', 22: '..KKKKKKKKKKKKKK' },
+};
+const CLOAK_BACK_SHORT = CLOAK_BACK_TOP.concat(['.KBBbBBBBbBBBBK.', '..KKKKKKKKKKKK..']);
+
 layer('cloak-short',
-  (() => { const g = at(10, CLOAK_TOP.concat(['..KBBBBBBBBBBK..', '...KKKKKKKKKK...'])); return { down: g, left: g, up: g }; })(),
+  (() => {
+    const g = at(10, CLOAK_TOP.concat(['..KBBBBBBBBBBK..', '...KKKKKKKKKK...']));
+    return { down: g, left: g, up: at(10, CLOAK_BACK_SHORT) };
+  })(),
   {
     down: { 1: { 16: '.KBBBBBBBBBBK...', 17: '..KKKKKKKKKK....' }, 2: { 16: '...KBBBBBBBBBBK.', 17: '....KKKKKKKKKK..' } },
     left: { 1: { 16: '.KBBBBBBBBBBK...', 17: '..KKKKKKKKKK....' }, 2: { 16: '...KBBBBBBBBBBK.', 17: '....KKKKKKKKKK..' } },
+    up: { 1: { 16: 'KBBbBBBBbBBBBK..', 17: '.KKKKKKKKKKKK...' }, 2: { 16: '..KBBbBBBBbBBBBK', 17: '...KKKKKKKKKKKK.' } },
   });
 
 const CLOAK_LONG_ROWS = CLOAK_TOP.concat([
@@ -1676,8 +2027,9 @@ const CLOAK_LONG_ROWS = CLOAK_TOP.concat([
 ]);
 
 layer('cloak-long',
-  (() => { const g = at(10, CLOAK_LONG_ROWS); return { down: g, left: g, up: g }; })(),
+  (() => { const g = at(10, CLOAK_LONG_ROWS); return { down: g, left: g, up: at(10, CLOAK_BACK_LONG) }; })(),
   {
+    up: SWAY_LONG_BACK,
     down: {
       1: { 20: '.KBBBBBBBBBBK...', 21: '..KBBBBBBBBK....', 22: '...KKKKKKKK.....' },
       2: { 20: '...KBBBBBBBBBBK.', 21: '....KBBBBBBBBK..', 22: '.....KKKKKKKK...' },
@@ -1715,9 +2067,10 @@ layer('cloak-hooded',
   {
     down: flatten([at(10, CLOAK_LONG_ROWS), HOOD_FRONT]),
     left: flatten([at(10, CLOAK_LONG_ROWS), HOOD_FRONT]),
-    up: flatten([at(10, CLOAK_LONG_ROWS), HOOD_BACK]),
+    up: flatten([at(10, CLOAK_BACK_LONG), HOOD_BACK]),
   },
   {
+    up: SWAY_LONG_BACK,
     down: {
       1: { 20: '.KBBBBBBBBBBK...', 21: '..KBBBBBBBBK....', 22: '...KKKKKKKK.....' },
       2: { 20: '...KBBBBBBBBBBK.', 21: '....KBBBBBBBBK..', 22: '.....KKKKKKKK...' },
@@ -1930,13 +2283,16 @@ const HELM_HORNED = at(0, [
 ]);
 layer('helm-horned', { down: HELM_HORNED, left: HELM_HORNED, up: HELM_HORNED });
 
+// A cone that bends its tip back, a band of the trim colour, and a brim wide
+// enough to break the head's outline on both sides -- the one hat nobody mistakes.
 const HELM_WIZARD = at(0, [
-  '.......KK.......',
-  '......KaaK......',
-  '......KqaK......',
-  '.....KqaaAK.....',
-  '..KttttttttttK..',
-  '..KTTTTTTTTTTK..',
+  '.........KK.....',
+  '.....KKqaAK.....',
+  '....KqqaaaAK....',
+  '...KqqaaaaaAK...',
+  '..KxxxxxxxxxxK..',
+  '.KKqqaaaaaaAAKK.',
+  '..KK........KK..',
 ]);
 layer('helm-wizard', { down: HELM_WIZARD, left: HELM_WIZARD, up: HELM_WIZARD });
 
@@ -1945,6 +2301,47 @@ const HELM_CIRCLET = at(4, [
   '....KTTTTTTK....',
 ]);
 layer('helm-circlet', { down: HELM_CIRCLET, left: HELM_CIRCLET, up: HELM_CIRCLET });
+
+// A farmer's broad straw hat: low crown, leather band, a brim that droops.
+const HELM_STRAW = at(1, [
+  '......KKKK......',
+  '.....KQyyyK.....',
+  '..KKKLLLLLLKKK..',
+  '.KKQQyyyyyyYYKK.',
+  '..KY........YK..',
+]);
+layer('helm-straw', { down: HELM_STRAW, left: HELM_STRAW, up: HELM_STRAW });
+
+// A goodwife's linen coif: it frames the face and ties under the jaw.
+layer('helm-coif', {
+  down: at(1, [
+    '.....KKKKKK.....',
+    '....KiiiiiiK....',
+    '...KiiiiiiiIK...',
+    '...Ki......IK...',
+    '...Ki......IK...',
+    '...KI......IK...',
+    '....KI....IK....',
+  ]),
+  left: at(1, [
+    '.....KKKKKK.....',
+    '....KiiiiiiK....',
+    '...KiiiiiiiIK...',
+    '...Ki.....iIK...',
+    '...Ki.....IIK...',
+    '......KiiIIK....',
+    '.......KIIK.....',
+  ]),
+  up: at(1, [
+    '.....KKKKKK.....',
+    '....KiiiiiiK....',
+    '...KiiiiiiiIK...',
+    '...KiiiiiiiIK...',
+    '...KiiiiiiIIK...',
+    '...KIiiiiiIIK...',
+    '....KIIIIIIK....',
+  ]),
+});
 
 const HELM_CROWN = at(1, [
   '....x.x..x.x....',
@@ -1961,6 +2358,8 @@ export const HELM_STYLES = Object.freeze([
   { id: 'helm-circlet', name: 'Circlet' },
   { id: 'helm-horned', name: 'Horned Helm' },
   { id: 'helm-wizard', name: 'Pointed Hat' },
+  { id: 'helm-straw', name: 'Straw Hat' },
+  { id: 'helm-coif', name: 'Linen Coif' },
   { id: 'helm-great', name: 'Great Helm' },
   { id: 'helm-crown', name: 'Crown' },
 ]);
@@ -2263,45 +2662,66 @@ gear('shield-tower', at(11, [
 // hair, beards and civilian accessories without changing equipment or species.
 // ===========================================================================
 
-/** Turn a handful of hex choices into the full 26-key humanoid palette. */
-function pal(p = {}) {
-  const skin = p.skin || '#e0a878';
-  const hair = p.hair || '#3a2416';
-  const main = p.main || '#7a3030';
-  const alt = p.alt || '#2f4f7f';
-  const metal = p.metal || '#aab2c0';
-  const leather = p.leather || '#6b4a2a';
-  const cloth = p.cloth || '#c8b58a';
-  const accent = p.accent || '#e3b34a';
-  const horn = p.horn || '#8c8377';
-  return {
-    K: p.outline || '#170f0c',
-    s: skin, d: shadeHex(skin, -0.26), l: shadeHex(skin, 0.20), e: p.eye || '#37527a',
-    h: hair, H: shadeHex(hair, -0.32), j: shadeHex(hair, 0.24),
-    a: main, A: shadeHex(main, -0.30), q: shadeHex(main, 0.22),
-    b: alt, B: shadeHex(alt, -0.30),
-    m: metal, M: shadeHex(metal, -0.34), n: shadeHex(metal, 0.30),
-    t: accent, T: shadeHex(accent, -0.30),
-    L: leather, P: shadeHex(leather, -0.30),
-    c: cloth, C: shadeHex(cloth, -0.28),
-    x: accent, X: shadeHex(accent, -0.30),
-    o: horn, O: shadeHex(horn, -0.30),
-    W: '#f4ece0', Z: '#120c0a',
-  };
-}
-
 /**
  * Flatten a stack of layer grids into a finished 16x24 character.
  * `stack` must be listed back-to-front, matching actor.js's draw order:
  * cloak, tail, body, ears, hair, beard, outfit, horns, helm, shield, weapon.
  */
-function npc(name, stack, colors) {
+const NPC_BODY = Object.create(null);   // family sprite (and its variants) -> body layer
+const NPC_LOOK = Object.create(null);   // family sprite (and each variant) -> { stack, colors }
+
+/** The body layer a baked NPC family was flattened from, so poses know its arms. */
+export function npcBody(name) {
+  return NPC_BODY[String(name).replace(/-v\d$/, '')] || null;
+}
+
+/**
+ * The layer stack and colour seed a baked NPC family (or one of its variants)
+ * was made from, so a portrait can be painted from the same description.
+ */
+export function npcLook(name) {
+  return NPC_LOOK[name] || NPC_LOOK[String(name).replace(/-v\d$/, '')] || null;
+}
+
+/**
+ * A family's stack in draw order for one frame. Anything slung on the back
+ * (`back-*`) sits behind the body, after the cloak, except seen from behind,
+ * where it goes over the back -- the same rule actor.js follows for layered
+ * characters, so a porter's pack reads the same on a townsman and a hero.
+ */
+function stackFor(stack, frame) {
+  const back = stack.filter((n) => n.startsWith('back-'));
+  let rest = stack.filter((n) => !n.startsWith('back-'));
+  if (!frame.startsWith('up')) {
+    if (!back.length) return stack;
+    const c = rest.map((n) => n.startsWith('cloak-')).lastIndexOf(true);
+    return [...rest.slice(0, c + 1), ...back, ...rest.slice(c + 1)];
+  }
+  // From behind: the cloak over the outfit, hair over the cloak (unless the
+  // cloak brings its own hood), then the helm, then whatever is slung.
+  const cloaks = rest.filter((n) => n.startsWith('cloak-'));
+  if (cloaks.length) {
+    const hooded = cloaks.includes('cloak-hooded');
+    const moved = (n) => n.startsWith('cloak-') || (!hooded && (n.startsWith('hair-') || n.startsWith('beard-')));
+    const lift = rest.filter(moved);
+    rest = rest.filter((n) => !moved(n));
+    const at = rest.map((n) => n.startsWith('outfit-') || n.startsWith('mark-')).lastIndexOf(true) + 1;
+    rest = [...rest.slice(0, at), ...lift, ...rest.slice(at)];
+  }
+  const i = rest.findIndex((n) => n.startsWith('shield-') || n.startsWith('wep-'));
+  return i < 0 ? rest.concat(back) : [...rest.slice(0, i), ...back, ...rest.slice(i)];
+}
+
+function npc(name, stack, colors, variants = true, identity = {}) {
+  NPC_BODY[name] = stack.find((n) => n.startsWith('body-')) || 'body-normal';
+  NPC_LOOK[name] = Object.freeze({ ...identity, stack: Object.freeze(stack.slice()), colors: Object.freeze({ ...colors }) });
   const frames = {};
   for (const f of FRAME_NAMES) {
-    frames[f] = flatten(stack.map((n) => (ART[n] ? ART[n][f] : null)));
+    frames[f] = flatten(stackFor(stack, f).map((n) => (ART[n] ? ART[n][f] : null)));
   }
   ART[name] = frames;
-  define(name, { w: W, h: H, palette: PAL, defaultColorway: makeColorway(colors), frames, anims: ANIMS });
+  define(name, { w: W, h: H, palette: PAL, defaultColorway: makeColorway(colors), frames, anims: ANIMS, finish: 'K' });
+  if (!variants) return name; // Authored named identities keep their own hair and silhouette.
   // Alternate silhouettes retain the profession's costume, equipment and species.
   const hairSets = stack.includes('hair-long') || stack.includes('hair-braid')
     ? ['hair-braid', 'hair-ponytail', 'hair-bob']
@@ -2315,14 +2735,25 @@ function npc(name, stack, colors) {
     }
     if (['npc-villager-m', 'npc-villager-f', 'npc-merchant', 'npc-farmer', 'npc-innkeeper'].includes(name) && v !== 2)
       alternate.push('accessory-satchel');
+    NPC_LOOK[`${name}-v${v}`] = Object.freeze({ stack: Object.freeze(alternate.slice()), colors: NPC_LOOK[name].colors });
     const variantFrames = {};
-    for (const f of FRAME_NAMES) variantFrames[f] = flatten(alternate.map(n => ART[n]?.[f]));
-    define(`${name}-v${v}`, { w: W, h: H, palette: PAL, defaultColorway: makeColorway(colors), frames: variantFrames, anims: ANIMS });
+    for (const f of FRAME_NAMES) variantFrames[f] = flatten(stackFor(alternate, f).map(n => ART[n]?.[f]));
+    define(`${name}-v${v}`, { w: W, h: H, palette: PAL, defaultColorway: makeColorway(colors), frames: variantFrames, anims: ANIMS, finish: 'K' });
   }
   return name;
 }
 
 layer('accessory-satchel', SATCHEL);
+
+// Named visitors, composed from the same layers their dialogue portraits read.
+npc('npc-vajra', ['cloak-short','body-slim','hair-short','outfit-robe','wep-staff'],
+  {skin:'#a46e50',hair:'#24212a',eye:'#74634b',main:'#343448',alt:'#66516d',cloth:'#655b83',leather:'#382d2e',metal:'#3b3d48',accent:'#a59bbd'}, false, {body:'f'});
+npc('npc-drizzt', ['cloak-short','body-slim','ears-pointed','hair-long','outfit-ranger','wep-scimitar'],
+  {skin:'#655872',hair:'#efedf5',eye:'#b58ae8',main:'#405a44',alt:'#526354',cloth:'#71816d',leather:'#50443d',metal:'#ccd4e0',accent:'#9bb4c9'}, false, {speciesId:'elf'});
+npc('npc-elminster', ['cloak-long','body-normal','hair-long','beard-full','outfit-robe','helm-wizard','wep-staff'],
+  {skin:'#d5aa87',hair:'#e8e4dc',eye:'#71838b',main:'#8a3c38',alt:'#65423a',cloth:'#927264',leather:'#604730',metal:'#bca369',accent:'#d2b77a'}, false);
+npc('npc-alustriel', ['cloak-short','body-slim','hair-long','outfit-robe','helm-circlet'],
+  {skin:'#e3bbab',hair:'#e5e6ee',eye:'#8199c8',main:'#54649a',alt:'#b4a8cd',cloth:'#7b88b0',leather:'#64516c',metal:'#d4dce9',accent:'#b5cfe9'}, false, {body:'f'});
 
 npc('npc-villager-m', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-tunic'],
   { skin: '#dda171', hair: '#4a3320', main: '#6b7a48', leather: '#5a3f22', accent: '#b08a3a' });
@@ -2339,7 +2770,7 @@ npc('npc-guard', ['body-broad', 'hair-short', 'outfit-chain', 'helm-cap', 'shiel
 npc('npc-smith', ['body-broad', 'hair-short', 'beard-full', 'outfit-leather', 'wep-hammer'],
   { skin: '#c88d5e', hair: '#2c1e14', leather: '#4e3218', metal: '#9aa2b0', accent: '#c07a2a' });
 
-npc('npc-innkeeper', ['body-normal', 'hair-short', 'beard-goatee', 'outfit-tunic'],
+npc('npc-innkeeper', ['body-normal', 'hair-short', 'beard-goatee', 'outfit-tunic', 'mark-apron'],
   { skin: '#e5ae80', hair: '#5a3a20', main: '#8a5a2a', leather: '#6b4a2a', accent: '#d8b45a' });
 
 npc('npc-merchant', ['body-normal', 'hair-short', 'beard-mustache', 'outfit-noble'],
@@ -2348,7 +2779,7 @@ npc('npc-merchant', ['body-normal', 'hair-short', 'beard-mustache', 'outfit-nobl
 npc('npc-priest', ['body-normal', 'outfit-robe', 'helm-hood'],
   { skin: '#e7b68e', main: '#e8e2d2', accent: '#d8bf5a', cloth: '#ddd6c4', leather: '#7a6a48' });
 
-npc('npc-farmer', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-peasant', 'helm-cap'],
+npc('npc-farmer', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-peasant', 'helm-straw'],
   { skin: '#c98d5e', hair: '#6a4a24', cloth: '#b8a678', metal: '#d8bd72', leather: '#5a3f22' });
 
 npc('npc-miner', ['body-broad', 'hair-short', 'beard-full', 'outfit-hide', 'helm-cap'],
@@ -2364,7 +2795,7 @@ npc('npc-miner', ['body-broad', 'hair-short', 'beard-full', 'outfit-hide', 'helm
 npc('npc-labourer', ['body-broad', 'hair-short', 'beard-stubble', 'outfit-peasant'],
   { skin: '#b07a4e', hair: '#2c1e14', cloth: '#9a8a6a', leather: '#5a3f22', accent: '#8a6a3a' });
 
-npc('npc-porter', ['body-normal', 'hair-short', 'outfit-peasant', 'helm-cap'],
+npc('npc-porter', ['body-normal', 'hair-short', 'outfit-peasant', 'mark-straps', 'helm-cap', 'back-pack'],
   { skin: '#8a5734', hair: '#1c1410', cloth: '#a89878', leather: '#6b4a2a', metal: '#9a8a6a' });
 
 // Fisherfolk and rivermen: oilskin brown, cap against the weather.
@@ -2380,8 +2811,8 @@ npc('npc-herder', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-peasant
   { skin: '#c98d5e', hair: '#5a3a20', cloth: '#b8a678', leather: '#5a3f22', accent: '#8a9a6a' });
 
 // Hunters and trappers working the Neverwinter Wood edge.
-npc('npc-hunter', ['body-slim', 'hair-ponytail', 'outfit-ranger', 'cloak-short', 'wep-bow'],
-  { skin: '#8a5734', hair: '#3a2416', cloth: '#5a6b3a', leather: '#4e3218', accent: '#8a6a2a' });
+npc('npc-hunter', ['cloak-short', 'body-slim', 'hair-ponytail', 'outfit-ranger', 'back-quiver', 'wep-bow'],
+  { skin: '#8a5734', hair: '#3a2416', cloth: '#5a6b3a', alt: '#4a4a32', leather: '#4e3218', accent: '#8a6a2a' });
 
 // Scribes, clerks and countinghouse men.
 npc('npc-scribe', ['body-slim', 'hair-short', 'outfit-robe'],
@@ -2396,7 +2827,7 @@ npc('npc-acolyte', ['body-normal', 'hair-bob', 'outfit-vestments'],
   { skin: '#c98d5e', hair: '#3a2416', main: '#e8e2d2', accent: '#d8bf5a', cloth: '#ddd6c4' });
 
 // Minstrels working the taprooms for coin and a bed.
-npc('npc-minstrel', ['body-slim', 'hair-curly', 'outfit-doublet', 'helm-cap'],
+npc('npc-minstrel', ['body-slim', 'hair-curly', 'outfit-doublet', 'helm-cap', 'back-lute'],
   { skin: '#e0a878', hair: '#5a3a20', main: '#7a2a5a', alt: '#c8a860', metal: '#c8b06a', accent: '#e3b34a' });
 
 // Festhall staff. The Realms have festhalls in every city of size -- Waterdeep
@@ -2413,9 +2844,11 @@ npc('npc-festhall-m', ['body-slim', 'hair-ponytail', 'outfit-noble', 'helm-circl
 npc('npc-bouncer', ['body-broad', 'hair-shaved', 'beard-goatee', 'outfit-leather', 'wep-mace'],
   { skin: '#6b4227', hair: '#1c1410', leather: '#2e2116', metal: '#c8b06a', accent: '#c8306a' });
 
-// Beggars and the road-worn, in whatever they were given.
-npc('npc-beggar', ['body-slim', 'hair-wild', 'beard-full', 'outfit-peasant', 'cloak-hooded'],
-  { skin: '#8a5734', hair: '#6a6a72', cloth: '#7a6a54', main: '#5a4a3a', leather: '#3f2c18' });
+// Beggars and the road-worn, in whatever they were given: a patched cloak and
+// cowl the colour of the road. (The cloak used to be stacked LAST, over the
+// face and arms, in the default blue -- a blue sack with a beard.)
+npc('npc-beggar', ['cloak-hooded', 'body-slim', 'hair-wild', 'beard-full', 'outfit-peasant', 'helm-hood'],
+  { skin: '#8a5734', hair: '#6a6a72', cloth: '#6e604c', alt: '#54493a', main: '#5a4a3a', leather: '#3f2c18' });
 
 // City Watch of Baldur's Gate -- heavier than a village guard, and liveried.
 npc('npc-watch', ['body-broad', 'outfit-half-plate', 'helm-great', 'shield-kite', 'wep-sword'],
@@ -2426,7 +2859,7 @@ npc('npc-sellsword', ['body-broad', 'hair-topknot', 'beard-braided', 'outfit-stu
   { skin: '#a86f45', hair: '#7a5a2a', leather: '#4e3218', metal: '#8e939c', accent: '#b02a2a' });
 
 // Farmwives and goodwives -- the other half of every farmstead.
-npc('npc-goodwife', ['body-normal', 'hair-braid', 'outfit-peasant'],
+npc('npc-goodwife', ['body-normal', 'hair-braid', 'outfit-peasant', 'mark-apron', 'helm-coif'],
   { skin: '#e8bd95', hair: '#a8823a', cloth: '#c3a678', leather: '#6b4a2a', accent: '#7fbf6a' });
 
 // Drovers and stablehands.
@@ -2514,7 +2947,7 @@ function creature(name, w, h, dirs, anim = {}, palette = {}) {
     frames[`${d}-2`] = apply(base, a[2]);
     frames[`${d}-3`] = apply(base, a[3] || a[1]);
   }
-  return define(name, { w, h, palette, frames, anims: ANIMS });
+  return define(name, { w, h, palette, frames, anims: ANIMS, finish: 'K' });
 }
 
 const BEAST_PAL = (fur, dark, light, extra = {}) => ({

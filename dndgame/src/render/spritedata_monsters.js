@@ -1,4 +1,4 @@
-// render/spritedata_monsters.js — procedural pixel art for the entire bestiary.
+// render/spritedata_monsters.js â€” procedural pixel art for the entire bestiary.
 //
 // Every creature is authored as a small number of "views" (front / side / back)
 // written as arrays of palette-key characters. The full 16-frame four-direction
@@ -24,7 +24,14 @@
 // Colours are literal hex so that the palette-swap tints in MONSTER_SPRITE_MAP
 // (dire wolf = wolf shaded darker, orog = orc reddened) read predictably.
 
-import { defineSprite, shadeHex, hasSprite } from './sprites.js';
+import { defineSprite, shadeHex, hasSprite, makeColorway } from './sprites.js';
+import { ramp } from './palette.js';
+import WYRM from './art/wyrm-sculpt.js';
+import GOBLIN from './art/goblin-sculpt.js';
+import ORC from './art/orc-sculpt.js';
+import OGRE from './art/ogre-sculpt.js';
+import SKELETON from './art/skeleton-sculpt.js';
+import WOLF from './art/wolf-sculpt.js';
 
 // ---------------------------------------------------------------------------
 // palette construction
@@ -56,7 +63,7 @@ function pal(a, b, c, extra) {
 }
 
 // ---------------------------------------------------------------------------
-// row transforms — everything below operates on FITTED rows (exact w x h)
+// row transforms â€” everything below operates on FITTED rows (exact w x h)
 // ---------------------------------------------------------------------------
 
 /** Pad/trim authored rows to exactly w x h so transforms are safe. */
@@ -99,7 +106,7 @@ function sym(half, w) {
   return out;
 }
 
-/** Character substitution — the cheap way to turn a front view into a back view. */
+/** Character substitution â€” the cheap way to turn a front view into a back view. */
 function sub(rows, map) {
   return rows.map((r) => r.replace(/./g, (ch) => (map[ch] !== undefined ? map[ch] : ch)));
 }
@@ -126,7 +133,7 @@ function shiftX(rows, dx) {
 /**
  * Raise one foot: inside the leg region, one half of the sprite is pulled up a
  * pixel so the sole leaves the ground. half 0 = the sprite's left, 1 = right.
- * This is the whole walk cycle — at 16px a one-pixel foot lift reads perfectly.
+ * This is the whole walk cycle â€” at 16px a one-pixel foot lift reads perfectly.
  */
 function liftFoot(rows, legTop, half) {
   const h = rows.length, w = rows[0].length, mid = w / 2, blank = '.'.repeat(w);
@@ -180,7 +187,7 @@ function stretch(rows) {
 }
 
 // ---------------------------------------------------------------------------
-// sprite builders — each pushes a finished defineSprite() payload
+// sprite builders â€” each pushes a finished defineSprite() payload
 // ---------------------------------------------------------------------------
 
 const DEFS = [];
@@ -298,10 +305,33 @@ function still(name, s) {
   return push(name, { w, h, palette: s.palette, frames: F, anims: FLOAT_ANIMS });
 }
 
-/** Same silhouette, new palette — dire wolves, orogs, ash zombies, drow kin. */
+// Authored families use five-tone material keys instead of the legacy numeric
+// triples. Keep those keys (and unchanged materials) when applying a variant.
+const SCULPT_VARIANT_RAMPS = {
+  wolf: [['abcde', '2'], ['pqrst', '8']],
+  goblin: [['abcde', '2'], ['fghij', '5'], ['klmno', '8']],
+  orc: [['abcde', '2'], ['fghij', '5'], ['klmno', '8']],
+  ogre: [['abcde', '2'], ['fghij', '5'], ['klmno', '8']],
+  skeleton: [['pqrst', '2'], ['fghij', '5'], ['klmno', '8']],
+};
+const SCULPT_VARIANTS = new Set();
+
+/** Same silhouette, new palette â€” resolved after all base art replacements. */
 function variant(name, baseName, palette, extra) {
   const base = DEF_INDEX.get(baseName);
   if (!base) return name;
+  if (SCULPT_VARIANT_RAMPS[baseName]) {
+    SCULPT_VARIANTS.add(name);
+    const recolored = { ...base.palette };
+    for (const [keys, mid] of SCULPT_VARIANT_RAMPS[baseName]) {
+      if (!palette[mid]) continue;
+      const shades = ramp(palette[mid], 5);
+      [...keys].forEach((key, i) => { if (key in base.palette) recolored[key] = shades[i]; });
+    }
+    // Eyes/hair remain identity details; do not replace the authored outline.
+    for (const key of ['E', 'H']) if (key in base.palette && palette[key]) recolored[key] = palette[key];
+    palette = recolored;
+  }
   push(name, {
     w: base.w, h: base.h, palette,
     frames: extra ? Object.assign({}, base.frames, extra) : base.frames,
@@ -311,7 +341,7 @@ function variant(name, baseName, palette, extra) {
 }
 
 // ===========================================================================
-// 16 x 16 — vermin, tiny fiends, blights, oozelings
+// 16 x 16 â€” vermin, tiny fiends, blights, oozelings
 // ===========================================================================
 
 function tinySprites() {
@@ -800,7 +830,7 @@ function tinySprites() {
 }
 
 // ===========================================================================
-// 16 x 24 — humanoid-scale monsters. Feet on the bottom row so they drop into
+// 16 x 24 â€” humanoid-scale monsters. Feet on the bottom row so they drop into
 // the same tile slot as a player character.
 // ===========================================================================
 
@@ -3008,7 +3038,7 @@ function mediumSprites() {
 }
 
 // ===========================================================================
-// 24 x 24 — beasts, aberrations, elementals and the bigger humanoids
+// 24 x 24 â€” beasts, aberrations, elementals and the bigger humanoids
 // ===========================================================================
 
 function largeSprites() {
@@ -4492,7 +4522,7 @@ function largeSprites4() {
 }
 
 // ===========================================================================
-// 32 x 32 — giants, big monstrosities, fiends and floating horrors
+// 32 x 32 â€” giants, big monstrosities, fiends and floating horrors
 // ===========================================================================
 
 function hugeSprites() {
@@ -6336,7 +6366,7 @@ function hugeSprites4() {
 }
 
 // ===========================================================================
-// 48 x 48 — dragons and the archfiend-tier bosses.
+// 48 x 48 â€” dragons and the archfiend-tier bosses.
 //
 // The three dragon bodies are drawn in NEUTRAL GREYS with a hard light from the
 // upper left, so a single tint in MONSTER_SPRITE_MAP turns one silhouette into
@@ -7062,14 +7092,14 @@ function colossalSprites3() {
 }
 
 // ===========================================================================
-// palette-swap variants — a genuinely different colour ramp reads far better
+// palette-swap variants â€” a genuinely different colour ramp reads far better
 // than a flat tint wash, so the common reskins get their own definition.
 // ===========================================================================
 
 function variantSprites() {
   // beasts
-  variant('dire-wolf', 'wolf', pal('#3a3630', '#22201c', '#8a8278', { E: '#ffd24a' }));
-  variant('worg', 'wolf', pal('#4a3a2a', '#2a2018', '#8a6a4a', { E: '#a82a2a' }));
+  variant('dire-wolf', 'wolf', pal('#62615b', '#22201c', '#a29b8c', { E: '#ffd24a' }));
+  variant('worg', 'wolf', pal('#6a503a', '#2a2018', '#a08b6a', { E: '#a82a2a' }));
   variant('winter-wolf', 'wolf', pal('#d8e8f4', '#8aa8c0', '#ffffff', { E: '#5aa8ff' }));
   variant('hell-hound', 'wolf', pal('#3a2020', '#1a0e0e', '#ff6a2a', { E: '#ffd24a' }));
   variant('black-bear', 'bear', pal('#2f2a26', '#181512', '#4a4038', { E: '#e8c33a' }));
@@ -7105,11 +7135,11 @@ function variantSprites() {
 let registered = false;
 
 /**
- * Define every bestiary sprite with the sprite engine. Safe to call twice —
+ * Define every bestiary sprite with the sprite engine. Safe to call twice â€”
  * the second call is a no-op. Returns how many sprites were registered.
  */
 // ===========================================================================
-// GAP SPRITES — creatures that had no art of their own.
+// GAP SPRITES â€” creatures that had no art of their own.
 //
 // Twenty-two creatures were reaching MONSTER_SPRITE_MAP's last-resort family
 // guess: a raven drawn as a griffon, a giant fire beetle as a hill giant, a
@@ -7124,7 +7154,7 @@ let registered = false;
 //     below runs its last leg row at h-1. Fliers may sit a pixel or two high;
 //     that is the hover, and hoverer() bobs them.
 //  2. sym() mirrors a HALF row and fills from its last character to the centre
-//     line — so a row ending in a colour makes a solid body of width
+//     line â€” so a row ending in a colour makes a solid body of width
 //     2*(hw - startCol), and a row ending in '.' leaves a gap down the middle.
 //     Fill for bodies, exact for legs and antlers. Front views were coming out
 //     as loaves of bread because every row started at column 4 and filled.
@@ -7613,7 +7643,7 @@ function gapSprites2() {
   });
 
   // Snakes in a heap: coils and heads, no single silhouette. It was borrowing
-  // the salamander, which is a big red humanoid serpent — nothing like it.
+  // the salamander, which is a big red humanoid serpent â€” nothing like it.
   hoverer('swarm-of-poisonous-snakes', {
     w: 20, h: 20,
     palette: pal('#4a7a3a', '#22301c', '#8ac04a', { E: '#e8c33a' }),
@@ -7723,7 +7753,7 @@ function gapSprites2() {
     ],
   });
 
-  // Straw, sacking and a crooked cross. Still until it is not — which is why
+  // Straw, sacking and a crooked cross. Still until it is not â€” which is why
   // its idle is a lean rather than a stance, and why the arms never come down.
   walker('scarecrow', {
     w: 20, h: 24, legTop: 19,
@@ -7847,7 +7877,7 @@ function gapSprites3() {
   });
 
   // A satyr is a man to the waist and a goat below it, and the horns curl back.
-  // The gnoll it was borrowing is a hyena-headed brute — nothing alike.
+  // The gnoll it was borrowing is a hyena-headed brute â€” nothing alike.
   walker('satyr', {
     w: 20, h: 24, legTop: 17,
     palette: pal('#c89a6a', '#6a4a2a', '#e8c8a0', { T: '#d8ccae', E: '#3a2a1a' }),
@@ -7907,7 +7937,7 @@ function gapSprites3() {
     ],
   });
 
-  // Couatl: a feathered serpent. The wings are the whole point — a snake body
+  // Couatl: a feathered serpent. The wings are the whole point â€” a snake body
   // in flight with a rainbow along it. It was borrowing the salamander.
   hoverer('couatl', {
     w: 24, h: 24,
@@ -8066,7 +8096,7 @@ function gapSprites3() {
   });
 
   // A gorgon is a bull of iron plates that breathes petrifying gas. Bulk, low
-  // head, and the plates catching light — it was drawn as a GOBLIN.
+  // head, and the plates catching light â€” it was drawn as a GOBLIN.
   walker('gorgon', {
     w: 28, h: 24, legTop: 18,
     palette: pal('#6a7280', '#3a4048', '#a8b4c0', { T: '#dde4ec', E: '#7fd4ff' }),
@@ -8226,6 +8256,18 @@ export function registerMonsterSprites() {
   hugeSprites(); hugeSprites2(); hugeSprites3(); hugeSprites4();
   colossalSprites(); colossalSprites2(); colossalSprites3();
   gapSprites(); gapSprites2(); gapSprites3();
+  // Authored PixelForge silhouettes retain the bestiary's four-facing and
+  // pose contract; the usual walk builder animates the finished source views.
+  for (const [name, art, legTop] of [['goblin', GOBLIN, 18], ['orc', ORC, 25], ['ogre', OGRE, 33], ['skeleton', SKELETON, 21], ['wolf', WOLF, 17], ['dragon-young', WYRM, 39], ['dragon-adult', WYRM, 39]]) {
+    const old=DEFS.findIndex(d=>d.name===name);
+    if(old>=0)DEFS.splice(old,1);
+    const palette=art===WYRM ? {...art.palette,a:'MAIN_D',b:'MAIN_D',c:'MAIN',d:'MAIN_L',e:'MAIN_L',k:'ALT_D',l:'ALT_D',m:'ALT',n:'ALT_L',o:'ALT_L'} : art.palette;
+    walker(name, { w: art.w, h: art.h, palette, legTop,
+      down: art.frames.down, side: art.frames.left, up: art.frames.up });
+  }
+  // Variants must inherit the final frame set, dimensions and material keys.
+  // Building them earlier silently left dire wolves (and eight other variants)
+  // on the old art even though their base families had been upgraded.
   variantSprites();
   for (const { name, def } of DEFS) defineSprite(name, def);
   return DEFS.length;
@@ -8237,7 +8279,7 @@ export function monsterSpriteNames() {
 }
 
 // ===========================================================================
-// MONSTER_SPRITE_MAP — monster id -> { sprite, tint, tintAmt, scale }
+// MONSTER_SPRITE_MAP â€” monster id -> { sprite, tint, tintAmt, scale }
 //
 // `tint` is a colour washed over the sprite by drawSprite(); it is how one
 // silhouette covers a whole family (dire wolf, orog, every dragon colour).
@@ -8443,13 +8485,14 @@ const EXPLICIT = {
   'yochlol': { sprite: 'ochre-jelly', tint: '#6a2a5a', tintAmt: 0.45 },
 
   // --- beasts --------------------------------------------------------------
-  'wolf': { sprite: 'wolf' },
-  'dire-wolf': { sprite: 'dire-wolf', scale: 1.15 },
-  'worg': { sprite: 'worg' },
-  'winter-wolf': { sprite: 'winter-wolf', scale: 1.15 },
-  'hell-hound': { sprite: 'hell-hound' },
-  'jackal': { sprite: 'wolf', tint: '#b09060', tintAmt: 0.35, scale: 0.8 },
-  'blink-dog': { sprite: 'wolf', tint: '#c8a83a', tintAmt: 0.35 },
+  'wolf': { sprite: 'wolf', scale: 0.65 },
+  'mastiff': { sprite: 'wolf', tint: '#957452', tintAmt: 0.25, scale: 0.6 },
+  'dire-wolf': { sprite: 'dire-wolf', scale: 0.9 },
+  'worg': { sprite: 'worg', scale: 0.85 },
+  'winter-wolf': { sprite: 'winter-wolf', scale: 0.95 },
+  'hell-hound': { sprite: 'hell-hound', scale: 0.8 },
+  'jackal': { sprite: 'wolf', tint: '#b09060', tintAmt: 0.35, scale: 0.5 },
+  'blink-dog': { sprite: 'wolf', tint: '#c8a83a', tintAmt: 0.35, scale: 0.65 },
   'boar': { sprite: 'boar' },
   'giant-boar': { sprite: 'boar', scale: 1.3 },
   'bear': { sprite: 'bear' },
@@ -8631,7 +8674,7 @@ const EXPLICIT = {
   'venomfang': { sprite: 'dragon-young', tint: '#3f8a3a', tintAmt: 0.62 },
   'cryovain': { sprite: 'dragon-adult', tint: '#c8e8f8', tintAmt: 0.62 },
   'claugiyliamatar': { sprite: 'dragon-ancient', tint: '#3f8a3a', tintAmt: 0.62 },
-  // Arveiaturace, the White Wyrm — an ancient white, and the only named dragon
+  // Arveiaturace, the White Wyrm â€” an ancient white, and the only named dragon
   // that had no entry at all, so she was falling through to a goblin.
   'arveiaturace': { sprite: 'dragon-ancient', tint: '#c8e8f8', tintAmt: 0.62, scale: 1.05 },
   'agatha': { sprite: 'banshee', scale: 1.1 },
@@ -8751,7 +8794,7 @@ const resolved = new Map();
 function normId(id) {
   return String(id == null ? '' : id)
     .toLowerCase().trim()
-    .replace(/['’.]/g, '')
+    .replace(/['â€™.]/g, '')
     .replace(/[\s_]+/g, '-')
     .replace(/-+/g, '-');
 }
@@ -8793,9 +8836,16 @@ export function spriteForMonster(id) {
     e = e && hasSprite(e.sprite) ? e : DEFAULT_ENTRY;
   }
 
+  const sculptedDragon=e.sprite==='dragon-young'||e.sprite==='dragon-adult';
+  const colorway=sculptedDragon ? makeColorway({main:e.tint||'#527f45',alt:'#675c46',outline:'#211d28'}) : null;
   const out = Object.freeze({
     sprite: e.sprite,
-    tint: e.tint != null ? e.tint : null,
+    // These variants already carry their own material palette. Old catalogue
+    // tints were for the former shared base sprite and would flatten it again.
+    bakedPalette: SCULPT_VARIANTS.has(e.sprite),
+    worldScale: ['wolf','dire-wolf','worg','winter-wolf','hell-hound'].includes(e.sprite),
+    tint: !sculptedDragon && e.tint != null ? e.tint : null,
+    colorway,
     tintAmt: e.tintAmt != null ? e.tintAmt : (e.tint ? 0.5 : 0),
     scale: e.scale != null ? e.scale : 1,
   });
@@ -8813,13 +8863,13 @@ export function monsterSpriteSize(id) {
 }
 
 /**
- * The art a creature should actually be drawn with — the one the renderer calls.
+ * The art a creature should actually be drawn with â€” the one the renderer calls.
  *
  * This whole mapping layer was written and then never wired to anything: every
  * caller read `monster.sprite` straight out of the catalogue, and 127 of the 275
  * creatures name a sprite that does not exist ('dragon', 'spider', 'ooze',
- * 'swarm-bats'…). A missing name falls through the compositor to the LAYERED
- * humanoid path, so half the bestiary — every dragon in the game included — was
+ * 'swarm-bats'â€¦). A missing name falls through the compositor to the LAYERED
+ * humanoid path, so half the bestiary â€” every dragon in the game included â€” was
  * being drawn as a person in a tunic.
  *
  * The rule below is deliberately narrow, because resolving through the map
@@ -8832,7 +8882,7 @@ export function monsterSpriteSize(id) {
  *   monsterId  the catalogue id, e.g. 'young-red-dragon'
  *   dataSprite the sprite the catalogue asked for, e.g. 'dragon'
  *
- * Returns { sprite, tint, tintAmt, scale } — never null, never a missing name.
+ * Returns { sprite, tint, tintAmt, scale } â€” never null, never a missing name.
  */
 export function monsterArtFor(monsterId, dataSprite) {
   const key = normId(monsterId);

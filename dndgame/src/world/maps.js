@@ -25,15 +25,18 @@
 //     placed, and swept clear again afterwards. Nobody gets bricked into a wall.
 
 import { TileMap, TF, setTileFlagResolver } from './tilemap.js';
+import { configureReputationMaps } from '../rules/reputation.js';
 // Region packs. Each is a self-contained file that exports REGION_MAPS (raw map
 // definitions, keyed by id) and REGION_LINKS (rows in the same shape as LINKS
 // below). Keeping them out of this file lets whole regions be authored in
 // parallel without four agents editing one 2,000-line module.
 import { REGION_MAPS as SOUTH_MAPS, REGION_LINKS as SOUTH_LINKS } from './maps_south.js';
 import { REGION_MAPS as BG_MAPS, REGION_LINKS as BG_LINKS } from './maps_baldursgate.js';
-import { tileFlags } from '../render/tiles.js';
+import { REGION_MAPS as BLACKSTAFF_MAPS, REGION_LINKS as BLACKSTAFF_LINKS } from './maps_blackstaff.js';
+import { tileFlags, resolveTileMasses, resolveArchitecture } from '../render/tiles.js';
 import { makeRNG } from '../core/rng.js';
-import { NPCEntity, EntityList } from './entity.js';
+import { NPCEntity, MonsterEntity, EntityList } from './entity.js';
+import { dressCityStreets, populateCityStreets } from './city-life.js';
 import { spawnableOnMap } from '../data/npcs.js';
 import {
   tid, generateDungeon, generateCave, generateMine, generateCrypt,
@@ -46,7 +49,7 @@ import {
   building, shell, room, fenceRect, bigOak, bigPine,
   addSign, signpost, interiorMap, finishInterior, seating,
   stallRow, awning, garden, graveyard, orchard, wearPatches, dressStreets,
-  interiorFor, innFloor, openHouse, curtain, gateway,
+  interiorFor, innFloor, openHouse, curtain, gateway, tower, pyramidRoof, noticeBoard, temple, windmill,
 } from './mapkit.js';
 
 // TileMap needs to know how a tile id maps to flag bits before `stamp()` or
@@ -91,6 +94,7 @@ const CORE_INN_FLOORS = [
 ].map(innFloor);
 
 const LINKS = [
+  { a: 'neverwinter-wood', aWarp: [1, 28], aLand: [3, 28], b: 'thundertree', bWarp: [30, 25], bLand: [28, 25], toB: 'left', toA: 'right', kind: 'road' },
   ...CORE_INN_FLOORS.map((f) => f.link),
   // --- Phandalin's front doors --------------------------------------------
   { a: 'phandalin', aWarp: [17, 26], aLand: [17, 27], b: 'stonehill-inn', bWarp: [10, 15], bLand: [10, 14], toB: 'up', toA: 'down', kind: 'door' },
@@ -128,7 +132,7 @@ const LINKS = [
  * generator put the stairs.
  */
 /** Every doorway in the game: the Sword Coast North plus each region pack. */
-const ALL_LINKS = LINKS.concat(SOUTH_LINKS || [], BG_LINKS || []);
+const ALL_LINKS = LINKS.concat(SOUTH_LINKS || [], BG_LINKS || [], BLACKSTAFF_LINKS);
 
 export const WORLD_NODES = Object.freeze(ALL_LINKS.flatMap((l) => {
   const out = [];
@@ -278,56 +282,76 @@ function buildPhandalin(root) {
   for (let y = 39; y <= 41; y++) { floor(map, 16, y, pickT(rg, road)); floor(map, 17, y, pickT(rg, road)); }
 
   // --- 3. the square -------------------------------------------------------
-  const cob = tid('COBBLE', 'FLAGSTONE');
+  // A green paved round its edge: a flagged kerb frames the cobbles so the
+  // square reads as a PLACE and not as a patch of road, an old oak shades the
+  // inn's corner of it, and the well, a trough and two market stalls give the
+  // Triboar Trail something to pass through rather than just a width.
+  const cob = tid('COBBLE', 'FLAGSTONE'), kerb = tid('FLAGSTONE', 'COBBLE');
   floorRect(map, 19, 27, 11, 7, cob);
+  for (let x = 19; x <= 29; x++) { floor(map, x, 27, kerb); floor(map, x, 33, kerb); }
+  for (const y of [28, 32]) { floor(map, 19, y, kerb); floor(map, 29, y, kerb); }
   floorRect(map, 15, 27, 4, 2, tid('DIRT_PATH', 'DIRT'));   // apron in front of the inn
   floorRect(map, 8, 28, 6, 1, tid('DIRT_PATH', 'DIRT'));    // apron in front of the shrine
   prop(map, 27, 28, tid('WELL', 'FOUNTAIN'), res);
-  for (const [px, py] of [[26, 27], [28, 27], [26, 29], [28, 29]]) if (rd.chance(0.5)) gset(map, px, py, tid('FLAGSTONE', 'COBBLE'));
+  prop(map, 28, 28, tid('TROUGH', 'BARREL'), res);
+  bigOak(map, 19, 27);
+  for (const [px, py] of [[26, 27], [28, 27], [26, 29], [28, 29]]) if (rd.chance(0.5)) gset(map, px, py, kerb);
+  // Market day's two regular stalls, on the south kerb out of the Trail's way.
+  prop(map, 27, 33, tid('MARKET_STALL', 'CRATE'), res);
+  prop(map, 29, 33, tid('MARKET_STALL', 'CRATE'), res);
+  prop(map, 28, 33, tid('BARREL', 'CRATE'), res);
 
   // --- 4. the buildings ----------------------------------------------------
-  // Nine buildings and not one of them the same shape. Every footprint, door
-  // offset and door row here is load-bearing — LINKS warps to them and
-  // data/npcs.js stands people in front of them — so the variation is all in
-  // roofRows, materials and what hangs off the front.
+  // Each reads as what it is before you read its sign. Every door tile and
+  // door row here is load-bearing — LINKS warps to them and data/npcs.js
+  // stands people in front of them — so the shapes grow round the doors.
+  // Where a footprint changed, `interior:` is left off: the room inside is
+  // sized from the footprint its own builder DECLARES, and that has not moved.
   building(map, {
     x: 14, y: 20, w: 8, h: 7, wall: 'WATTLE_WALL', roof: 'thatch', lit: true,
-    roofRows: 3, door: 3, windows: [1, 5, 6], upper: [1, 3, 6], sign: 2, band: 4,
-    chimney: 6, chimney2: 1, approach: 3, interior: 'stonehill-inn', porch: 3, lantern: true,
+    roofRows: 3, door: 3, windows: [1, 5, 6], upper: [1, 3, 6], sign: 2, trade: 'inn', band: 4,
+    chimney: 6, chimney2: 1, approach: 3, interior: 'stonehill-inn', porch: 3, lantern: true, dormer: [4],
   }, res);                            // Stonehill Inn — the tall one: two rows
                                       // of lit windows under a deep thatch roof
   building(map, {
-    x: 29, y: 23, w: 7, h: 6, wall: 'WATTLE_WALL', roof: 'thatch', interior: 'barthens-provisions',
-    roofRows: 2, door: 3, windows: [1, 5], sign: 4, chimney: 1,
+    x: 29, y: 23, w: 7, h: 6, wall: 'TIMBER_WALL', roof: 'shingle', interior: 'barthens-provisions',
+    roofRows: 2, door: 3, windows: [1, 5], upper: [1, 3, 5], sign: 4, trade: 'goods', chimney: 1,
     loading: [5, 6], approach: 1, porch: 3,
-  }, res);                            // Barthen's Provisions — a long low shed
-                                      // with a wagon door in the footing. Six
-                                      // rows deep, which is what 18x14 inside
-                                      // is the inside of.
+  }, res);                            // Barthen's Provisions — a merchant's
+                                      // framed front and a wagon door in the
+                                      // footing for the cargo it swallows
   building(map, {
-    x: 33, y: 33, w: 7, h: 5, wall: 'STONE_WALL', roof: 'shingle', base: 'GRAVEL',
-    roofRows: 2, door: 3, windows: [1, 5], sign: 2, chimney: 5, approach: 1,
-    interior: 'lionshield-coster', porch: 3,
-  }, res);                            // Lionshield Coster — stone under shingle
+    x: 33, y: 32, w: 7, h: 6, wall: 'STONE_WALL', roof: 'slate', base: 'GRAVEL',
+    roofRows: 2, door: 3, windows: [1, 5], upper: [1, 3, 5], sign: 2, trade: 'arms', chimney: 5, approach: 1,
+    porch: 3,
+  }, res);                            // Lionshield Coster — the stone store of
+                                      // a coster that ships arms, two storeys
+  // the Coster's yard, where its wagons load
+  fenceRect(map, 40, 33, 4, 5, { x: 41, y: 37 }, res);
+  for (const [px, py, k] of [[41, 34, 'CRATE'], [42, 34, 'CRATE'], [42, 35, 'BARREL'], [41, 35, 'SACK']]) prop(map, px, py, tid(k, 'CRATE'), res);
+  // The Shrine of Luck: a stone chapel with Tymora's bell in a turret at its
+  // west end and two lancets of stained glass beside the door.
   building(map, {
-    x: 8, y: 22, w: 6, h: 6, wall: 'STONE_WALL', roof: 'thatch', base: 'GRAVEL',
-    roofRows: 2, door: 2, windows: [1, 4], sign: 3, peak: 2, approach: 1,
-    interior: 'shrine-of-luck', lantern: true,
-  }, res);                            // Shrine of Luck — small stone box, one
-                                      // gable peaked over the door
+    x: 10, y: 22, w: 4, h: 6, wall: 'STONE_WALL', roof: 'slate', base: 'GRAVEL', lit: true,
+    roofRows: 2, door: 0, stained: [1, 2], approach: 1, lantern: 'right',
+  }, res);
+  tower(map, { x: 8, y: 22, w: 2, h: 6, wall: 'STONE_WALL', roof: 'slate', windows: [3], base: 'GRAVEL' }, res);
   building(map, {
     x: 5, y: 33, w: 7, h: 5, wall: 'STONE_WALL', roof: 'tile', base: 'GRAVEL',
-    roofRows: 2, door: 3, windows: [1, 5], sign: 2, chimney: 1, approach: 1,
-    interior: 'miners-exchange', porch: 3,
+    roofRows: 2, door: 3, windows: [1, 5], sign: 2, trade: 'coin', chimney: 1, approach: 1,
+    interior: 'miners-exchange', porch: 3, dormer: [5],
   }, res);                            // The Miner's Exchange — a counting-house
+  // The Townmaster's Hall: the town's one framed-and-slated public building,
+  // two storeys, a bell turret rising out of its west gable.
   building(map, {
-    x: 14, y: 33, w: 8, h: 5, wall: 'WATTLE_WALL', roof: 'shingle',
-    roofRows: 2, door: 3, windows: [1, 6], upper: [2, 5], sign: 4, chimney: 6, approach: 1,
-    interior: 'townmasters-hall', porch: 3, lantern: true,
-  }, res);                            // Townmaster's Hall
+    x: 14, y: 32, w: 8, h: 6, wall: 'TIMBER_WALL', roof: 'slate',
+    roofRows: 2, door: 3, windows: [1, 5, 6], upper: [2, 3, 5, 6], chimney: 6, approach: 1,
+    porch: 3, lantern: true,
+  }, res);
+  pyramidRoof(map, 14, 32, 2, 'slate');
   building(map, {
     x: 47, y: 32, w: 7, h: 6, wall: 'LOG_WALL', roof: 'thatch',
-    roofRows: 3, door: 3, shutters: [1, 5], sign: 2, chimney: 1, approach: 1,
+    roofRows: 3, door: 3, shutters: [1, 5], sign: 2, trade: 'inn', chimney: 1, approach: 1,
     roofPatch: [[3, 2], [4, 2]], patchTile: 'TILE_M',
     interior: 'sleeping-giant', porch: true, lantern: true,
   }, res);                            // The Sleeping Giant — boarded windows and
@@ -337,11 +361,21 @@ function buildPhandalin(root) {
     x: 26, y: 19, w: 6, h: 3, wall: 'WATTLE_WALL', roof: 'thatch', roofRows: 1,
     door: 3, windows: [1, 4],
   }, res);                                                     // the boarded Dendrar home
-  // Four cottages: two squat under a big roof, two taller with more wall.
-  building(map, { x: 9, y: 12, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', roofRows: 2, windows: [1, 4], chimney: 4 }, res);
-  building(map, { x: 37, y: 19, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'shingle', roofRows: 2, windows: [1, 4], chimney: 1 }, res);
+  // Four cottages, four ways of building one: limewashed under thatch, black
+  // and white under shakes with a dormer, logs under thatch, render under tile.
+  building(map, { x: 9, y: 12, w: 6, h: 5, wall: 'PLASTER_WALL', roof: 'thatch', roofRows: 2, windows: [1, 4], chimney: 4 }, res);
+  building(map, { x: 37, y: 19, w: 6, h: 5, wall: 'TIMBER_WALL', roof: 'shingle', roofRows: 2, windows: [1, 4], chimney: 1, dormer: [3] }, res);
   building(map, { x: 39, y: 40, w: 6, h: 5, wall: 'LOG_WALL', roof: 'thatch', roofRows: 3, windows: [1, 4], chimney: 4 }, res);
-  building(map, { x: 48, y: 41, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'tile', roofRows: 3, windows: [1, 4], chimney: 1 }, res);
+  building(map, { x: 48, y: 41, w: 6, h: 5, wall: 'PLASTER_WALL', roof: 'tile', roofRows: 3, windows: [1, 4], chimney: 1 }, res);
+  // A farrier on the Trail: an open forge shed facing the road in, so the
+  // first thing a caravan hears in Phandalin is a hammer.
+  building(map, {
+    x: 39, y: 25, w: 5, h: 3, wall: 'SHED_WALL', roof: 'shingle', roofRows: 2, open: true,
+    inside: [[1, 'FORGE'], [3, 'WEAPON_RACK']], chimney: 1, sign: 2, trade: 'smith',
+  }, res);
+  prop(map, 41, 28, tid('ANVIL', 'FORGE'), res);
+  prop(map, 43, 28, tid('TROUGH', 'BARREL'), res);
+  prop(map, 39, 28, tid('GRINDSTONE', 'ROCK'), res);
 
   // --- 5. Tresendar Manor: a burnt shell on the eastern rise ---------------
   const rubble = table([['RUBBLE', 5], ['ROCK', 3], ['BONES', 1]]);
@@ -413,10 +447,8 @@ function buildPhandalin(root) {
   // The Stonehill Inn's frontage: a bench under the windows, barrels of ale
   // stood against the east end, a handcart parked round the corner.
   prop(map, 15, 27, tid('BENCH', 'CRATE'), res);
-  prop(map, 20, 27, tid('BARREL', 'CRATE'), res);
-  prop(map, 21, 27, tid('CRATE', 'BARREL'), res);
+  prop(map, 21, 27, tid('KEG', 'BARREL'), res);
   prop(map, 22, 27, tid('CART', 'CRATE'), res);
-  prop(map, 13, 26, tid('BARREL', 'CRATE'), res);
 
   // the woodpile stacked along the Sleeping Giant's west wall
   for (const [px, py] of [[46, 33], [46, 34], [46, 35]]) prop(map, px, py, tid('CRATE', 'BARREL'), res);
@@ -430,15 +462,14 @@ function buildPhandalin(root) {
   // shop frontages: crates by the Coster's door, ore and sacks at the Exchange,
   // benches outside the Townmaster's where petitioners wait
   prop(map, 32, 38, tid('CRATE', 'BARREL'), res);
-  prop(map, 40, 38, tid('BARREL', 'CRATE'), res);
-  prop(map, 40, 33, tid('CART', 'CRATE'), res);
+  prop(map, 44, 36, tid('CART', 'CRATE'), res);
   prop(map, 4, 38, tid('CRATE', 'BARREL'), res);
   prop(map, 11, 38, tid('SACK', 'CRATE'), res);
   prop(map, 12, 34, tid('GRINDSTONE', 'ROCK'), res);
   prop(map, 12, 36, tid('ORE_IRON', 'ROCK'), res);
   prop(map, 14, 38, tid('BENCH', 'CRATE'), res);
   prop(map, 21, 38, tid('BENCH', 'CRATE'), res);
-  prop(map, 22, 33, tid('SIGN', 'BENCH'), res);                // the Townmaster's bounty board
+  noticeBoard(map, 22, 33, res);                               // the Townmaster's bounty board
   prop(map, 14, 22, tid('BARREL', 'CRATE'), res);
   prop(map, 12, 28, tid('STATUE', 'SHRINE'), res);             // Tymora's coin outside the shrine
   prop(map, 8, 28, tid('SHRINE', 'STATUE'), res);
@@ -457,6 +488,15 @@ function buildPhandalin(root) {
   }
   // a scattering of flowers and tall grass in the corners nobody mows
   scatter(map, rd, 50, 44, 8, 5, table([['FLOWERS_BLUE', 3], ['BUSH', 3], ['ROCK', 2]]), 0.24, res);
+
+  // --- 8a. the mill ---------------------------------------------------------
+  // Alderleaf's wheat has to be ground somewhere: a tower mill on the rise
+  // south of the lane, sails turning over the track that runs up to it, sacks
+  // at its door and a cart waiting for them.
+  drect(map, 27, 40, 9, 8, 0);
+  windmill(map, { x: 30, y: 40, wall: 'PLASTER_WALL', roof: 'thatch' }, res);
+  for (let y = 45; y <= 46; y++) gset(map, 31, y, tid('DIRT_PATH', 'DIRT'));
+  for (const [px, py, k] of [[29, 44, 'SACK'], [33, 44, 'SACK'], [28, 44, 'CART'], [33, 43, 'SACK']]) prop(map, px, py, tid(k, 'CRATE'), res);
 
   // --- 8b. the burying ground ---------------------------------------------
   // Up the slope behind the Shrine of Luck, across the Neverwinter road. Old
@@ -535,8 +575,10 @@ function buildStonehillInn(root) {
   // the bar, with Toblen's shelves behind it
   for (let x = 7; x <= 11; x++) prop(map, x, 5, tid('BAR', 'COUNTER'), res);
   for (let x = 7; x <= 12; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
-  prop(map, 13, 1, tid('BARREL', 'CRATE'), res);
-  prop(map, 6, 5, tid('BARREL', 'CRATE'), res);
+  // the kegs on their gantry at the end of the bar, spigots out
+  prop(map, 13, 1, tid('KEG', 'BARREL'), res);
+  prop(map, 6, 5, tid('KEG', 'BARREL'), res);
+  prop(map, 6, 4, tid('KEG', 'BARREL'), res);
 
   // common-room tables
   const tableAt = (tx, ty) => {
@@ -608,11 +650,13 @@ function buildLionshield(root) {
   });
 
   for (let x = 6; x <= 11; x++) prop(map, x, 5, tid('COUNTER', 'TABLE'), res);
-  for (let x = 2; x <= 15; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);   // the weapon racks
-  for (let y = 1; y <= 5; y++) prop(map, 1, y, tid('SHELF_GOODS', 'BOOKSHELF'), res);
-  for (let y = 1; y <= 5; y++) prop(map, 16, y, tid('SHELF_GOODS', 'BOOKSHELF'), res);
-  prop(map, 3, 8, tid('STATUE', 'PILLAR'), res);      // armour stands
-  prop(map, 5, 8, tid('STATUE', 'PILLAR'), res);
+  // An arms coster's wall is arms: racks of blades and spears between the
+  // stands the mail hangs on, and a shelf of the small goods between them.
+  for (let x = 2; x <= 15; x++) prop(map, x, 1, tid(['WEAPON_RACK', 'ARMOR_STAND', 'WEAPON_RACK', 'SHELF_GOODS'][x % 4], 'SHELF_GOODS'), res);
+  for (let y = 1; y <= 5; y++) prop(map, 1, y, tid(y & 1 ? 'WEAPON_RACK' : 'ARMOR_STAND', 'SHELF_GOODS'), res);
+  for (let y = 1; y <= 5; y++) prop(map, 16, y, tid(y & 1 ? 'ARMOR_STAND' : 'WEAPON_RACK', 'SHELF_GOODS'), res);
+  prop(map, 3, 8, tid('ARMOR_STAND', 'PILLAR'), res);
+  prop(map, 5, 8, tid('ARMOR_STAND', 'PILLAR'), res);
   prop(map, 2, 9, tid('CRATE', 'BARREL'), res);
   // the stock room behind the shop: crated shipments, and the Coster's brand
   prop(map, 14, 7, tid('CRATE', 'BARREL'), res);
@@ -655,8 +699,12 @@ function buildShrineOfLuck(root) {
   prop(map, 9, 1, tid('STATUE', 'PILLAR'), res);
   for (const [x, y] of [[5, 3], [10, 3], [5, 6], [10, 6], [5, 9], [10, 9]]) prop(map, x, y, tid('CANDLE', 'TORCH'), res);
   for (const [x, y] of [[2, 2], [13, 2], [2, 11], [13, 11]]) prop(map, x, y, tid('PILLAR', 'BRAZIER'), res);
-  prop(map, 3, 5, tid('BENCH', 'CHAIR'), res); prop(map, 3, 6, tid('BENCH', 'CHAIR'), res);
-  prop(map, 12, 5, tid('BENCH', 'CHAIR'), res); prop(map, 12, 6, tid('BENCH', 'CHAIR'), res);
+  // pews either side of the carpet, facing the altar
+  for (const py of [4, 6]) for (let px = 2; px <= 4; px++) prop(map, px, py, tid('PEW', 'BENCH'), res);
+  for (const py of [4, 6, 8]) for (let px = 11; px <= 13; px++) prop(map, px, py, tid('PEW', 'BENCH'), res);
+  prop(map, 10, 4, tid('LECTERN', 'TABLE'), res);
+  // the east window over the altar, Tymora's coin in the glass
+  for (const wx of [6, 9]) dset(map, wx, 0, tid('IWINDOW_STAINED', 'STONE_WALL'));
   prop(map, 13, 8, tid('BRAZIER', 'CANDLE'), res);
   // the vestry: the shrine's books, its vestments and its offerings box
   prop(map, 1, 8, tid('BOOKSHELF', 'SHELF_GOODS'), res);
@@ -724,11 +772,11 @@ function buildTownmastersHall(root) {
   });
 
   floorRect(map, 5, 3, 8, 5, tid('CARPET_RED', 'WOOD_FLOOR'));
-  for (let x = 7; x <= 10; x++) prop(map, x, 4, tid('TABLE', 'COUNTER'), res);           // Harbin's desk
+  for (let x = 7; x <= 10; x++) prop(map, x, 4, tid('DESK', 'TABLE'), res);             // Harbin's desk
   prop(map, 6, 4, tid('CHAIR', 'BENCH'), res);
   prop(map, 11, 4, tid('CHAIR', 'BENCH'), res);
   for (let x = 2; x <= 6; x++) prop(map, x, 1, tid('BOOKSHELF', 'SHELF_GOODS'), res);
-  prop(map, 9, 1, tid('SIGN', 'BOOKSHELF'), res);                                        // the notice board
+  prop(map, 9, 1, tid('NOTICE_BOARD', 'SIGN'), res);                                     // the notice board
   prop(map, 12, 1, tid('BOOKSHELF', 'SHELF_GOODS'), res);
 
   // the cell's furniture: a plank bed and a straw sack, and nothing else
@@ -809,8 +857,8 @@ function buildSleepingGiant(root) {
   for (let x = 4; x <= 10; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
   prop(map, 1, 6, tid('HEARTH', 'BRAZIER'), res);
   prop(map, 1, 7, tid('HEARTH', 'BRAZIER'), res);
-  prop(map, 3, 2, tid('BARREL', 'CRATE'), res);
-  prop(map, 12, 2, tid('BARREL', 'CRATE'), res);
+  prop(map, 3, 2, tid('KEG', 'BARREL'), res);
+  prop(map, 12, 2, tid('KEG', 'BARREL'), res);
   prop(map, 13, 3, tid('CRATE', 'BARREL'), res);
 
   const tableAt = (tx, ty) => {
@@ -898,7 +946,7 @@ function buildPhandalinManor(root) {
 function buildTriboarTrail(root) {
   const map = new TileMap({
     w: 100, h: 40, id: 'triboar-trail', name: 'The Triboar Trail', biome: 'road',
-    indoor: false, music: 'field', encounterRate: 0.055, encounterTable: 'triboar-trail-bandits',
+    indoor: false, music: 'road', encounterRate: 0.055, encounterTable: 'triboar-trail-bandits',
     region: 'triboar-trail',
   });
   const res = reservedFor('triboar-trail');
@@ -1059,6 +1107,12 @@ function buildNeverwinterWood(root) {
 
   scatter(map, rd, 1, 1, 58, 54, table([['MUSHROOM_RED', 3], ['MUSHROOM_BROWN', 3], ['ROCK', 3], ['BUSH', 2]]), 0.03, res);
 
+  // The ash road branches west from the main trail, below Reidoth's camp.
+  for(let x=1;x<=30;x++)for(let y=27;y<=29;y++) {
+    floor(map,x,y,tid('DIRT_PATH'));dset(map,x,y,0);oset(map,x,y,0);
+  }
+  signpost(map,27,26,'WEST — THUNDERTREE. Green dragon sighted at the ruined tower. Approach only with a seasoned company.',res);
+
   map.recomputeFlags({ keep: 0 });
   sealBorder(map, tid('TREE_PINE', 'TREE_OAK'));
   map.spawn = { x: 30, y: 52 };
@@ -1072,10 +1126,33 @@ function buildNeverwinterWood(root) {
 }
 
 // --- Conyberry: a sacked village and Agatha's grove -------------------------
+function buildThundertree(root) {
+  const map=new TileMap({w:32,h:28,id:'thundertree',name:'Thundertree',biome:'ash-waste',indoor:false,music:'tense',weather:'ash',encounterRate:0});
+  const res=reservedFor('thundertree');
+  floorRect(map,0,0,32,28,tid('DIRT','GRASS'));
+  sealBorder(map,tid('TREE_DEAD','ROCK'));
+  // Broken houses flank an ash road, leaving a wide sightline to the dragon.
+  for(const [x,y] of [[3,5],[23,5],[3,16],[23,16]]) {
+    floorRect(map,x,y,6,5,tid('STONE_FLOOR'));
+    dframe(map,x,y,6,5,tid('RUIN_WALL','STONE_WALL'));
+    dset(map,x+3,y+4,0);dset(map,x+4,y,0);
+    prop(map,x+1,y+2,tid('RUBBLE','ROCK'),res);
+  }
+  floorRect(map,12,4,8,12,tid('STONE_FLOOR'));
+  dframe(map,11,3,10,12,tid('RUIN_WALL','STONE_WALL'));
+  for(let x=13;x<=18;x++)dset(map,x,14,0);
+  for(let y=15;y<=25;y++)floorRect(map,14,y,4,1,tid('DIRT_PATH'));
+  floorRect(map,16,24,15,3,tid('DIRT_PATH'));
+  prop(map,12,6,tid('BONES','ROCK'),res);prop(map,19,7,tid('CHEST_OPEN','CRATE'),res);
+  signpost(map,20,22,'VENOMFANG\'S TOWER. A green dragon coils around the old stones. Speak to the creature only if you are ready to fight.',res);
+  map.recomputeFlags({keep:0});map.spawn={x:28,y:25};map.entry={...map.spawn};
+  return map;
+}
+
 function buildConyberryRuins(root) {
   const map = new TileMap({
     w: 44, h: 36, id: 'conyberry-ruins', name: 'Conyberry', biome: 'ruins',
-    indoor: false, music: 'wilds', encounterRate: 0.06, encounterTable: 'conyberry-ruins-haunts',
+    indoor: false, music: 'tense', encounterRate: 0.06, encounterTable: 'conyberry-ruins-haunts',
     ambient: { color: '#1a1622', alpha: 0.12 }, region: 'conyberry',
   });
   const res = reservedFor('conyberry-ruins');
@@ -1277,33 +1354,34 @@ function buildNeverwinter(root) {
   for (let y = 22; y <= 30; y++) for (let x = 33; x <= 35; x++) floor(map, x, y, flag);  // down to the south gate
 
   // --- 4. the Hall of Justice ----------------------------------------------
-  // Tyr's temple before the Spellplague, the Neverwinter Guard's barracks now.
-  // The biggest thing inside the walls: dressed stone under slate, a jettied
-  // upper storey, an east wing, a colonnade across the front and a lantern
-  // either side of the door.
-  building(map, {
-    x: 27, y: 5, w: 12, h: 9, wall: 'STONE_WALL', roof: 'slate', base: 'FLAGSTONE',
-    roofRows: 3, door: 5, windows: [1, 2, 3, 8, 9, 10], sign: 7, lit: true,
-    chimney: 1, chimney2: 10, band: 4, approach: 1, step: 'FLAGSTONE',
-    porch: 3, lantern: true,
-    wings: [{ dx: 12, dy: 4, w: 3, h: 5, roof: 'slate', windows: [1] }],
+  // Tyr's temple before the Spellplague, the Neverwinter Guard's barracks now,
+  // and still built like a temple: a long nave of dressed stone under slate,
+  // tall lancets of stained glass (Tyr's blue and gold) down its front, and
+  // the bell tower at its east end with the tallest spire in the Enclave. A
+  // colonnade stands across the front of the nave, not across its door.
+  temple(map, {
+    x: 27, y: 5, w: 15, h: 9, wall: 'STONE_WALL', roof: 'slate', spire: 'slate', tower: 'E', tw: 3, th: 10,
+    roofRows: 3, door: 6, stained: [1, 3, 5, 7, 9, 10], tall: [1, 3, 9, 10], buttress: [2, 4, 8], rose: 6, lit: true,
+    chimney: 1, lantern: true,
   }, res);
   for (const px of [28, 30, 36, 38]) prop(map, px, 14, tid('PILLAR', 'STONE_WALL'), res);
-  prop(map, 36, 13, tid('LANTERN', 'TORCH'), res);
+  prop(map, 34, 13, tid('LANTERN', 'TORCH'), res);
   addSign(map, 34, 13, 'THE HALL OF JUSTICE — Tyr’s house once, the Neverwinter Guard’s barracks now. Petitions heard at the third bell.');
 
   // --- 5. the Moonstone Mask -----------------------------------------------
-  // A festhall, and the shape says so: two low wings off a lit centre block,
-  // canvas over the door, a lantern on the post and a pennant at each corner.
+  // A festhall, and the shape says so: a tall lit centre block between two
+  // wings, each wing under its own turret, canvas over the door, pennants.
   building(map, {
     x: 10, y: 4, w: 9, h: 9, wall: 'BRICK_WALL', roof: 'tile', base: 'FLAGSTONE',
-    roofRows: 3, door: 4, windows: [1, 2, 6, 7], sign: 3, lit: true, band: 4,
-    chimney: 1, chimney2: 7, approach: 1, step: 'FLAGSTONE', porch: 3, lantern: true,
+    roofRows: 3, door: 4, windows: [1, 2, 6, 7], sign: 3, trade: 'inn', lit: true, band: 4,
+    chimney: 1, chimney2: 7, approach: 1, step: 'FLAGSTONE', porch: 3, lantern: true, dormer: [2, 6],
     wings: [
       { dx: -3, dy: 4, w: 3, h: 5, roof: 'tile', windows: [1] },
       { dx: 9, dy: 4, w: 3, h: 5, roof: 'tile', windows: [1] },
     ],
   }, res);
+  pyramidRoof(map, 7, 8, 2, 'tile');
+  pyramidRoof(map, 20, 8, 2, 'tile');
   prop(map, 15, 13, tid('LANTERN', 'TORCH'), res);
   prop(map, 7, 13, tid('BANNER', 'SIGN'), res);
   prop(map, 21, 13, tid('BANNER', 'SIGN'), res);
@@ -1312,14 +1390,17 @@ function buildNeverwinter(root) {
   // --- 6. the Driftwood Tavern, and a patriar's townhouse ------------------
   building(map, {
     x: 7, y: 15, w: 7, h: 5, wall: 'LOG_WALL', roof: 'shingle', base: 'FLAGSTONE',
-    roofRows: 2, door: 3, windows: [1, 5], sign: 4, lit: true, chimney: 5,
+    roofRows: 2, door: 3, windows: [1, 5], sign: 4, trade: 'inn', lit: true, chimney: 5,
     approach: 1, porch: 3, lantern: true,
   }, res);
   addSign(map, 11, 19, 'THE DRIFTWOOD TAVERN — built out of a wrecked cog and proud of it. Fish stew, cheap beer, worse songs.');
+  // A patriar's townhouse on the corner: tall and narrow, a turret on its
+  // corner and dormers in the slates — money that wants to be seen from the gate.
   building(map, {
     x: 42, y: 5, w: 4, h: 8, wall: 'BRICK_WALL', roof: 'slate', base: 'FLAGSTONE',
-    roofRows: 3, door: 1, windows: [1, 2], chimney: 2, approach: 1, step: 'FLAGSTONE', lantern: 'right',
+    roofRows: 3, door: 1, windows: [1, 2], upper: [1, 2], band: 4, chimney: 2, approach: 1, step: 'FLAGSTONE', lantern: 'right',
   }, res);
+  pyramidRoof(map, 44, 5, 2, 'slate');
 
   // --- 7. the plaza --------------------------------------------------------
   floorRect(map, 27, 15, 12, 5, tid('MOSAIC', 'FLAGSTONE'));
@@ -1341,23 +1422,30 @@ function buildNeverwinter(root) {
   signpost(map, 10, 29, 'THE PROTECTOR’S MARKET — by charter, every day but Shieldmeet. Weights checked by the Guard; short measure is a night in the Hall.', res);
 
   // --- 9. the houses -------------------------------------------------------
-  // Material, roof, wing, porch and lantern all come off the index, so the row
-  // reads as a street of different houses rather than one house repeated.
-  const WALLS = ['STONE_WALL', 'BRICK_WALL', 'WATTLE_WALL', 'LOG_WALL'];
-  const ROOF = ['tile', 'slate', 'shingle', 'thatch'];
-  const enclaveHouse = (i, x, y, w, h, o = {}) => building(map, {
-    x, y, w, h, wall: WALLS[i % WALLS.length], roof: ROOF[i % ROOF.length], base: 'FLAGSTONE',
-    roofRows: h >= 7 ? 3 : 2, door: o.door != null ? o.door : (w >> 1),
-    windows: [1, w - 2], chimney: (i & 1) ? 1 : w - 2,
-    sign: (i % 3 === 0) ? 2 : undefined, lit: (i & 1) === 0,
-    approach: 1, step: 'FLAGSTONE',
-    porch: (i % 2 === 0) ? 3 : undefined, lantern: (i % 3 !== 1),
-    wings: o.wings,
+  // Townhouses of the rebuilt city: stone and brick under slate and pantile,
+  // framed upper storeys, dormers in the roofs and a shop on every ground
+  // floor with its trade on a board. No two the same, because a street of one
+  // house repeated is a texture.
+  building(map, {
+    x: 27, y: 24, w: 5, h: 7, wall: 'STONE_WALL', roof: 'slate', base: 'FLAGSTONE', roofRows: 3,
+    door: 2, windows: [1, 3], upper: [1, 3], band: 4, chimney: 1, sign: 3, trade: 'book', lit: true,
+    approach: 1, step: 'FLAGSTONE', lantern: true, dormer: [2],
   }, res);
-  enclaveHouse(0, 27, 24, 5, 7);
-  enclaveHouse(1, 37, 23, 8, 6, { wings: [{ dx: 1, dy: 6, w: 3, h: 3 }] });
-  enclaveHouse(2, 15, 15, 5, 5);
-  enclaveHouse(3, 20, 16, 3, 4);
+  building(map, {
+    x: 37, y: 23, w: 8, h: 6, wall: 'TIMBER_WALL', roof: 'tile', base: 'FLAGSTONE', roofRows: 2,
+    door: 3, windows: [1, 5, 6], upper: [1, 2, 5, 6], chimney: 6, sign: 2, trade: 'potion',
+    approach: 1, step: 'FLAGSTONE', porch: 3, dormer: [4],
+    wings: [{ dx: 1, dy: 6, w: 3, h: 3, roof: 'tile' }],
+  }, res);
+  building(map, {
+    x: 15, y: 15, w: 5, h: 5, wall: 'PLASTER_WALL', roof: 'shingle', base: 'FLAGSTONE', roofRows: 2,
+    door: 2, windows: [1, 3], chimney: 3, sign: 1, trade: 'bread', approach: 1, step: 'FLAGSTONE',
+  }, res);
+  building(map, {
+    x: 20, y: 16, w: 3, h: 4, wall: 'BRICK_WALL', roof: 'slate', base: 'FLAGSTONE', roofRows: 2,
+    door: 1, windows: [], chimney: 1, approach: 1, step: 'FLAGSTONE',
+  }, res);
+  noticeBoard(map, 13, 23, res);
 
   // --- 10. two gardens ----------------------------------------------------
   garden(map, { x: 15, y: 29, w: 8, h: 3 }, rd, { res, gate: { x: 18, y: 29 }, tree: false });
@@ -1461,6 +1549,15 @@ function buildWaterdeep(root) {
   prop(map, 15, 14, tid('HEARTH', 'BRAZIER'), res);
   prop(map, 27, 17, tid('BARREL', 'CRATE'), res);
   prop(map, 27, 13, tid('BARREL', 'CRATE'), res);
+  // A provisioning bench beside the shaft and a shared table by Volo make
+  // the taproom feel used, while the central door-to-well route stays open.
+  for (const x of [16,17]) prop(map, x, 13, tid('TABLE', 'COUNTER'), res);
+  prop(map, 16, 12, tid('WEAPON_RACK', 'SHELF_GOODS'), res);
+  prop(map, 17, 12, tid('CHEST_CLOSED', 'CRATE'), res);
+  for (const x of [23,24]) {
+    prop(map, x, 18, tid('TABLE', 'BENCH'), res);
+  }
+  prop(map, 26, 18, tid('SHELF_GOODS', 'BARREL'), res);
   oset(map, 21, 15, tid('CHANDELIER', 'CANDLE'));
   oset(map, 17, 13, tid('CHANDELIER', 'CANDLE'));
   awning(map, 20, 20, 3);                              // the canvas over the street door
@@ -1474,26 +1571,35 @@ function buildWaterdeep(root) {
     base: 'FLAGSTONE', approach: 1, step: 'FLAGSTONE', roofRows: o.h >= 6 ? 3 : 2,
     windows: [1, o.w - 2], ...o,
   }, res);
-  shop({ x: 5, y: 8, w: 7, h: 6, wall: 'BRICK_WALL', roof: 'slate', door: 3, sign: 2, chimney: 5, lit: true, porch: 3 });
-  shop({ x: 5, y: 15, w: 7, h: 5, wall: 'STONE_WALL', roof: 'tile', door: 3, sign: 4, chimney: 1, porch: 3, lantern: true });
+  // A scrivener's, an armourer's under a framed upper storey, a moneylender
+  // too narrow for his own sign, a baker, a chandler, an alchemist, a smith.
+  shop({ x: 5, y: 8, w: 7, h: 6, wall: 'BRICK_WALL', roof: 'slate', door: 3, sign: 2, trade: 'book', chimney: 5, lit: true, porch: 3, dormer: [1, 5] });
+  shop({ x: 5, y: 15, w: 7, h: 5, wall: 'TIMBER_WALL', roof: 'tile', door: 3, sign: 4, trade: 'arms', chimney: 1, porch: 3, lantern: true });
   shop({ x: 29, y: 8, w: 3, h: 6, wall: 'BRICK_WALL', roof: 'slate', door: 1, windows: [1], chimney: 1 });
-  shop({ x: 29, y: 15, w: 3, h: 5, wall: 'WATTLE_WALL', roof: 'shingle', door: 1, windows: [1], chimney: 1 });
-  shop({ x: 6, y: 23, w: 8, h: 4, wall: 'BRICK_WALL', roof: 'tile', door: 3, sign: 5, chimney: 6, porch: 3 });
-  shop({ x: 16, y: 23, w: 6, h: 4, wall: 'STONE_WALL', roof: 'slate', door: 2, sign: 4, chimney: 1, lit: true, lantern: true });
-  shop({ x: 36, y: 23, w: 6, h: 4, wall: 'BRICK_WALL', roof: 'tile', door: 3, sign: 1, chimney: 4, porch: 3 });
+  pyramidRoof(map, 29, 8, 3, 'slate');
+  shop({ x: 29, y: 15, w: 3, h: 5, wall: 'PLASTER_WALL', roof: 'shingle', door: 1, windows: [1], chimney: 1 });
+  shop({ x: 6, y: 23, w: 8, h: 4, wall: 'BRICK_WALL', roof: 'tile', door: 3, sign: 5, trade: 'goods', chimney: 6, porch: 3 });
+  shop({ x: 16, y: 23, w: 6, h: 4, wall: 'STONE_WALL', roof: 'slate', door: 2, sign: 4, trade: 'potion', chimney: 1, lit: true, lantern: true });
+  shop({ x: 36, y: 23, w: 6, h: 4, wall: 'BRICK_WALL', roof: 'tile', door: 3, sign: 1, trade: 'bread', chimney: 4, porch: 3 });
 
   // --- 5. the House of Inspired Hands, and its close ----------------------
   // Gond's temple in the Trades Ward, where a wonder-smith will sell you a
   // clockwork thing you did not know you needed. Stone under slate, a workshop
   // wing on the east, and a walled garden behind it.
-  building(map, {
-    x: 36, y: 8, w: 6, h: 7, wall: 'STONE_WALL', roof: 'slate', base: 'FLAGSTONE',
-    roofRows: 3, door: 2, windows: [1, 4], sign: 3, lit: true, chimney: 1,
-    approach: 1, step: 'FLAGSTONE', porch: 3, lantern: true,
-    wings: [{ dx: -2, dy: 3, w: 2, h: 4, roof: 'slate' }],
+  // A temple, so it has a spire; a temple of Gond, so the spire is on a
+  // workshop and the close behind it is a forge yard, not a garden.
+  temple(map, {
+    x: 34, y: 7, w: 8, h: 8, wall: 'STONE_WALL', roof: 'slate', spire: 'slate', tower: 'E', tw: 2, th: 9,
+    roofRows: 3, door: 2, stained: [1, 3, 4], tall: [1, 4], lit: true, chimney: 1, lantern: true, buttress: [3],
   }, res);
-  addSign(map, 39, 14, 'THE HOUSE OF INSPIRED HANDS — Gond Wonderbringer. Commissions taken; explosions are the commissioner’s risk.');
-  garden(map, { x: 36, y: 16, w: 6, h: 4 }, rd, { res, gate: { x: 38, y: 19 }, tree: false });
+  addSign(map, 37, 15, 'THE HOUSE OF INSPIRED HANDS — Gond Wonderbringer. Commissions taken; explosions are the commissioner’s risk.');
+  building(map, {
+    x: 35, y: 16, w: 6, h: 3, wall: 'SHED_WALL', roof: 'shingle', roofRows: 2, open: true,
+    inside: [[1, 'FORGE'], [2, 'WEAPON_RACK'], [4, 'SHELF_GOODS']], chimney: 1, sign: 3, trade: 'smith',
+  }, res);
+  prop(map, 37, 19, tid('ANVIL', 'FORGE'), res);
+  prop(map, 39, 19, tid('GRINDSTONE', 'ROCK'), res);
+  prop(map, 40, 19, tid('CRATE', 'BARREL'), res);
 
   // --- 6. the bazaar -------------------------------------------------------
   floorRect(map, 23, 23, 9, 4, flag);
@@ -1501,6 +1607,7 @@ function buildWaterdeep(root) {
   stallRow(map, 24, 26, 4, 'h', rd, { step: 2, face: -1, res });
   awning(map, 23, 25, 9);
   signpost(map, 23, 22, 'TRADES WARD BAZAAR. Everything has a price in Waterdeep; most of them are negotiable and all of them are taxed.', res);
+  noticeBoard(map, 22, 23, res);
 
   // --- 7. the small furniture of a ward -----------------------------------
   prop(map, 11, 21, tid('FOUNTAIN', 'WELL'), res);
@@ -1512,12 +1619,14 @@ function buildWaterdeep(root) {
   prop(map, 24, 30, tid('TROUGH', 'BARREL'), res);
   prop(map, 35, 21, tid('PLANTER', 'BUSH'), res);
   prop(map, 3, 21, tid('PLANTER', 'BUSH'), res);
-  for (const [x0, x1, y] of [[5, 12, 14], [29, 31, 14], [6, 13, 22], [36, 41, 22]]) awning(map, x0, y, x1 - x0 + 1);
 
   // --- 8. wear, clutter, flags --------------------------------------------
   map.recomputeFlags({ keep: 0 });
   const spare = new Set(['21,1', '21,2', '21,3', '20,13', '20,14', '20,15', '20,11',
     '30,29', '30,30', '30,31', '30,32']);
+  // The open-house taproom belongs to the interior dresser. Street clutter
+  // must not scatter hay, crates or carts across its tables and woven rugs.
+  for(let y=11;y<=19;y++)for(let x=15;x<=27;x++)spare.add(`${x},${y}`);
   wearPatches(map, rd, { x: 2, y: 20, w: 40, h: 3 }, 'COBBLE_ISLE', 8, { res });
   wearPatches(map, rd, { x: 23, y: 23, w: 9, h: 4 }, 'PATH_ISLE', 4, { res });
   wearPatches(map, rd, { x: 2, y: 6, w: 40, h: 2 }, 'GRAVEL_ISLE', 5, { res });
@@ -1530,12 +1639,19 @@ function buildWaterdeep(root) {
   clearStanding(map, 30, 30); clearStanding(map, 30, 31);
   openDoorway(map, portal.door.x, portal.door.y);
   sweepStanding(map, 'waterdeep');
+  // Seating may put chairs on every side of the inn-service table. Leave a
+  // reachable E-interaction tile between Durnan's counter and that table.
+  clearStanding(map,17,17);
+  // Westward street to the Castle Ward. Keep the approach clear after dressing.
+  for(let x=0;x<=5;x++)for(let y=6;y<=7;y++){floor(map,x,y,flag);openDoorway(map,x,y);}
+  map.stamp('deco',4,8,tid('SIGN'));
+  addSign(map,4,8,'WEST — Castle Ward, Blackstaff Tower. Follow the street through the west opening; the silver mark admits visitors to the reception hall.','Street Sign');
   map.spawn = { x: 21, y: 3 };
   map.entry = { ...map.spawn };
   map.level = 8;
   addSign(map, 23, 19, 'THE YAWNING PORTAL — ale, beds, and a one-way trip down the well. Durnan, prop.');
   map.addTrigger({ id: 'yawning-portal-rest', kind: 'inn', x: 17, y: 18, data: { shop: 'yawning-portal', cost: 12, npc: 'durnan' } });
-  map.addTrigger({ id: 'yawning-portal-well', kind: 'sign', x: 20, y: 11, data: { text: 'The shaft drops forty feet into blackness. A rope and windlass hang over it. Somewhere far below, water moves.' } });
+  map.addTrigger({ id: 'yawning-portal-well', kind: 'sign', x: 21, y: 12, data: { text: 'The shaft drops forty feet into blackness. A rope and windlass hang over it. Somewhere far below, water moves.' } });
   // The well itself: the way into Undermountain. Placed here rather than by the
   // warp-graph pass because the depth is decided by the save file, not the map.
   for (const [px, py] of [[20, 13], [20, 14], [20, 15]]) clearStanding(map, px, py);
@@ -1585,7 +1701,7 @@ function linkDungeonStairs(map, opts) {
         if (up) Object.assign(t.data, { map: up.map, x: up.x, y: up.y, dir: up.dir || 'down', exit: true });
         else Object.assign(t.data, { map: null, exit: true, dir: 'up' });
       } else {
-        Object.assign(t.data, { map: `${id}-${depth - 1}`, depth: depth - 1, dir: 'up', exit: false });
+        Object.assign(t.data, { map: depth === 2 ? id : `${id}-${depth - 1}`, depth: depth - 1, dir: 'up', exit: false });
         delete t.data.x; delete t.data.y;
       }
     } else {
@@ -1610,6 +1726,7 @@ function buildUndermountain(root, ctx) {
   map.name = `Undermountain — Level ${depth}`;
   map.region = 'undermountain';
   map.depth = depth;
+  if (map.music !== 'boss') map.music = 'underdark';     // Halaster's halls, not any dungeon
   map.level = 8 + Math.floor(depth / 2);
   map.encounterTable = depth <= 2 ? 'undermountain-first-level'
     : depth <= 6 ? 'undermountain-ooze-pits' : 'undermountain-wards';
@@ -1666,7 +1783,7 @@ const CORE_MAP_DEFS = ({
   }),
   'shrine-of-luck': def('shrine-of-luck', {
     name: 'The Shrine of Luck', kind: 'interior', biome: 'city', w: 16, h: 14, indoor: true,
-    safe: true, music: 'town', parent: 'phandalin', build: buildShrineOfLuck,
+    safe: true, music: 'temple', parent: 'phandalin', build: buildShrineOfLuck,
     desc: 'Tymora’s shrine, tended by Sister Garaele of the Harpers.',
   }),
   'miners-exchange': def('miners-exchange', {
@@ -1681,7 +1798,7 @@ const CORE_MAP_DEFS = ({
   }),
   'alderleaf-farm': def('alderleaf-farm', {
     name: 'The Alderleaf Burrow', kind: 'interior', biome: 'city', w: 20, h: 18, indoor: true,
-    safe: true, music: 'inn', parent: 'phandalin', build: buildAlderleafFarm,
+    safe: true, music: 'camp', parent: 'phandalin', build: buildAlderleafFarm,
     desc: 'A halfling home dug into the turf: low ceilings, a hot hearth and too much food.',
   }),
   'sleeping-giant': def('sleeping-giant', {
@@ -1696,14 +1813,19 @@ const CORE_MAP_DEFS = ({
   }),
 
   'triboar-trail': def('triboar-trail', {
-    name: 'The Triboar Trail', kind: 'road', biome: 'road', w: 100, h: 40, music: 'field',
+    name: 'The Triboar Trail', kind: 'road', biome: 'road', w: 100, h: 40, music: 'road',
     level: 2, region: 'triboar-trail', build: buildTriboarTrail,
     desc: 'The east–west road between the High Road and Triboar, running north of Phandalin.',
   }),
   'neverwinter-wood': def('neverwinter-wood', {
-    name: 'Neverwinter Wood', kind: 'wild', biome: 'pine-forest', w: 60, h: 56, music: 'field',
+    name: 'Neverwinter Wood', kind: 'wild', biome: 'pine-forest', w: 60, h: 56, music: 'forest',
     level: 3, region: 'neverwinter-wood', build: buildNeverwinterWood,
     desc: 'Old pine forest under the shadow of Mount Hotenow, and a druid who does not want company.',
+  }),
+  thundertree: def('thundertree', {
+    name:'Thundertree',kind:'ruins',biome:'ash-waste',w:32,h:28,music:'tense',
+    level:8,region:'thundertree',build:buildThundertree,
+    desc:'An ash road leads to a ruined tower where Venomfang guards his hoard.',
   }),
   'conyberry-ruins': def('conyberry-ruins', {
     name: 'Conyberry', kind: 'ruins', biome: 'ruins', w: 44, h: 36, music: 'tense',
@@ -1711,24 +1833,24 @@ const CORE_MAP_DEFS = ({
     desc: 'A village the Uthgardt sacked a generation ago. A banshee keeps the grove east of it.',
   }),
   'wave-echo-cave-entrance': def('wave-echo-cave-entrance', {
-    name: 'Wave Echo Cave', kind: 'cave', biome: 'hills', w: 30, h: 34, music: 'dungeon',
+    name: 'Wave Echo Cave', kind: 'cave', biome: 'hills', w: 30, h: 34, music: 'cave',
     level: 5, region: 'phandalin-hills', build: buildWaveEchoEntrance,
     desc: 'The mine head of the Lost Mine of Phandelver, in a bowl of rock south of the Trail.',
   }),
 
   neverwinter: def('neverwinter', {
     name: "Neverwinter — Protector's Enclave", kind: 'city', biome: 'city', w: 48, h: 36,
-    safe: true, music: 'town', level: 6, region: 'neverwinter', build: buildNeverwinter,
+    safe: true, music: 'city', level: 6, region: 'neverwinter', build: buildNeverwinter,
     desc: 'The rebuilt heart of the City of Skilled Hands, walled against everything outside it.',
   }),
   waterdeep: def('waterdeep', {
     name: 'Waterdeep — Trades Ward', kind: 'city', biome: 'city', w: 44, h: 34,
-    safe: true, music: 'town', level: 8, region: 'waterdeep', build: buildWaterdeep,
+    safe: true, music: 'city', level: 8, region: 'waterdeep', build: buildWaterdeep,
     desc: 'A stretch of the Trades Ward, and the Yawning Portal’s well down into Undermountain.',
   }),
   undermountain: def('undermountain', {
     name: 'Undermountain', kind: 'dungeon', biome: 'dungeon', w: 0, h: 0, indoor: true,
-    music: 'undermountain', level: 8, region: 'undermountain', build: buildUndermountain,
+    music: 'underdark', level: 8, region: 'undermountain', build: buildUndermountain,
     desc: 'Halaster Blackcloak’s endless dungeon beneath Mount Waterdeep. It has no bottom.',
   }),
 });
@@ -1750,10 +1872,12 @@ export const MAP_DEFS = Object.freeze({
   ...CORE_MAP_DEFS,
   ...packDefs(SOUTH_MAPS),
   ...packDefs(BG_MAPS),
+  ...packDefs(BLACKSTAFF_MAPS),
 });
 
 
 export const MAP_IDS = Object.freeze(Object.keys(MAP_DEFS));
+configureReputationMaps(MAP_DEFS);
 
 // ---------------------------------------------------------------------------
 // 9. PROCEDURAL FALL-THROUGH
@@ -1766,19 +1890,19 @@ export const MAP_IDS = Object.freeze(Object.keys(MAP_DEFS));
 const PROC_SITES = Object.freeze({
   // 'undermountain-7' and friends: the endless descent, named and levelled here
   // so a floor id resolves even when it is loaded straight from a save file.
-  undermountain: { gen: 'dungeon', biome: 'dungeon', name: 'Undermountain', level: 8, size: 'large' },
-  'cragmaw-hideout': { gen: 'cave', biome: 'cave', name: 'Cragmaw Hideout', level: 2, size: 'small' },
-  'cragmaw-castle': { gen: 'dungeon', biome: 'dungeon', name: 'Cragmaw Castle', level: 5, size: 'medium' },
-  'redbrand-hideout': { gen: 'dungeon', biome: 'dungeon', name: 'The Redbrand Hideout', level: 3, size: 'medium' },
-  'wave-echo-cave': { gen: 'mine', biome: 'mine', name: 'Wave Echo Cave', level: 5, size: 'large' },
-  thundertree: { gen: 'ruins', biome: 'ash-waste', name: 'Thundertree', level: 5, size: 'medium' },
-  'old-owl-well': { gen: 'crypt', biome: 'crypt', name: 'Old Owl Well', level: 6, size: 'medium' },
-  'icespire-peak': { gen: 'lair', biome: 'tundra', name: 'Icespire Peak', level: 12, size: 'large' },
-  'wyvern-tor': { gen: 'cave', biome: 'cave', name: 'Wyvern Tor', level: 5, size: 'small' },
-  'kryptgarden-forest': { gen: 'forest', biome: 'forest', name: 'Kryptgarden Forest', level: 8, size: 'large' },
-  'mere-of-dead-men': { gen: 'forest', biome: 'marsh', name: 'The Mere of Dead Men', level: 7, size: 'large' },
-  leilon: { gen: 'ruins', biome: 'ruins', name: 'Leilon', level: 3, size: 'medium' },
-  'ardeep-forest': { gen: 'forest', biome: 'forest', name: 'Ardeep Forest', level: 6, size: 'medium' },
+  undermountain: { gen: 'dungeon', biome: 'dungeon', music: 'underdark', name: 'Undermountain', level: 8, size: 'large' },
+  'cragmaw-hideout': { gen: 'cave', biome: 'cave', music: 'cave', name: 'Cragmaw Hideout', level: 2, size: 'small' },
+  'cragmaw-castle': { gen: 'dungeon', biome: 'dungeon', music: 'dungeon', name: 'Cragmaw Castle', level: 5, size: 'medium' },
+  'redbrand-hideout': { gen: 'dungeon', biome: 'dungeon', music: 'dungeon', name: 'The Redbrand Hideout', level: 3, size: 'medium' },
+  'wave-echo-cave': { gen: 'mine', biome: 'mine', music: 'cave', name: 'Wave Echo Cave', level: 5, size: 'large' },
+  thundertree: { gen: 'ruins', biome: 'ash-waste', music: 'tense', name: 'Thundertree', level: 5, size: 'medium' },
+  'old-owl-well': { gen: 'crypt', biome: 'crypt', music: 'crypt', name: 'Old Owl Well', level: 6, size: 'medium' },
+  'icespire-peak': { gen: 'lair', biome: 'tundra', music: 'boss', name: 'Icespire Peak', level: 12, size: 'large' },
+  'wyvern-tor': { gen: 'cave', biome: 'cave', music: 'cave', name: 'Wyvern Tor', level: 5, size: 'small' },
+  'kryptgarden-forest': { gen: 'forest', biome: 'forest', music: 'forest', name: 'Kryptgarden Forest', level: 8, size: 'large' },
+  'mere-of-dead-men': { gen: 'forest', biome: 'marsh', music: 'marsh', name: 'The Mere of Dead Men', level: 7, size: 'large' },
+  leilon: { gen: 'ruins', biome: 'ruins', music: 'tense', name: 'Leilon', level: 3, size: 'medium' },
+  'ardeep-forest': { gen: 'forest', biome: 'forest', music: 'forest', name: 'Ardeep Forest', level: 6, size: 'medium' },
 });
 
 /** 'undermountain-7' -> { base:'undermountain', depth:7 }. */
@@ -1824,6 +1948,8 @@ function buildProcedural(id, ctx) {
   map.id = id;
   if (!map.level) map.level = opts.level;
   map.region = base;
+  // A site names its own music; a lair or a milestone floor keeps the generator's boss theme.
+  if (site && site.music && map.music !== 'boss') map.music = site.music;
 
   // Endless sites keep descending under their own id; one-shot sites climb out.
   if (base === 'undermountain') {
@@ -1871,7 +1997,7 @@ export function mapMeta(id) {
     biome: site ? site.biome : 'dungeon',
     indoor: !site || site.gen !== 'forest',
     safe: false,
-    music: site && site.gen === 'forest' ? 'field' : 'dungeon',
+    music: site ? site.music : 'dungeon',
     level: (site ? site.level : 1) + Math.floor(Math.max(0, depth - 1) / 3),
     region: base || key,
     parent: null,
@@ -2110,6 +2236,11 @@ export function loadMap(id, opts = {}) {
   // Declared warps last, so they win over anything a generator painted.
   applyWarpNodes(map, mapId);
   try { map.reindexTriggers(); } catch (e) { /* fresh map */ }
+  // Cliff and cave-wall masses get their rims and faces (render/tiles.js).
+  try { resolveTileMasses(map); } catch (e) { /* bare masses still draw */ }
+  // Roof rows and verges, wall corners, the wall each window sits in, interior
+  // faces and wall tops, rug borders (render/tiles_arch.js section 7).
+  try { resolveArchitecture(map); } catch (e) { /* authored tiles still draw */ }
 
   // Encounter zones for wilds that did not declare any of their own.
   if (!map.indoor && !map.safe && map.encounterTable && !map.triggersOfKind('encounter-zone').length) {
@@ -2117,8 +2248,15 @@ export function loadMap(id, opts = {}) {
   }
 
   // --- populate -----------------------------------------------------------
+  dressCityStreets(map);
   if (!map.entityList) new EntityList(map);
   if (opts.entities !== false) spawnNpcs(map, mapId, st);
+  if (opts.entities !== false) populateCityStreets(map);
+  if (opts.entities !== false && mapId === 'thundertree' && !flagOn(st,'venomfang-driven') && !st?.defeated?.['thundertree:venomfang']) {
+    map.addEntity(new MonsterEntity({id:'thundertree-venomfang',monsterId:'venomfang',name:'Venomfang',
+      x:16,y:10,dir:'down',boss:true,level:8,count:1,monsters:[{id:'venomfang',count:1}],
+      aggro:false,wander:0,permanent:true,defeatedKey:'thundertree:venomfang'}));
+  }
 
   applyPersistentState(map, mapId, st);
   if (opts.cache !== false) cache.set(key, map);

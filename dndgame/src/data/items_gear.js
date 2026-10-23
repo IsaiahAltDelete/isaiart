@@ -1266,6 +1266,8 @@ export const SHOP_TABLES = deepFreeze({
     greeting: "Every blade here came up the Trail under the blue lion, and I sell to the honest. Prices are what they are, so mind the stamp.",
     markup: 1.1, buyback: 0.45, restockDays: 5,
     stock: [
+      // The Coast armory: finite stock, with campaign-level availability.
+      ["silvered-spear",3,2], ["coast-cutlass",4,1], ["boar-spear",4,1], ["dockworkers-cudgel",5,1],
       ['dagger', Infinity, 1], ['shortsword', 6, 1], ['longsword', 4, 1], ['handaxe', 6, 1],
       ['battleaxe', 3, 1], ['mace', 4, 1], ['warhammer', 3, 1], ['spear', 6, 1],
       ['javelin', 12, 1], ['quarterstaff', 6, 1], ['club', 6, 1], ['light-hammer', 4, 1],
@@ -1370,6 +1372,8 @@ export const SHOP_TABLES = deepFreeze({
     greeting: "The Market never closes and never sleeps, dear. Whatever you want exists somewhere in this square. Whether you can pay for it is between you and Waukeen.",
     markup: 1.3, buyback: 0.55, restockDays: 3,
     stock: [
+      // The Coast armory: finite stock, with campaign-level availability.
+      ["silvered-rapier",3,3], ["longbow-of-warning",1,4], ["phalar-aluve",1,6], ["moonreef-trident",1,6], ["stormglass-longbow",1,7], ["surveyors-compass",2,3], ["streetrunner-boots",2,3], ["second-wind-draught",8,1], ["clearhead-tonic",5,2],
       ['potion-healing', Infinity, 5], ['potion-greater-healing', Infinity, 5],
       ['potion-superior-healing', 4, 8], ['potion-supreme-healing', 1, 13],
       ['potion-heroism', 2, 6], ['potion-invisibility', 1, 9], ['potion-speed', 1, 10],
@@ -1692,6 +1696,8 @@ export const SHOP_TABLES = deepFreeze({
     markup: 1.1, buyback: 0.5, restockDays: 6,
     services: ['repair'],
     stock: [
+      // The Coast armory: finite stock, with campaign-level availability.
+      ["vicious-longsword",1,5], ["vicious-war-pick",1,5], ["silvered-rapier",2,3], ["silvered-spear",3,2], ["boar-spear",4,1],
       ['dagger', Infinity, 1], ['shortsword', 8, 1], ['longsword', 8, 1], ['scimitar', 5, 1],
       ['rapier', 5, 2], ['handaxe', 8, 1], ['battleaxe', 6, 1], ['greataxe', 4, 3],
       ['greatsword', 4, 3], ['maul', 3, 3], ['mace', 6, 1], ['warhammer', 6, 1],
@@ -2336,6 +2342,8 @@ export const SHOP_TABLES = deepFreeze({
     services: ['identify'],
     premium: { kinds: ['scroll', 'wand', 'rod', 'gem'], mult: 0.75 },
     stock: [
+      // The Coast armory: finite stock, with campaign-level availability.
+      ["everburn-blade",1,4], ["gold-wyrmling-staff",1,6], ["sorrow",1,5], ["knife-undermountain-king",1,10], ["flame-tongue-rapier",1,8], ["flame-tongue-scimitar",1,8], ["frost-brand-greatsword",1,12], ["cinderward-ring",1,5],
       ['scroll-cantrip', Infinity, 1], ['scroll-1', Infinity, 3], ['scroll-2', 8, 5],
       ['scroll-3', 6, 7], ['scroll-4', 4, 9], ['scroll-5', 3, 11], ['scroll-6', 2, 13],
       ['scroll-7', 1, 15], ['scroll-8', 1, 17], ['scroll-identify', Infinity, 3],
@@ -2377,6 +2385,8 @@ export const SHOP_TABLES = deepFreeze({
     markup: 1.35, buyback: 0.5, restockDays: 3,
     services: ['repair', 'identify'],
     stock: [
+      // The Coast armory: finite stock, with campaign-level availability.
+      ["coast-cutlass",4,1], ["harbor-hookglaive",3,2], ["dockside-lash",2,3], ["lamplighters-mace",1,5], ["defender-flail",1,6], ["duelists-wraps",1,6], ["second-wind-draught",8,1], ["clearhead-tonic",6,2],
       ['rations', Infinity, 1], ['trail-bread', Infinity, 1], ['waterskin', Infinity, 1],
       ['torch', Infinity, 1], ['oil-flask', Infinity, 1], ['tinderbox', Infinity, 1],
       ['rope-hempen', Infinity, 1], ['rope-silk', Infinity, 6], ['backpack', Infinity, 1],
