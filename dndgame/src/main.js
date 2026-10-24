@@ -77,10 +77,16 @@ function wireGlue() {
   // first guard for every kill ever made, so the bestiary stayed empty, kills
   // never counted, and no `kill` quest objective could complete. `unit` is
   // still accepted so a future emitter using the combat word also lands.
+  const recordedDeaths = new WeakSet();
   bus.on(EV.DEATH, ({ ch, unit }) => {
     const who = ch || unit;
     if (!Game.state || !who || who.side === 'party') return;
-    if (who.monsterId) recordKill(Game.state, who.monsterId);
+    // Damage resolution and the encounter death sweep both announce a death.
+    // Count the creature once, including for kill quests and the bestiary.
+    if (who.monsterId && !recordedDeaths.has(who)) {
+      recordedDeaths.add(who);
+      recordKill(Game.state, who.monsterId);
+    }
   });
   bus.on(EV.CRIT, () => { if (Game.state) Game.state.stats.crits++; });
   bus.on(EV.SPELL_CAST, () => { if (Game.state) Game.state.stats.spellsCast++; });

@@ -1802,6 +1802,9 @@ export function restLong(ch) {
 
   // Clear everything a night's sleep should clear.
   ch.conditions = (ch.conditions || []).filter((c) => c.id === 'exhaustion' || LONG_REST_PERSISTENT.includes(c.id));
+  // A combat turn may have cached Dying/Unconscious (or exhaustion's old
+  // level). Rest changes the condition list directly, so discard that summary.
+  ch._condMech = null;
   ch.effects = (ch.effects || []).filter((e) => e.dur === 'permanent' || e.permanent === true);
   ch.concentration = null;
 

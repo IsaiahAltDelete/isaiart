@@ -493,7 +493,7 @@ export function dungeonThemes() {
         ['BONES', 3], ['TABLE', 1], ['CHAIR', 1], ['BOOKSHELF', 1], ['STATUE', 1]]),
       lights: tidTable([['TORCH', 5], ['BRAZIER', 3], ['CANDLE', 2]]),
       ceiling: tidTable([['COBWEB', 1]]),
-      encounterGround: tid('RUBBLE', 'STONE_FLOOR_CRACKED'),
+      encounterGround: tid('STONE_FLOOR_CRACKED'),
     },
     // Natural rock: no doors, mushrooms and crystal seams instead of furniture.
     cave: {
@@ -562,7 +562,7 @@ export function dungeonThemes() {
         ['DEAD_TREE', 3], ['STATUE', 2], ['BONES', 2]]),
       lights: tidTable([['BRAZIER', 3], ['TORCH', 2]]),
       ceiling: tidTable([]),
-      encounterGround: tid('RUBBLE', 'ASH_DRIFT'),
+      encounterGround: tid('ASH_DRIFT', 'GRAVEL'),
     },
     // A single enormous cavern for a dragon or a beholder.
     lair: {

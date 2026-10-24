@@ -1055,13 +1055,13 @@ export const DIALOGUE = deepFreeze({
           {
             text: 'You went to Conyberry. Why?',
             if: { questNot: 'agathas-answer' },
-            do: { quest: 'agathas-answer' },
+            do: [{ quest: 'agathas-answer' }, { give: 'silver-comb' }, { flag: 'agatha-comb-received' }],
             goto: 'agatha',
           },
           {
             text: 'Agatha gave us her answer.',
-            if: { flag: 'agatha-answered' },
-            do: [{ complete: 'agathas-answer' }, { rep: { id: 'harpers', amount: 3 } }],
+            if: { flag: 'agatha-answered', quest: 'agathas-answer' },
+            do: [{ flag: 'agatha-reported' }, { complete: 'agathas-answer' }, { rep: { id: 'harpers', amount: 3 } }],
             goto: 'agatha-done',
           },
           {
@@ -1642,7 +1642,7 @@ export const DIALOGUE = deepFreeze({
           },
           {
             text: 'Take up the sword again. Come with us.',
-            if: { flag: 'daran-gauntlet-open' },
+            if: { flag: 'daran-gauntlet-open', notRecruited: 'daran-edermath' },
             goto: 'join',
           },
           { text: 'Enjoy the shade, old man.', cancel: true, goto: 'bye' },
@@ -3470,8 +3470,8 @@ export const DIALOGUE = deepFreeze({
         choices: [
           {
             text: 'Offer her the silver comb.',
-            if: { item: 'signet-ring' },
-            do: { take: 'signet-ring' },
+            if: { item: 'silver-comb', notFlag: 'agatha-answered' },
+            do: { take: 'silver-comb' },
             goto: 'gift',
           },
           {
@@ -3488,7 +3488,7 @@ export const DIALOGUE = deepFreeze({
           { text: 'What are you?', goto: 'what' },
           {
             text: 'Ask your question.',
-            if: { flag: 'agatha-courted' },
+            if: { flag: 'agatha-courted', notFlag: 'agatha-answered' },
             goto: 'ask',
           },
           { text: 'Leave the grove.', cancel: true, goto: 'bye' },

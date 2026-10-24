@@ -20,6 +20,7 @@ import { GILT, RUBRIC, fleuron, hairFrame, makeCanvas, resOf } from './ornament.
 import { drawPortrait } from '../render/portrait.js';
 import { drawActorBust } from '../render/actor.js';
 import { drawSprite, hasSprite, spriteSize } from '../render/sprites.js';
+import { monsterSpriteName } from '../render/spritedata_monsters.js';
 
 const W = 400;
 const H = 240;
@@ -619,13 +620,14 @@ export function portrait(ctx, ch, x, y, w, h = w, o = {}) {
   ctx.beginPath(); ctx.rect(f.ix, f.iy, f.iw, f.ih); ctx.clip();
   let drew = false;
   if (ch) drew = safe(() => drawPortrait(ctx, ch, f.ix, f.iy, f.iw, { h: f.ih, flip: o.flip }) === true, false);
-  const fam = ch && (ch.sprite || ch.spriteName);
+  const fam = ch && (ch.monsterId ? monsterSpriteName(ch.monsterId) : (ch.sprite || ch.spriteName));
   if (!drew && fam && safe(() => hasSprite(fam), false)) {
-    // A creature's head and shoulders: the top fifteen rows of its sprite at a
-    // whole-number scale, centred on the sprite (an ox is wider than a man).
-    const s = Math.max(1, Math.floor(f.ih / 15));
+    // Fit the creature rather than cropping the top fifteen rows. Large wolf
+    // art has empty space above its head, which made that crop look blank.
     const sz = spriteSize(fam);
-    drew = safe(() => drawSprite(ctx, fam, 'down-0', f.ix + f.iw / 2, f.iy + (sz.h - 1) * s,
+    const fit = Math.min(f.iw / sz.w, f.ih / sz.h);
+    const s = fit >= 1 ? Math.floor(fit) : fit;
+    drew = safe(() => drawSprite(ctx, fam, 'down-0', f.ix + f.iw / 2, f.iy + (f.ih + sz.h * s) / 2,
       { scale: s, colorway: ch.colorway || undefined, shadow: false }), false);
   }
   if (!drew && ch && ch.appearance) drew = safe(() => { drawActorBust(ctx, ch, f.ix, f.iy, Math.min(f.iw, f.ih)); return true; }, false);

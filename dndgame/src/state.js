@@ -242,6 +242,24 @@ export function loadState(obj, deserializeChar) {
   reseed(obj.seed);
   if (obj.rngCalls) rng.advance(obj.rngCalls);
   Party.load(obj.party, deserializeChar);
+  // Earlier saves counted merely greeting Agatha/Garaele as receiving and
+  // delivering the answer. Preserve travel progress; trust story flags for
+  // these two objectives, and supply the gift old quest acceptance omitted.
+  const agatha = getQuest(st, 'agathas-answer');
+  if (agatha) {
+    agatha.steps = agatha.steps.map((step, i) => {
+      if (i !== 1 && i !== 2) return step;
+      const target = i === 1 ? 'agatha-answered' : 'agatha-reported';
+      const done = hasFlag(st, target);
+      return { ...step, kind: 'flag', target, map: null, count: 1,
+        text: i === 1 ? "Earn Agatha's courtesy and ask the Harpers' question" : 'Carry the answer back to the Shrine of Luck',
+        progress: done ? 1 : 0, done };
+    });
+    if (!hasFlag(st, 'agatha-comb-received') && !hasFlag(st, 'agatha-answered')) {
+      Party.addItem('silver-comb', 1);
+      st.flags['agatha-comb-received'] = true;
+    }
+  }
   bus.emit(EV.LOAD, { state: st });
   return st;
 }

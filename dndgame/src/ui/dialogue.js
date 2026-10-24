@@ -375,6 +375,10 @@ function evalIf(cond, scene) {
   }
   if (!isObj(cond)) return { ok: true, reason: '', hide: false };
 
+  if (cond.notRecruited && Party.all().some(m => m?.recruitId === cond.notRecruited)) {
+    return { ok: false, reason: '', hide: true };
+  }
+
   const st = S();
   const fail = (reason, hide) => ({
     ok: false,
@@ -538,6 +542,8 @@ export class DialogueScene {
     this._entryIds = null;       // lazily-walked "opening of the tree" node ids
     this.index = 0;
     this.listTop = 0;
+    this._choiceMouseX = Input.mouse?.x;
+    this._choiceMouseY = Input.mouse?.y;
 
     this.roll = null;            // { display, res, choice, t }
     this.t = 0;
@@ -797,7 +803,7 @@ export class DialogueScene {
       out.push({
         raw: c,
         index: i,
-        label: parsed.label,
+        label: parsed.label.replace(/\[(?:\/?(?:gold|red|blue|green|purple|cyan|dim|white|yellow|ink)|\/)\]/g, ''),
         tag: check ? (parsed.tag || `[${checkLabel(check)} ${check.dc}]`) : null,
         check,
         spentKey,
@@ -1035,12 +1041,15 @@ export class DialogueScene {
   }
 
   _updateChoose() {
-    if (Input.repeatConsume('up')) this._moveCursor(-1);
-    if (Input.repeatConsume('down')) this._moveCursor(1);
+    const up = Input.repeatConsume('up'), down = Input.repeatConsume('down');
+    if (up) this._moveCursor(-1);
+    if (down) this._moveCursor(1);
 
     const L = this._choiceLayout();
     const m = Input.mouse;
-    if (m && m.over) {
+    const moved = m && (m.x !== this._choiceMouseX || m.y !== this._choiceMouseY);
+    if (m) { this._choiceMouseX = m.x; this._choiceMouseY = m.y; }
+    if (m && m.over && (m.clicked || (moved && !up && !down))) {
       for (let r = 0; r < L.rows; r++) {
         const i = this.listTop + r;
         if (i >= this.choices.length) break;

@@ -547,6 +547,7 @@ ALL.push(
   mk('sack', 'Sack', { cost: 0.01, weight: 0.5, icon: 'bag', tint: '#c2a06a', desc: "A burlap sack holding a cubic foot. Loot goes in; dignity does not come out." }),
   mk('shovel', 'Shovel', { cost: 2, weight: 5, icon: 'hammer', tint: '#8a5a30', desc: "An iron-bladed spade. Graves, latrines and buried Netherese strongboxes all begin the same way." }),
   mk('signal-whistle', 'Signal Whistle', { cost: 0.05, weight: 0, icon: 'wind', tint: '#c0c8d4', desc: "A bone whistle heard a quarter-mile off. Agree the signals first or you have merely told the wolves where you are." }),
+  mk('silver-comb', 'Silver Comb', { kind: 'quest', cost: 0, weight: 0, icon: 'misc', tint: '#d9e2ed', desc: "Sister Garaele's silver comb, intended as a courteous gift for Agatha of Conyberry." }),
   mk('signet-ring', 'Signet Ring', { kind: 'gem', cost: 5, weight: 0, icon: 'ring', tint: '#e3b34a', desc: "A ring cut with a house sigil for sealing wax. In Waterdeep the seal travels further than the hand that wears it." }),
   mk('soap', 'Soap', { cost: 0.02, weight: 0, icon: 'bag', tint: '#e8e0c8', desc: "A cake of lye soap. Sister Garaele holds that Tymora favours the clean; the innkeeper agrees for other reasons." }),
   mk('spikes-iron', 'Iron Spikes (10)', { cost: 1, weight: 5, stack: true, icon: 'spear', tint: '#8b93a0', desc: "Ten heavy spikes for wedging doors shut behind you: the oldest and best trick in Undermountain." }),

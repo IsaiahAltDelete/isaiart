@@ -1162,7 +1162,7 @@ function buildConyberryRuins(root) {
   groundNoise(map, rg, 0, 0, 44, 36, table([['GRASS_4', 6], ['DIRT', 5], ['GRASS', 4], ['GRAVEL', 2], ['GRASS_TALL', 2]]));
 
   // the old street, still there under the weeds
-  for (let y = 15; y <= 17; y++) for (let x = 1; x <= 42; x++) floor(map, x, y, pickT(rg, table([['COBBLE', 5], ['DIRT', 4], ['RUBBLE', 1]])));
+  for (let y = 15; y <= 17; y++) for (let x = 1; x <= 42; x++) floor(map, x, y, pickT(rg, table([['COBBLE', 5], ['DIRT', 4], ['GRAVEL', 1]])));
   for (let x = 8; x <= 10; x++) for (let y = 6; y <= 30; y++) floor(map, x, y, pickT(rg, table([['DIRT', 6], ['COBBLE', 3]])));
 
   // burnt-out houses: ruined rings with the roofs long gone

@@ -595,8 +595,8 @@ const PHANDALIN_QUESTS = [
     summary: 'Court the banshee Agatha with a gift, and bring back the one answer she gives.',
     steps: [
       reach('conyberry-ruins', "Find Agatha's grove beyond the ruins of Conyberry"),
-      talk('agatha', 'Offer the silver comb and ask the Harpers\' question', 'conyberry-ruins'),
-      talk('sister-garaele', 'Carry the answer back to the Shrine of Luck', 'shrine-of-luck'),
+      flagStep('agatha-answered', 'Earn Agatha\'s courtesy and ask the Harpers\' question'),
+      flagStep('agatha-reported', 'Carry the answer back to the Shrine of Luck'),
     ],
     items: ['potion-greater-healing', 'scroll-identify', 'gem-moonstone'],
     rep: { harpers: 5 },
