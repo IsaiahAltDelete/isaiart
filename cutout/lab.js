@@ -950,7 +950,7 @@
                that is actually being solved in the accent colour. */
             if (t === C.TRI.FG) { d[q] = d[q + 1] = d[q + 2] = 255; }
             else if (t === C.TRI.BG) { d[q] = d[q + 1] = d[q + 2] = 12; }
-            else { d[q] = 76; d[q + 1] = 154; d[q + 2] = 255; }
+            else { d[q] = 169; d[q + 1] = 184; d[q + 2] = 240; }   // unknown band: the site's periwinkle
             d[q + 3] = 255;
         }
         ctx.putImageData(im, 0, 0);
@@ -979,7 +979,8 @@
             st.view.x = (W - st.srcW * st.view.scale) / 2;
             st.view.y = (H - st.srcH * st.view.scale) / 2;
         }
-        txt('zoomVal', st.view.fit ? 'FIT' : Math.round(st.view.scale * 100) + '%');
+        txt('zoomVal', Math.round(st.view.scale * 100) + '%');   // always a number: the FIT key beside it says when it is fitted
+        var fb = document.getElementById('fitBtn'); if (fb) fb.setAttribute('aria-pressed', st.view.fit ? 'true' : 'false');
 
         var mode = radio('vMode');
         var layer = null;
@@ -1011,7 +1012,7 @@
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         st.strokes.forEach(function (s) {
             if (s.label === 0) return;   /* an eraser leaves nothing to show */
-            ctx.strokeStyle = s.label === 1 ? 'rgba(74,222,128,0.62)' : 'rgba(229,72,77,0.62)';
+            ctx.strokeStyle = s.label === 1 ? 'rgba(163,211,197,0.7)' : 'rgba(227,160,173,0.7)';
             ctx.lineWidth = s.r * 2;
             ctx.beginPath();
             ctx.moveTo(s.pts[0], s.pts[1]);
@@ -1020,7 +1021,7 @@
             ctx.stroke();
         });
         if (st.rect) {
-            ctx.strokeStyle = 'rgba(76,154,255,0.9)';
+            ctx.strokeStyle = 'rgba(169,184,240,0.9)';
             ctx.lineWidth = Math.max(1, 1.5 / st.view.scale);
             ctx.setLineDash([6 / st.view.scale, 4 / st.view.scale]);
             ctx.strokeRect(st.rect.x, st.rect.y, st.rect.w, st.rect.h);

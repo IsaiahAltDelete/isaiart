@@ -340,31 +340,83 @@ quiet-sky canvas { width: 100%; height: 100%; display: block; }
 .dock-inner { max-width: 1216px; padding: 0; }
 .key-go, .dock .key-go, .throw-2 { font-size: 0.86rem; letter-spacing: 0.16em; font-weight: 600; }
 @media (min-width: 900px) {
-    .dock .key-go, .dock .key-go:hover { background: transparent; color: var(--ink); border-color: var(--rule-hi); }
-    .dock .key-go::after { display: none; }
-    .dock .key-go:hover { background: var(--hover); }
+    body:has(.throw-2) .dock .key-go, body:has(.throw-2) .dock .key-go:hover { background: transparent; color: var(--ink); border-color: var(--rule-hi); }
+    body:has(.throw-2) .dock .key-go::after { display: none; }
+    body:has(.throw-2) .dock .key-go:hover { background: var(--hover); }
 }
 
-/* the control column and the stage end on the same line */
+/* randomisers (a .tray stage): the control column and the stage end on the same line */
 @media (min-width: 900px) {
-    .work { align-items: stretch; }
-    .controls > .rack:last-child { flex: 1 1 auto; }
+    .work:has(.tray) { align-items: stretch; }
+    .work:has(.tray) .controls > .rack:last-child { flex: 1 1 auto; }
     .stage .tray { flex: 1 1 auto; }
 }
 
 /* ── round 3: fill the viewport, rule the log, one small-caps size ───────── */
 @media (min-width: 900px) {
     /* the stage runs down to the footer rather than floating high at 1080p */
-    .stage { min-height: min(880px, calc(100dvh - 262px)); }
+    .stage:has(.tray) { min-height: min(880px, calc(100dvh - 262px)); }
 }
 /* the history card is a ruled log: empty slots read as room for what's next */
-.controls > .rack:last-child .rack-body {
+.work:has(.tray) .controls > .rack:last-child .rack-body {
     background-image: repeating-linear-gradient(to bottom, var(--rule) 0 1px, transparent 1px 38px);
     background-origin: content-box; background-clip: content-box;
     flex: 1 1 auto;   /* the card grows with the stage; the ruled body has to grow with it */
 }
 .log-row { box-sizing: border-box; height: 38px; padding: 0; align-items: center; border-top-color: transparent; }
-.controls > .rack:last-child .hint { line-height: 38px; }
+.work:has(.tray) .controls > .rack:last-child .hint { line-height: 38px; }
 
 .stage-bar .label, .page-foot .label, .page-foot .key { font-size: 0.82rem; letter-spacing: 0.14em; }
 @media (min-width: 900px) { .dock .key-go { flex: 0 0 auto; padding: 0 32px; } }
+
+/* ── tool furniture (cutout, node board and any later tool) ─────────────── */
+select.field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.8 6 6.2l4.5-4.4' fill='none' stroke='%238a8a91' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right 12px center; background-size: 12px 8px; background-repeat: no-repeat;
+    padding-right: 34px;
+}
+select.field option { background: var(--panel-solid); color: var(--ink); }
+
+/* sliders: a hairline track and a round thumb in ink, accent while held */
+input[type="range"] { accent-color: var(--accent); }
+input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: var(--rule-hi); border: 0; border-radius: 999px; }
+input[type="range"]::-webkit-slider-thumb {
+    width: 14px; height: 14px; margin-top: -5.5px; border-radius: 50%;
+    background: var(--ink); border: 0; box-shadow: 0 0 0 3px var(--panel-solid);
+    transition: transform var(--snap), background var(--snap);
+}
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+input[type="range"]:active::-webkit-slider-thumb { background: var(--accent); }
+input[type="range"]::-moz-range-track { height: 3px; background: var(--rule-hi); border: 0; border-radius: 999px; }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); border: 0; }
+input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.chk .box { width: 15px; height: 15px; border-radius: 4px; border: 1px solid var(--rule-hi); background: var(--well); }
+.chk input:checked + .box {
+    background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.6-5' fill='none' stroke='%2307080b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 11px no-repeat;
+    border-color: var(--ink);
+}
+:root[data-theme="light"] .chk input:checked + .box {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.6-5' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.chk .label { font-size: 0.8rem; }
+
+.key-danger { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 35%, transparent); }
+.key-danger:hover, .key-danger:active { color: var(--ground); background: var(--alert); border-color: var(--alert); }
+.key[disabled], .key[disabled]:hover { opacity: 0.38; background: transparent; }
+
+.op { font-family: var(--f-ui); font-size: 0.78rem; letter-spacing: 0; text-transform: none; color: var(--accent); }
+.note { border: 1px solid var(--rule); border-left: 2px solid var(--accent); border-radius: var(--r-m); }
+.note p { font-family: var(--f-ui); font-size: 0.86rem; }
+input[type="color"] { border-radius: var(--r-s); border: 1px solid var(--rule); background: var(--well); padding: 2px; }
+
+/* readouts: numbers in ink, set in the display face */
+.stat, .gridout { font-family: var(--f-ui); }
+.stat b, .gridout b { font-family: var(--f-display); font-size: 0.95rem; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
+.stage-foot { border-top: 1px solid var(--rule-lo); padding: 11px 18px; font-family: var(--f-ui); font-size: 0.8rem; color: var(--ink-faint); }
+.dock .key { white-space: nowrap; }
+/* where the dock carries the page's main action among other keys (cutout,
+   node board), every key shares one height and corner; white fill is the
+   only emphasis */
+body:not(:has(.throw-2)) .dock .key { min-height: 36px; border-radius: var(--r-s); }
+body:not(:has(.throw-2)) .dock .key-go { min-height: 36px; border-radius: var(--r-s); padding: 0 22px; }

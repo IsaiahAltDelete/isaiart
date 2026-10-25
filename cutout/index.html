@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0b0d">
+<meta name="theme-color" content="#07080b">
 <title>Cutout Lab</title>
 <meta name="description" content="A background removal bench. Nine segmentation engines you can mix, real alpha matting on the edge, colour decontamination, and a brush for the bits that argue. Runs entirely in the browser.">
 
@@ -11,14 +11,15 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="../assets/vector.css?v=10">
 <link rel="stylesheet" href="../assets/console.css?v=10">
 <script src="../assets/cassette.js?v=10"></script>
+<script src="../assets/sky.js?v=1" defer></script>
 
 <style>
-:root { --accent: var(--s6); }
+/* palette, type and panels come from ../assets/calm.css (loaded last) */
 
 /* ── Work area ───────────────────────────────────────────────────────────
    Controls beside a stage that keeps the picture as large as it can be.
@@ -181,8 +182,42 @@ input[type="color"] {
 .tri-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.65rem; color: var(--ink-faint); }
 .tri-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px; }
 </style>
+<link rel="stylesheet" href="../assets/calm.css?v=9">
+<style>
+/* Cutout Lab on the calm layer: a quiet checkerboard, rounded thumbnails,
+   and the iridescent band only on the progress line. */
+.stage-bar { padding: 10px 14px; }
+.stage-bar .seg-ctl span { min-height: 28px; }
+.canvas-wrap { background: repeating-conic-gradient(rgb(255 255 255 / 0.035) 0% 25%, transparent 0% 50%) 50% / 18px 18px, var(--well); }
+:root[data-theme="light"] .canvas-wrap { background: repeating-conic-gradient(rgb(20 20 30 / 0.05) 0% 25%, transparent 0% 50%) 50% / 18px 18px, #fff; }
+.canvas-wrap.drag { outline: 1.5px dashed var(--accent); outline-offset: -10px; border-radius: var(--r-m); }
+.drop-hint .designation { font-size: 1.6rem; letter-spacing: 0.08em; }
+.drop-hint .hint { max-width: 34ch; }
+.busybar { height: 2px; background: transparent; }
+.busybar i { background: var(--iris); background-size: 600px 100%; }
+.eng { border-top: 1px solid var(--rule-lo); padding-top: 12px; }
+.eng-thumb { border-radius: 6px; border: 1px solid var(--rule); background: var(--well); }
+.eng-thumb:hover { border-color: var(--rule-hi); }
+.eng.solo .eng-thumb { border-color: var(--accent); box-shadow: 0 0 0 2px var(--tint); }
+.eng-name { font-family: var(--f-display); font-size: 0.82rem; letter-spacing: 0.14em; }
+.eng-ms { font-family: var(--f-ui); font-size: 0.74rem; }
+.keys .sw { border-radius: 6px; }
+.hist { border-radius: var(--r-s); border: 1px solid var(--rule); }
+.warn { border-left: 2px solid var(--alert); }
+.tri-legend { font-family: var(--f-ui); font-size: 0.78rem; }
+.tri-legend i { border-radius: 2px; }
+/* the picture takes the full height; the zoom keys read as one control */
+@media (min-width: 1000px) { .canvas-wrap { height: max(340px, calc(100dvh - 262px)); max-height: none; } }
+.zoom-grp { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--rule); border-radius: var(--r-s); background: var(--well); }
+.zoom-grp .key { border-color: transparent; min-height: 28px; padding: 0 10px; }
+.zoom-grp .key:not(.latched):not([aria-pressed="true"]):hover { background: var(--hover); }
+#zoomVal:empty { display: none; }   /* no picture, no zoom to report */
+#zoomVal { min-width: 52px; text-align: center; font-family: var(--f-display); font-size: 0.9rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.eng-ms { letter-spacing: 0; font-family: var(--f-display); font-size: 0.86rem; font-weight: 600; }
+</style>
 </head>
 <body>
+<quiet-sky></quiet-sky>
 
 <main class="page">
 
@@ -861,11 +896,13 @@ input[type="color"] {
                 <span class="spacer"></span>
                 <button class="key" type="button" id="marksBtn" aria-pressed="true">MARKS</button>
                 <button class="key" type="button" id="compBtn" aria-pressed="false">SOLID BG</button>
+                <span class="zoom-grp">
                 <button class="key" type="button" id="zoomOut" aria-label="Zoom out">&minus;</button>
-                <span class="label" id="zoomVal">FIT</span>
+                <span class="label" id="zoomVal"></span>
                 <button class="key" type="button" id="zoomIn" aria-label="Zoom in">+</button>
                 <button class="key" type="button" id="fitBtn">FIT</button>
                 <button class="key" type="button" id="oneBtn">1:1</button>
+                </span>
             </div>
             <div class="canvas-wrap" id="wrap">
                 <canvas id="view"></canvas>
@@ -921,6 +958,6 @@ input[type="color"] {
 <script src="../assets/console.js?v=10"></script>
 <script src="engines.js"></script>
 <script src="matting.js"></script>
-<script src="lab.js?v=10"></script>
+<script src="lab.js?v=12"></script>
 </body>
 </html>
