@@ -1,0 +1,518 @@
+{
+ "date": "2026-10-25",
+ "updated": "2026-10-25T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Europe left daylight time overnight, so Paris is now five hours ahead of Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Chiefs at Seahawks, Sunday Night Football (8:20 PM ET, NBC/Peacock)",
+  "Steelers vs. Saints in Paris (9:30 AM ET, NFL Network)",
+  "United States Grand Prix (4:00 PM ET, Apple TV)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 7",
+   "note": "Paris morning game \u2022 CBS and FOX regional windows \u2022 SNF"
+  },
+  {
+   "key": "NASCAR",
+   "name": "NASCAR",
+   "subtitle": "Cup Series",
+   "note": "The Chase \u2022 Talladega"
+  },
+  {
+   "key": "F1",
+   "name": "Formula 1",
+   "subtitle": "United States Grand Prix",
+   "note": "Race at Circuit of the Americas"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "TNT Sunday"
+  }
+ ],
+ "events": [
+  {
+   "id": "nfl-pit-no",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [
+    "International Series \u2022 Paris"
+   ],
+   "competitors": [
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "4\u20132",
+     "logo": "nfl/pit"
+    },
+    {
+     "name": "New Orleans Saints",
+     "abbr": "NO",
+     "detail": "2\u20134",
+     "logo": "nfl/no"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-10-25T09:30:00-04:00",
+   "watch": "NFL Network",
+   "streaming": "NFL+",
+   "coverage_type": "National",
+   "coverage": "National NFL Network window; New Orleans is the designated home team.",
+   "venue": "Stade de France, Saint-Denis, France",
+   "venue_tz": "Central European Time",
+   "notes": "Morning game in Paris. Kickoff is 2:30 p.m. local; France has already left daylight time.",
+   "blackout": "Local over-the-air simulcasts are expected in the Pittsburgh and New Orleans markets. NFL+ restrictions may apply."
+  },
+  {
+   "id": "nfl-sf-atl",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "San Francisco 49ers",
+     "abbr": "SF",
+     "detail": "6\u20130",
+     "logo": "nfl/sf"
+    },
+    {
+     "name": "Atlanta Falcons",
+     "abbr": "ATL",
+     "detail": "2\u20134",
+     "logo": "nfl/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Mercedes-Benz Stadium, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-cle-ten",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Cleveland Browns",
+     "abbr": "CLE",
+     "detail": "4\u20132",
+     "logo": "nfl/cle"
+    },
+    {
+     "name": "Tennessee Titans",
+     "abbr": "TEN",
+     "detail": "1\u20135",
+     "logo": "nfl/ten"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Nissan Stadium, Nashville",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ind-min",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "2\u20134",
+     "logo": "nfl/ind"
+    },
+    {
+     "name": "Minnesota Vikings",
+     "abbr": "MIN",
+     "detail": "5\u20130",
+     "logo": "nfl/min"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "U.S. Bank Stadium, Minneapolis",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-mia-nyj",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Dolphins",
+     "abbr": "MIA",
+     "detail": "0\u20135",
+     "logo": "nfl/mia"
+    },
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "2\u20134",
+     "logo": "nfl/nyj"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-tb-car",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tampa Bay Buccaneers",
+     "abbr": "TB",
+     "detail": "1\u20135",
+     "logo": "nfl/tb"
+    },
+    {
+     "name": "Carolina Panthers",
+     "abbr": "CAR",
+     "detail": "3\u20132",
+     "logo": "nfl/car"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Bank of America Stadium, Charlotte",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-cin-bal",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Cincinnati Bengals",
+     "abbr": "CIN",
+     "detail": "3\u20132",
+     "logo": "nfl/cin"
+    },
+    {
+     "name": "Baltimore Ravens",
+     "abbr": "BAL",
+     "detail": "4\u20132",
+     "logo": "nfl/bal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "M&T Bank Stadium, Baltimore",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-nyg-hou",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Giants",
+     "abbr": "NYG",
+     "detail": "3\u20132\u20131",
+     "logo": "nfl/nyg"
+    },
+    {
+     "name": "Houston Texans",
+     "abbr": "HOU",
+     "detail": "2\u20134",
+     "logo": "nfl/hou"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Reliant Stadium, Houston",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 7 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-den-ari",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "4\u20132",
+     "logo": "nfl/den"
+    },
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "2\u20134",
+     "logo": "nfl/ari"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T16:05:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "State Farm Stadium, Glendale, Ariz.",
+   "venue_tz": "Mountain Standard Time (Arizona)",
+   "notes": "Week 7 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-gb-det",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Green Bay Packers",
+     "abbr": "GB",
+     "detail": "4\u20132",
+     "logo": "nfl/gb"
+    },
+    {
+     "name": "Detroit Lions",
+     "abbr": "DET",
+     "detail": "3\u20132",
+     "logo": "nfl/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T16:25:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Ford Field, Detroit",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 7 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lar-lv",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "2\u20134",
+     "logo": "nfl/lar"
+    },
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "3\u20133",
+     "logo": "nfl/lv"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T16:25:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Allegiant Stadium, Las Vegas",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 7 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nascar-tal",
+   "league": "NASCAR",
+   "label": "NASCAR Cup \u2022 The Chase",
+   "flags": [
+    "The Chase"
+   ],
+   "competitors": [
+    {
+     "name": "Cup Series at Talladega",
+     "abbr": "TAL",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-10-25T14:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Talladega Superspeedway, Lincoln, Ala.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Superspeedway race in NASCAR's 10-race Chase.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "f1-usgp",
+   "league": "F1",
+   "label": "F1 \u2022 United States Grand Prix",
+   "flags": [
+    "Race"
+   ],
+   "competitors": [
+    {
+     "name": "United States Grand Prix",
+     "abbr": "COTA",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-10-25T16:00:00-04:00",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "U.S. Formula 1 coverage is on Apple TV.",
+   "venue": "Circuit of the Americas, Austin, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Race start is 3:00 p.m. local.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "nhl-mtl-wpg",
+   "league": "NHL",
+   "label": "NHL \u2022 Regular season",
+   "flags": [
+    "TNT Sunday"
+   ],
+   "competitors": [
+    {
+     "name": "Montreal Canadiens",
+     "abbr": "MTL",
+     "detail": "",
+     "logo": "nhl/mtl"
+    },
+    {
+     "name": "Winnipeg Jets",
+     "abbr": "WPG",
+     "detail": "",
+     "logo": "nhl/wpg"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T19:00:00-04:00",
+   "watch": "TNT \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window in the U.S.",
+   "venue": "Princess Auto Stadium, Winnipeg",
+   "venue_tz": "Central Daylight Time",
+   "notes": "The only national U.S. NHL broadcast of the day.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  },
+  {
+   "id": "nfl-kc-sea",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [
+    "Sunday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "5\u20130",
+     "logo": "nfl/kc"
+    },
+    {
+     "name": "Seattle Seahawks",
+     "abbr": "SEA",
+     "detail": "3\u20133",
+     "logo": "nfl/sea"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-25T20:20:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window.",
+   "venue": "Lumen Field, Seattle",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Unbeaten Kansas City visits Seattle in prime time.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  }
+ ],
+ "footer_note": "Fifteen qualifying events fall inside Sunday's Eastern calendar day. Regional NHL and NBA games, preseason and exhibition games are excluded. The World Series is off today with Milwaukee up 2\u20130; Game 3 is Monday in Tampa Bay. The WNBA Finals are tied 2\u20132; Game 5 is Monday.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/7/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NASCAR scoreboard",
+   "url": "https://www.espn.com/racing/schedule"
+  },
+  {
+   "label": "ESPN F1 schedule",
+   "url": "https://www.espn.com/f1/schedule"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-25"
+  },
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-26"
+  }
+ ]
+}

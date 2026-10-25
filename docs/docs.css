@@ -1415,6 +1415,354 @@ table.keys tr.grp td { text-transform: none; letter-spacing: 0; font-size: 0.78r
     .rail-tabs::before, .tree-item::before, .file-row::before { transition: none; }
 }
 
+/* ── 9d. CALM LAYER ──────────────────────────────────────────────────────────
+   The final coat, and the one that decides how Docs looks. Everything above
+   is kept for its behaviour, but its look came from several passes over the
+   site's console language — a drafting grid, four typefaces, a beige light
+   theme, boxes inside boxes — and read as random. This layer settles it:
+
+   - one neutral grey scale per theme, no warm or blue cast in the chrome;
+   - one accent, a muted periwinkle, for state only (pressed, current, focus);
+   - one muted iridescent band, the same pastel run as the homepage, used
+     sparingly: the brand mark, the save mark while saving, the current
+     document;
+   - one typeface for the interface; the document keeps its own fonts;
+   - one flat shell: a top bar, two rails and a status bar divided by
+     hairlines, with the paper as the only bright object.
+
+   It redefines the shared tokens for this page only, so vector.css and
+   console.css — which other tools use — are untouched. */
+
+:root {
+    --ground:    #0e0e0f;
+    --ground-2:  #161617;
+    --panel:     #121213;
+    --well:      #0b0b0c;
+    --rule:      #252527;
+    --rule-hi:   #353538;
+    --rule-lo:   #1c1c1e;
+    --ink:       #ececea;
+    --ink-soft:  #a5a5aa;
+    --ink-faint: #74747a;
+    --hint-ink:  #8d8d93;
+    --accent:    #a8b5f2;
+    --accent-ink:#0e0f18;
+    --ok:        #a8b5f2;
+    --s3:        #a8b5f2;
+    --s6:        #a8b5f2;
+    --iris: linear-gradient(115deg, #9db8e8 0%, #bfaee3 30%, #d6a9c4 55%, #dccb9e 80%, #a3d3c5 100%);
+    --hover: color-mix(in srgb, var(--ink) 6%, transparent);
+    --press: color-mix(in srgb, var(--ink) 10%, transparent);
+    --line:  var(--rule);
+    --tint:  color-mix(in srgb, var(--accent) 16%, transparent);
+    --lift:  0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.6);
+    --sheet-bg:  #fbfbfa;
+    --sheet-ink: #1b1b1d;
+    --r-s: 6px;
+    --r-m: 8px;
+    --r-l: 12px;
+    --bar-h: 44px;
+}
+:root[data-theme="light"] {
+    --ground:    #f6f6f5;
+    --ground-2:  #ececeb;
+    --panel:     #fbfbfa;
+    --well:      #ffffff;
+    --rule:      #e1e1df;
+    --rule-hi:   #cdcdca;
+    --rule-lo:   #ebebe9;
+    --ink:       #18181a;
+    --ink-soft:  #55555b;
+    --ink-faint: #85858b;
+    --hint-ink:  #66666c;
+    --accent:    #4c5cc2;
+    --accent-ink:#ffffff;
+    --ok:        #4c5cc2;
+    --s3:        #4c5cc2;
+    --s6:        #4c5cc2;
+    --hover: color-mix(in srgb, var(--ink) 5%, transparent);
+    --press: color-mix(in srgb, var(--ink) 9%, transparent);
+    --tint:  color-mix(in srgb, var(--accent) 12%, transparent);
+    --lift:  0 1px 2px rgb(0 0 0 / 0.06), 0 14px 34px -12px rgb(0 0 0 / 0.22);
+    --sheet-bg:  #ffffff;
+    --sheet-ink: #1b1b1d;
+}
+
+@media screen {
+
+/* no drafting grid behind the app — the desk is a plain surface */
+body::before, body::after { display: none; }
+body, .page, .panel-modal, .readout-toast { font-family: var(--f-ui); }
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 1px; }
+
+/* ── the shell: flat, hairline-divided, edge to edge ── */
+.page { padding: 0 0 0; gap: 0; }
+.chassis { box-shadow: none; }
+.page-head {
+    background: var(--panel);
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 0 14px;
+}
+.head-row { min-height: 48px; }
+
+/* brand: a small iridescent mark and a plain wordmark */
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand::before {
+    content: '';
+    width: 16px; height: 16px; border-radius: 5px; flex: none;
+    background: var(--iris);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+.brand .designation { font-size: 0.98rem; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+
+.head-well .screen { border-radius: var(--r-s); }
+.title-field { font-size: 0.92rem; font-weight: 500; }
+.save-state { display: inline-flex; align-items: center; gap: 7px; font-size: 0.74rem; color: var(--ink-faint); }
+.save-state .led, .save-state .led.on, .save-state .led.on.green {
+    width: 6px; height: 6px; border: 0; border-radius: 50%; background: var(--ink-faint);
+    box-shadow: none; animation: none;
+}
+/* saving: the mark takes the iridescent band and breathes once */
+.save-state .led.blink, .save-state .led.on:not(.green) {
+    background: var(--iris); animation: calm-breathe 1.2s ease-in-out infinite;
+}
+
+/* theme switch: a neutral pill, the thumb carries the only colour */
+.theme-sw { gap: 6px; }
+.theme-ico { width: 14px; height: 14px; color: var(--ink-faint); }
+.rocker, .theme-sw .rocker:has(input:checked) { background: var(--press); }
+.rocker .rock, .theme-sw .rocker .rock, .theme-sw .rocker input:checked + .rock { background: var(--ink); }
+
+.head-ctl .key {
+    min-height: 30px; padding: 0 12px;
+    border: 1px solid var(--rule); border-radius: var(--r-s);
+    background: transparent; color: var(--ink-soft); font-size: 0.8rem;
+}
+.head-ctl .key:hover { color: var(--ink); background: var(--hover); border-color: var(--rule-hi); }
+
+/* menubar: words on the bar, a sheet beneath */
+.menubar { margin: 0 0 6px -8px; gap: 0; border: 0; }
+.menu > .menu-btn, .menu:first-child > .menu-btn {
+    padding: 5px 10px; font-size: 0.82rem; font-weight: 450;
+    color: var(--ink-soft); border: 0; border-radius: var(--r-s);
+}
+.menu > .menu-btn:hover { background: var(--hover); color: var(--ink); }
+.menu.open > .menu-btn { background: var(--press); color: var(--ink); }
+.menu-sheet {
+    background: var(--panel);
+    border: 1px solid var(--rule-hi);
+    border-radius: var(--r-m);
+    box-shadow: var(--lift);
+    padding: 5px;
+}
+.menu-item { color: var(--ink-soft); font-size: 0.82rem; border-radius: 5px; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--hover); color: var(--ink); outline: none; }
+.menu-item .ico { opacity: 0.8; }
+.menu-item .mk { color: var(--ink-faint); font-family: var(--f-ui); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.menu-sep { background: var(--rule); margin: 5px 4px; }
+
+/* toolbar: one quiet row under the bar, groups set apart by short rules */
+.ribbon {
+    background: var(--panel);
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 5px 10px;
+    min-height: var(--bar-h);
+}
+.bay { border-right: 0; padding: 0 4px; position: relative; }
+.bay + .bay::before {
+    content: ''; position: absolute; left: -1px; top: 50%; height: 18px; width: 1px;
+    transform: translateY(-50%); background: var(--rule);
+}
+.ribbon .key { color: var(--ink-soft); border-radius: var(--r-s); min-height: 30px; }
+.ribbon .key-sq { width: 30px; }
+.ribbon .key:hover { background: var(--hover); color: var(--ink); }
+.ribbon .key[aria-pressed="true"], .ribbon .key.latched { background: var(--tint); color: var(--accent); }
+.ribbon .key svg, .ribbon .key .ico { opacity: 0.9; }
+.ribbon .dock-sep { background: var(--rule); height: 18px; }
+.field, .ribbon .field, .stepper .size-in {
+    background-color: var(--well);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-s);
+    color: var(--ink);
+    font-family: var(--f-ui);
+    min-height: 30px;
+}
+.field:hover, .stepper .size-in:hover { border-color: var(--rule-hi); }
+.field:focus, .field:focus-within, .stepper .size-in:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint); outline: none; }
+.pal { background: var(--panel); border: 1px solid var(--rule-hi); border-radius: var(--r-m); box-shadow: var(--lift); }
+
+/* the work area: rails flat against the edges, the desk in between */
+.work { gap: 0; }
+.rail {
+    background: var(--panel);
+    border: 0;
+    border-radius: 0;
+}
+.rail-left  { border-right: 1px solid var(--rule); }
+.rail-right { border-left: 1px solid var(--rule); }
+.rail-head { padding: 12px 16px 10px; border-bottom: 1px solid var(--rule); }
+.rail-head .designation, .rail-head .label { font-size: 0.78rem; font-weight: 600; color: var(--ink); }
+.rail-tabs { margin: 10px 10px 6px; background: var(--ground-2); border-radius: var(--r-m); }
+.rail-tabs::before { background: var(--panel); border: 1px solid var(--rule); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.rail-tabs .key, .rail-tabs .key:last-child { color: var(--ink-faint); font-size: 0.78rem; font-weight: 500; }
+.tree-item, .file-row { color: var(--ink-soft); padding-top: 6px; padding-bottom: 6px; margin: 1px 4px; }
+.tree-item:hover, .file-row:hover { background: var(--hover); color: var(--ink); }
+.tree-item.here, .file-row.here { background: var(--hover); color: var(--ink); font-weight: 500; }
+.tree-item::before, .file-row::before { background: var(--iris); left: 2px; }
+.cmt-card { background: var(--ground-2); border: 1px solid var(--rule); border-left: 2px solid var(--accent); border-radius: var(--r-m); }
+.cmt-card.here { background: var(--tint); }
+.hint { color: var(--hint-ink); }
+
+.deck { background: var(--ground-2); border-radius: 0; padding: 22px 22px 80px; }
+:root[data-theme="light"] .deck { background: var(--ground-2); }
+.leaf {
+    border: 0;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.05), 0 2px 4px rgb(0 0 0 / 0.18), 0 24px 60px -24px rgb(0 0 0 / 0.55);
+}
+:root[data-theme="light"] .leaf { box-shadow: 0 0 0 1px rgb(0 0 0 / 0.07), 0 1px 3px rgb(0 0 0 / 0.06), 0 22px 50px -26px rgb(0 0 0 / 0.25); }
+.ruler { background: transparent; border: 0; margin-bottom: 10px; }
+.ruler .marg { background: var(--hover); }
+.ruler .tk { background: var(--rule-hi); }
+.ruler .tk.inch { background: var(--ink-faint); }
+.ruler .nm { color: var(--ink-faint); }
+
+/* status bar */
+.dock {
+    background: var(--panel);
+    border-top: 1px solid var(--rule);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.stat, .stat .label { font-family: var(--f-ui); font-size: 0.74rem; }
+.stat .label { color: var(--ink-faint); }
+.stat b { color: var(--ink-soft); font-weight: 500; font-variant-numeric: tabular-nums; }
+.dock-sep { background: var(--rule); height: 14px; }
+.zoom-ctl .key { color: var(--ink-soft); }
+
+/* dialogs */
+.panel-modal { background: rgb(0 0 0 / 0.5); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+:root[data-theme="light"] .panel-modal { background: rgb(20 20 22 / 0.24); }
+.panel-modal .sheet { background: var(--panel); border: 1px solid var(--rule-hi); border-radius: var(--r-l); }
+.sheet-head { border-bottom: 1px solid var(--rule); }
+.sheet-foot { border-top: 1px solid var(--rule); background: var(--ground); }
+.sheet-head .designation { font-weight: 600; }
+.key.primary, .sheet-foot .key.latched, .sheet-foot .key[data-primary] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.doc-row { background: transparent; border: 1px solid var(--rule); }
+.doc-row:hover { background: var(--hover); }
+.doc-row.here { box-shadow: inset 2px 0 0 0 transparent; border-image: none; position: relative; }
+.doc-row.here::before {
+    content: ''; position: absolute; left: -1px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: var(--iris);
+}
+
+.readout-toast { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-hi); }
+
+/* keys outside the toolbar that latch: neutral, not inverted */
+.key.latched, .key[aria-pressed="true"] { color: var(--accent); background: var(--tint); border-color: transparent; }
+
+/* the wordmark sits beside its mark, not under it */
+.brand { flex-direction: row; }
+.brand-stripe { display: none; }
+
+/* theme switch: the active side is lit in ink, not in the old amber */
+:root[data-theme] .theme-sw .theme-ico { color: var(--ink-faint); }
+:root[data-theme="dark"] .theme-sw .ico-moon,
+:root[data-theme="light"] .theme-sw .ico-sun { color: var(--ink); }
+
+/* one press behaviour everywhere: a darker wash, no shrinking */
+.key:active { transform: none; }
+
+/* the text colour swatch can be near-black, so it always gets an outline */
+.swatch-key .bar { box-shadow: 0 0 0 1px var(--rule-hi); }
+
+/* the B / I / U / S / x² / x₂ keys: set in the UI face, at one size */
+.ribbon .key.glyph { font-family: var(--f-ui) !important; font-size: 0.84rem !important; font-weight: 600; }
+.ribbon .key.glyph[data-cmd="fmt.italic"] { font-weight: 500; }
+.ribbon .key.glyph[data-cmd="fmt.sup"], .ribbon .key.glyph[data-cmd="fmt.sub"] { font-size: 0.78rem !important; font-weight: 500; }
+
+/* the wordmark and the document name are separated by a short rule, and the
+   name steps down a tone so the two never read as twin labels */
+.brand::after { content: ''; width: 1px; height: 18px; margin-left: 4px; background: var(--rule-hi); }
+.title-field { color: var(--ink-soft); }
+.title-field:hover, .title-field:focus { color: var(--ink); }
+
+/* an empty comments rail is only a hint; the page gets its width until the
+   first comment exists, and the comment key brings the rail back */
+.work:has(#cmtList > .rail-empty) .rail-right { display: none; }
+
+/* both rails open on a 44px band with a hairline under it, level with the
+   top of the desk, so the three columns start on one line */
+.rail-tabs { margin: 0; height: 44px; padding: 7px 10px; background: transparent; border-radius: 0; border-bottom: 1px solid var(--rule); box-sizing: border-box; }
+.rail-head { height: 44px; padding: 0 16px; box-sizing: border-box; align-items: center; }
+.deck, .work .deck { padding-top: 8px; }   /* centres the 20px ruler in that band */
+.rail-tabs::before { top: 7px; bottom: 8px; left: 10px; width: calc(50% - 10px); background: var(--hover); border: 1px solid var(--rule); box-shadow: none; }
+
+/* select chevrons: a thin stroked V like the rest of the icon set, not the
+   two filled gradient wedges from vector.css */
+select.field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.6 5 6.6 8 3.6' fill='none' stroke='%238a8a90' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: calc(100% - 9px) 50%;
+    background-size: 10px 10px;
+}
+
+/* the theme thumb in dark stays below the wordmark's brightness */
+:root:not([data-theme="light"]) .theme-sw .rocker .rock { background: var(--ink-soft); }
+
+/* with the comments rail hidden, a wide desk keeps a matching right gutter so
+   the page centres on the window rather than leaning right */
+@media screen and (min-width: 1441px) {
+    .work:has(#cmtList > .rail-empty) .deck { padding-right: calc(22px + var(--rail-w)); }
+}
+
+/* the caret is the one live mark on the paper, so it takes the accent */
+.doc { caret-color: var(--mark); }
+
+}
+
+@keyframes calm-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+@media (max-width: 1100px) {
+    .rail { border: 1px solid var(--rule); border-radius: 0 var(--r-l) var(--r-l) 0; }
+    .rail-right { border-radius: var(--r-l) 0 0 var(--r-l); }
+}
+
+/* ── 9e. PAPER ACCENT ────────────────────────────────────────────────────────
+   Marks laid over the writing use one periwinkle, in strengths, so comments,
+   search hits and table focus read as one family on white paper. Kept outside
+   the screen query because the comment wash also prints. */
+.doc { --mark: #6f7fd6; }
+.doc h1.s-title { padding-bottom: 6pt; border-bottom: 1px solid color-mix(in srgb, var(--sheet-ink, #1b1b1d) 14%, transparent); }
+.doc h2.s-sub { opacity: 1; color: color-mix(in srgb, var(--sheet-ink, #1b1b1d) 62%, transparent); }
+.doc blockquote { opacity: 1; color: color-mix(in srgb, var(--sheet-ink, #1b1b1d) 72%, transparent); }
+.doc .cmt-mark { background: color-mix(in srgb, var(--mark) 16%, transparent); box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--mark) 60%, transparent); }
+.doc .cmt-mark.here { background: color-mix(in srgb, var(--mark) 32%, transparent); }
+.doc .hit { background: color-mix(in srgb, var(--mark) 26%, transparent); }
+.doc .hit.on { background: var(--mark); color: #fff; }
+.doc table td.cell-on, .doc table th.cell-on { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mark) 70%, transparent); }
+
+@media screen and (min-width: 1101px) and (max-width: 1440px) {
+    :root { --rail-w: 208px; }
+    .deck { padding: 18px 18px 70px; }
+    /* tighter keys and pickers so a 1366 laptop keeps the toolbar on one row */
+    .ribbon { padding: 5px 6px; }
+    .bay { padding: 0 2px; }
+    .bay-row { gap: 2px; }
+    .ribbon .key { min-height: 28px; }
+    .ribbon .key-sq { width: 28px; }
+    .ribbon select.style-pick { min-width: 92px; width: 92px; }
+    .ribbon select.font-pick { min-width: 100px; width: 100px; }
+}
+
+/* below a wide desktop the toolbar wraps to a second row rather than hiding
+   its right end behind a scrollbar; phones keep the swipeable strip */
+@media screen and (min-width: 700px) and (max-width: 1440px) {
+    .ribbon { flex-wrap: wrap; row-gap: 4px; overflow: visible; }
+}
+
 /* ── 10. PRINT ───────────────────────────────────────────────────────────────
    Printing is the point of a word processor, so this is not an afterthought.
    Everything that is machine disappears; the sheet loses its own padding and
