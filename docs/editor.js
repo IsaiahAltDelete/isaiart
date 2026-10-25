@@ -299,6 +299,28 @@ function updatePageNo() {
         }
     }
     $('stPage').textContent = at + ' / ' + pageTotal;
+    spyOutline();
+}
+
+/* The outline marks the section you are in: the last heading at or above the
+   caret, or above the top of the desk when the caret is elsewhere. */
+function spyOutline() {
+    var items = document.querySelectorAll('.tree-item');
+    if (!items.length) return;
+    var box = deck.getBoundingClientRect(), ref = box.top + 48;
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount && doc.contains(sel.anchorNode)) {
+        var rect = sel.getRangeAt(0).getBoundingClientRect();
+        if (!rect.height && sel.anchorNode.nodeType === 1) rect = sel.anchorNode.getBoundingClientRect();
+        /* a caret scrolled out of view no longer says where the reader is */
+        if (rect.height && rect.top >= box.top && rect.bottom <= box.bottom) ref = rect.top + 2;
+    }
+    var here = items[0];
+    for (var i = 0; i < items.length; i++) {
+        var h = document.getElementById(items[i].getAttribute('data-to'));
+        if (h && h.getBoundingClientRect().top <= ref) here = items[i];
+    }
+    for (var j = 0; j < items.length; j++) items[j].classList.toggle('here', items[j] === here);
 }
 
 /* ── SELECTION HELPERS ───────────────────────────────────────────────────── */
@@ -541,7 +563,7 @@ function syncToolbar() {
         }
         var cs = getComputedStyle(el);
         var px = parseFloat(cs.fontSize);
-        if (px) $('sizeIn').value = Math.round(px * 72 / DPI * 10) / 10;
+        if (px) $('sizeIn').value = Math.round(px * 72 / DPI * 2) / 2;
         /* Mark the cell the caret sits in, so the TABLE menu is unambiguous. */
         var old = doc.querySelector('.cell-on');
         if (old) old.classList.remove('cell-on');
@@ -1085,6 +1107,7 @@ function buildOutline() {
     }
     $('outlineList').innerHTML = html;
     $('outlineEmpty').hidden = shown > 0;
+    spyOutline();
 }
 
 /* ── COMMENTS ────────────────────────────────────────────────────────────── */
@@ -2222,9 +2245,9 @@ function init() {
     document.title = active().title + ' — Docs';
     doc.focus();
 
-    /* On a phone the sheet is wider than the screen; open it fitted to the
+    /* When the sheet is wider than the desk (a phone, a small laptop), open it fitted to the
        width instead of cut off at the right edge. */
-    if (window.innerWidth < 700 && state.view.zoom === 1 && geo().w > deck.clientWidth - 16) zoomFit();
+    if (state.view.zoom === 1 && geo().w > deck.clientWidth - 16) zoomFit();
 
     /* Boot is over once the view state has been applied AND painted. Two frames:
        the first lets the browser commit the layout above, the second guarantees
