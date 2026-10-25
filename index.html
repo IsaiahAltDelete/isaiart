@@ -121,16 +121,20 @@
       font-weight: 900; line-height: 0.84; letter-spacing: -0.01em; text-transform: uppercase;
     }
     .hero-title .line { display: block; overflow: hidden; padding-bottom: .04em; }
+    /* the mask is only for the rise-in; after that, pushed letters may leave the line */
+    .hero-title.risen .line { overflow: visible; }
     .hero-title .line > span { display: block; animation: rise 1s var(--ease) both; }
     .hero-title .line:nth-child(2) > span { animation-delay: .08s; color: transparent; -webkit-text-stroke: 1.5px var(--white); }
-    /* a faint pearl sheen drifts across the solid line now and then */
-    .hero-title .line:first-child > span {
+    /* a faint pearl sheen washes across the solid line now and then, letter
+       by letter, so each glyph can still be pushed on its own */
+    .hero-title .line:first-child .ch {
       background: linear-gradient(100deg, #f4f4f2 0%, #f4f4f2 36%, #dbe4fb 45%, #eedcf0 51%, #f5e9d4 57%, #f4f4f2 66%, #f4f4f2 100%);
-      background-size: 260% 100%; background-position: 100% 0;
+      background-size: 400% 100%; background-position: 100% 0;
       -webkit-background-clip: text; background-clip: text; color: transparent;
-      animation: rise 1s var(--ease) both, sheen 11s ease-in-out 1.4s infinite;
+      animation: sheen 11s ease-in-out infinite; animation-delay: calc(1.4s + var(--i, 0) * 90ms);
     }
     .lede { font-size: clamp(1rem, 1.3vw, 1.12rem); line-height: 1.6; color: var(--off); max-width: 540px; }
+    .hero .ch, .hero .w { display: inline-block; }
     .stats { display: flex; flex-wrap: wrap; gap: 8px 26px; }
     .stats span { display: inline-flex; align-items: baseline; gap: 9px; }
     .stats b { font-family: var(--cond); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; color: var(--white); }
@@ -542,8 +546,9 @@ class LiveClock extends HTMLElement {
    The lens moves on a spring, not an ease, so it has weight. In order of
    precedence it: swallows the sky when you open a project; perches on the
    card you point at or focus; flies briefly to the first result after a
-   search or filter; leans toward the cursor over open sky; otherwise idles
-   beside the title, or in the margin once the title has scrolled away. */
+   search or filter; sits around the cursor over open sky; otherwise idles
+   beside the title, or in the margin once the title has scrolled away. As it
+   passes, it pushes the hero's letters and words aside. */
 class SpaceField extends HTMLElement {
   connectedCallback() {
     const cv = document.createElement('canvas');
@@ -697,15 +702,35 @@ class SpaceField extends HTMLElement {
         stiff = 34; damp = 8.5;           // a little overshoot, then it lands
         return;
       }
+      // over open sky the hole sits around the cursor — the pointer at its
+      // centre — on a quick spring that trails a touch and then settles
+      if (px >= 0 && !pOverUI) {
+        tx = px; ty = py; tk = 0.82; stiff = 46; damp = 11;
+        return;
+      }
       rest(now); tk = tkRest; stiff = 9; damp = 5.2;
-      // over open sky the lens leans toward the cursor — a pull, not a leash —
-      // and lets go a few seconds after the pointer stops
-      const live = px >= 0 && !pOverUI && now - pAt < 3500;
-      if (live) {
-        const dx = px - tx, dy = py - ty, d = Math.hypot(dx, dy) || 1;
-        const reach = Math.min(d * 0.35, 240) * Math.min(1, (3500 - (now - pAt)) / 900);
-        tx += dx / d * reach; ty += dy / d * reach;
-        if (tkRest === 0 && W < 860) tk = 0;
+    }
+
+    // the hero's letters, words and kicker, pushed away from the hole with a
+    // soft falloff and eased back — read all positions, then write all
+    const pushEls = Array.from(document.querySelectorAll('.hero .ch, .hero .w, .hero .kicker'));
+    const pox = new Float32Array(pushEls.length), poy = new Float32Array(pushEls.length);
+    function push(dt) {
+      if (!pushEls.length) return;
+      const hr = title.getBoundingClientRect();
+      if (hr.bottom < -240 || hr.top > H) return;
+      const E = thE * k, R = Math.max(48, E * 1.45), CAP = Math.min(34, E * 0.4);
+      const rects = pushEls.map(el => el.getBoundingClientRect());
+      const ease = Math.min(1, dt * 9);
+      for (let i = 0; i < pushEls.length; i++) {
+        const rc = rects[i];
+        const cx = rc.left + rc.width / 2 - pox[i], cy = rc.top + rc.height / 2 - poy[i];
+        const dx = cx - mx, dy = cy - my, b = Math.hypot(dx, dy) || 1;
+        const f = leaving ? 0 : CAP * Math.exp(-(b * b) / (R * R));
+        const nx = pox[i] + (dx / b * f - pox[i]) * ease, ny = poy[i] + (dy / b * f * 0.85 - poy[i]) * ease;
+        if (Math.abs(nx - pox[i]) < 0.02 && Math.abs(ny - poy[i]) < 0.02) continue;
+        pox[i] = nx; poy[i] = ny;
+        pushEls[i].style.translate = nx.toFixed(2) + 'px ' + ny.toFixed(2) + 'px';
       }
     }
 
@@ -727,6 +752,7 @@ class SpaceField extends HTMLElement {
       }
       // letting go on a phone is quick: the sky must not sit behind the list
       k += (tk - k) * Math.min(1, (1 - Math.pow(0.0025, dt)) * (leaving ? 1.8 : tk === 0 ? 3.5 : 1));
+      push(dt);
 
       draw();
       raf = requestAnimationFrame(frame);
@@ -749,6 +775,7 @@ class SpaceField extends HTMLElement {
       if (e.pointerType === 'touch') return;           // a finger isn't a cursor
       px = e.clientX; py = e.clientY; pAt = performance.now();
       pOverUI = !!(e.target.closest && e.target.closest('.p-card, .tools-bar, nav, footer, a, button, input'));
+      if (W < 860 && !matchMedia('(hover: hover)').matches) px = -1;   // a touch laptop's finger, not a cursor
     }, { passive: true });
     document.addEventListener('pointerleave', () => { px = -1; }, { passive: true });
     addEventListener('blur', () => { px = -1; });
@@ -765,6 +792,34 @@ class SpaceField extends HTMLElement {
     this.reset = () => { leaving = false; target = null; guideEl = null; k = 1; };
   }
 }
+
+/* The hero's letters and words become individually movable, so the black
+   hole can push them aside as it passes. The heading keeps its plain text
+   for screen readers. */
+(function splitHero() {
+  const h1 = document.querySelector('.hero-title');
+  const lines = Array.from(h1.querySelectorAll('.line > span'));
+  h1.setAttribute('aria-label', lines.map(s => s.textContent.trim()).join(' '));
+  lines.forEach(s => {
+    const t = s.textContent; s.textContent = '';
+    let i = 0;
+    for (const ch of t) {
+      const c = document.createElement('span');
+      c.className = 'ch'; c.setAttribute('aria-hidden', 'true'); c.textContent = ch;
+      c.style.setProperty('--i', i++);    // staggers the title's sheen wave
+      s.appendChild(c);
+    }
+  });
+  setTimeout(() => h1.classList.add('risen'), 1200);
+  const lede = document.querySelector('.hero .lede');
+  const words = lede.textContent.trim().split(/\s+/);
+  lede.textContent = '';
+  words.forEach((w, i) => {
+    if (i) lede.appendChild(document.createTextNode(' '));
+    const s = document.createElement('span'); s.className = 'w'; s.textContent = w;
+    lede.appendChild(s);
+  });
+})();
 
 customElements.define('live-clock', LiveClock);
 customElements.define('space-field', SpaceField);
