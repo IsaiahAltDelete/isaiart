@@ -236,6 +236,22 @@
         initTips();
         var tb = el('themeBtn');
         if (tb) tb.addEventListener('click', toggleTheme);
+        initDates();
+    }
+
+    /* An empty date input shows "mm/dd/yyyy" in full ink, which reads as a
+       value. CSS cannot see whether it is empty, so mark it for the styles. */
+    function initDates() {
+        var ds = doc.querySelectorAll('input[type="date"]');
+        function mark(d) { d.classList.toggle('is-empty', !d.value); }
+        for (var i = 0; i < ds.length; i++) {
+            mark(ds[i]);
+            ds[i].addEventListener('input', function () { mark(this); });
+            ds[i].addEventListener('change', function () { mark(this); });
+        }
+        // restored or cleared programmatically: re-check after other handlers run
+        doc.addEventListener('input', function () { setTimeout(function () { for (var j = 0; j < ds.length; j++) mark(ds[j]); }, 0); });
+        doc.addEventListener('click', function () { setTimeout(function () { for (var j = 0; j < ds.length; j++) mark(ds[j]); }, 0); });
     }
 
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', initPage);

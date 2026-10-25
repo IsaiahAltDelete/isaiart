@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0b0d">
+<meta name="theme-color" content="#07080b">
 <title>Dice</title>
 <meta name="description" content="Every die from d4 to d100, thrown as real solids, with advantage and disadvantage.">
 
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="../assets/vector.css?v=10">
 <link rel="stylesheet" href="../assets/console.css?v=10">
+<script src="../assets/sky.js?v=1" defer></script>
 <script src="../assets/cassette.js?v=10"></script>
 
 <style>
-:root { --accent: var(--s4); }
+/* palette, type and panels come from ../assets/calm.css */
 
 .work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
 @media (min-width: 900px) { .work { grid-template-columns: 340px 1fr; } }
@@ -112,8 +113,10 @@
 @keyframes slip { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 .log-row.fresh { animation: slip 300ms var(--slide) both; }
 </style>
+<link rel="stylesheet" href="../assets/calm.css?v=6">
 </head>
 <body>
+<quiet-sky></quiet-sky>
 
 <main class="page">
 
@@ -436,7 +439,7 @@
     var CSSVars = getComputedStyle(document.documentElement);
     function themeColours() {
         CSSVars = getComputedStyle(document.documentElement);
-        COL.line = (CSSVars.getPropertyValue('--rule-hi') || '#333942').trim();
+        COL.line = (CSSVars.getPropertyValue('--solid-edge') || CSSVars.getPropertyValue('--rule-hi') || '#333942').trim();
         COL.phos = (CSSVars.getPropertyValue('--phos') || '#ffb000').trim();
         COL.crit = (CSSVars.getPropertyValue('--ok')    || '#4ade80').trim();
         COL.fail = (CSSVars.getPropertyValue('--alert') || '#e5484d').trim();
@@ -531,12 +534,12 @@
 
         var label = solid.labels[front.i] || '';
         var size = Math.min(inr * 1.25, px * 0.3);
-        ctx.font = '600 ' + size.toFixed(1) + 'px "Chakra Petch", sans-serif';
+        ctx.font = '600 ' + size.toFixed(1) + 'px "Barlow Condensed", sans-serif';
         var w = ctx.measureText(label).width;
         var room = inr * 1.55;
         if (w > room) {
             size *= room / w;
-            ctx.font = '600 ' + size.toFixed(1) + 'px "Chakra Petch", sans-serif';
+            ctx.font = '600 ' + size.toFixed(1) + 'px "Barlow Condensed", sans-serif';
         }
 
         /* Fade in only as the face squares up, so the numeral does not pop into
@@ -635,7 +638,7 @@
         $('rollBtn').disabled = true;
         $('rollBtn2').disabled = true;
         tray.classList.add('busy');
-        $('vLed').className = 'led on';
+        $('vLed').className = 'led on blink';
         $('vStat').textContent = 'THROWING';
         var te = $('trayEmpty'); if (te) te.remove();
 
@@ -729,13 +732,17 @@
            it. Sizing by the count keeps the tray's weight roughly constant
            instead of leaving a lone d20 stranded in an empty field. */
         var n = rolls.length;
-        var px = n === 1 ? 150 : n === 2 ? 124 : n <= 4 ? 104 : n <= 6 ? 92 : 78;
-        px = Math.min(px, Math.floor((tray.clientWidth - 14 * (Math.min(n, 4) - 1)) / Math.min(n, 4)) || px);
+        var SIDE = 0.1, rows = n > 4 ? Math.ceil(n / 4) : 1, per = Math.min(n, 4);
+        var px = n === 1 ? 340 : n === 2 ? 280 : n <= 4 ? 230 : n <= 6 ? 190 : 160;
+        px = Math.min(px, Math.floor((tray.clientWidth - 40 - 14 * (per - 1)) / (per * (1 - 2 * SIDE))) || px);
+        px = Math.min(px, Math.floor((tray.clientHeight - 44) / rows * 0.95) || px);
+        px = Math.min(px, Math.floor(tray.clientWidth * 0.7) || px);   // a phone: keep air round it
         px = Math.max(64, px);
 
         rolls.forEach(function (v, i) {
             var host = document.createElement('div');
             host.className = 'die';
+            host.style.margin = '0 ' + Math.round(-px * SIDE) + 'px';
             var cv = document.createElement('canvas');
             cv.width = px * dpr; cv.height = px * dpr;
             cv.style.width = px + 'px'; cv.style.height = px + 'px';

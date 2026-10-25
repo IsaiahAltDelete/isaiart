@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0b0d">
+<meta name="theme-color" content="#07080b">
 <title>Coin Flip</title>
 <meta name="description" content="Flip one coin or eight, thrown as a real disc with a rim, on a crypto-random source.">
 
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="../assets/vector.css?v=10">
 <link rel="stylesheet" href="../assets/console.css?v=10">
+<script src="../assets/sky.js?v=1" defer></script>
 <script src="../assets/cassette.js?v=10"></script>
 
 <style>
-:root { --accent: var(--s3); }
+/* palette, type and panels come from ../assets/calm.css */
 
 .work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
 @media (min-width: 900px) { .work { grid-template-columns: 340px 1fr; } }
@@ -100,8 +101,10 @@
 @keyframes slip { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 .log-row.fresh { animation: slip 300ms var(--slide) both; }
 </style>
+<link rel="stylesheet" href="../assets/calm.css?v=6">
 </head>
 <body>
+<quiet-sky></quiet-sky>
 
 <main class="page">
 
@@ -341,22 +344,24 @@
     /* ── Material ────────────────────────────────────────────────────────────
        The dice are abstract solids and take their shading from the theme. A
        coin is not abstract — it is a lump of struck metal, and it reads as one
-       or it reads as a gold circle.
+       or it reads as a flat grey circle.
 
-       Gold stays gold in both themes for the same reason: it is the object's
-       colour, not the page's. Only the outline follows the theme. */
+       Silver stays silver in both themes for the same reason: it is the
+       object's colour, not the page's. Only the outline follows the theme. A
+       cool, slightly blue-violet steel sits with the night-sky page, and the
+       sheen below carries a faint pearl so it picks up the site's band. */
 
-    var GOLD = {
-        deep: [58, 38, 14],
-        mid:  [186, 134, 42],
-        lite: [246, 219, 138],
-        spec: [255, 250, 228]
+    var METAL = {
+        deep: [38, 40, 50],
+        mid:  [138, 142, 158],
+        lite: [214, 218, 230],
+        spec: [255, 255, 255]
     };
 
     function ramp(t) {
         var a, b, k;
-        if (t < 0.52) { a = GOLD.deep; b = GOLD.mid;  k = t / 0.52; }
-        else          { a = GOLD.mid;  b = GOLD.lite; k = (t - 0.52) / 0.48; }
+        if (t < 0.52) { a = METAL.deep; b = METAL.mid;  k = t / 0.52; }
+        else          { a = METAL.mid;  b = METAL.lite; k = (t - 0.52) / 0.48; }
         return [a[0] + (b[0] - a[0]) * k,
                 a[1] + (b[1] - a[1]) * k,
                 a[2] + (b[2] - a[2]) * k];
@@ -376,9 +381,9 @@
         var c = ramp(Math.min(1, lam + fil));
         if (spec !== 0) {
             var s = Math.pow(Math.max(0, V.dot(n, HALF)), 30) * (spec === undefined ? 0.9 : spec);
-            c = [c[0] + (GOLD.spec[0] - c[0]) * s,
-                 c[1] + (GOLD.spec[1] - c[1]) * s,
-                 c[2] + (GOLD.spec[2] - c[2]) * s];
+            c = [c[0] + (METAL.spec[0] - c[0]) * s,
+                 c[1] + (METAL.spec[1] - c[1]) * s,
+                 c[2] + (METAL.spec[2] - c[2]) * s];
         }
         return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
     }
@@ -403,7 +408,7 @@
         /* ── Contact shadow ──────────────────────────────────────────────────
            Drawn first, at the coin's RESTING height rather than its current
            one, and spread as the coin climbs. This is the single biggest thing
-           separating "a gold disc floating in a box" from "an object above a
+           separating "a metal disc floating in a box" from "an object above a
            surface": without it there is nothing in the frame to say the coin
            has left anything, so the arc reads as the picture sliding rather
            than the coin rising. */
@@ -414,9 +419,9 @@
         ctx.translate(cx + R * 0.1, cyRest + R * 0.72);
         ctx.scale(1, sy / sx);
         var sg = ctx.createRadialGradient(0, 0, sx * 0.15, 0, 0, sx);
-        sg.addColorStop(0, 'rgba(24,16,4,' + sAlpha.toFixed(3) + ')');
-        sg.addColorStop(0.6, 'rgba(24,16,4,' + (sAlpha * 0.45).toFixed(3) + ')');
-        sg.addColorStop(1, 'rgba(24,16,4,0)');
+        sg.addColorStop(0, 'rgba(4,6,14,' + sAlpha.toFixed(3) + ')');
+        sg.addColorStop(0.6, 'rgba(4,6,14,' + (sAlpha * 0.45).toFixed(3) + ')');
+        sg.addColorStop(1, 'rgba(4,6,14,0)');
         ctx.fillStyle = sg;
         ctx.beginPath();
         ctx.arc(0, 0, sx, 0, Math.PI * 2);
@@ -474,7 +479,7 @@
         }
 
         /* Sheen. Square-on a coin genuinely IS a flat disc, so shading alone
-           gives a gold circle — a broad highlight sliding across the strike is
+           gives a flat grey circle — a broad highlight sliding across the strike is
            what says metal at rest. Clipped to the face and centred towards the
            key light, so it foreshortens and travels as the coin turns.
 
@@ -490,9 +495,10 @@
         ctx.clip();
         var lit = proj(xform(m, [KEY[0] * 0.5, KEY[1] * 0.5, face]));
         var gr = ctx.createRadialGradient(lit[0], lit[1], R * 0.04, lit[0], lit[1], R * 1.6);
-        gr.addColorStop(0,    'rgba(255,253,242,' + (0.58 * open).toFixed(2) + ')');
-        gr.addColorStop(0.4,  'rgba(255,240,198,' + (0.15 * open).toFixed(2) + ')');
-        gr.addColorStop(1,    'rgba(78,47,8,'     + (0.42 * open).toFixed(2) + ')');
+        gr.addColorStop(0,    'rgba(255,255,255,' + (0.58 * open).toFixed(2) + ')');
+        gr.addColorStop(0.32, 'rgba(226,214,246,' + (0.2 * open).toFixed(2) + ')');
+        gr.addColorStop(0.58, 'rgba(196,224,232,' + (0.1 * open).toFixed(2) + ')');
+        gr.addColorStop(1,    'rgba(26,28,44,'     + (0.42 * open).toFixed(2) + ')');
         ctx.fillStyle = gr;
         ctx.fillRect(0, 0, px, px);
         ctx.restore();
@@ -501,14 +507,14 @@
            the edge. Real coins have this chamfer and it is most of why the
            field reads as recessed rather than flush. */
         facePath(0.93);
-        ctx.strokeStyle = 'rgba(58,36,10,' + (0.5 * open).toFixed(2) + ')';
-        ctx.lineWidth = Math.max(1, px * 0.02);
+        ctx.strokeStyle = 'rgba(24,26,38,' + (0.2 * open).toFixed(2) + ')';
+        ctx.lineWidth = Math.max(1, px * 0.011);
         ctx.stroke();
 
         /* Raised border ring. */
         facePath(0.82);
         ctx.strokeStyle = shade(front.n, 1.4, 0);
-        ctx.lineWidth = Math.max(1, px * 0.017);
+        ctx.lineWidth = Math.max(1, px * 0.009);
         ctx.stroke();
 
         /* Beading — the ring of small raised dots inside the border. Almost
@@ -519,43 +525,43 @@
                then the bead itself over it. A single flat dot was measured at 7
                luminance levels against the field it sits on — invisible. Relief
                is what makes a bead a bead; brightness alone just tints. */
-            var beads = 44, br = Math.max(1, px * 0.0135 * (0.45 + 0.55 * front.n[2]));
+            var beads = 56, br = Math.max(0.8, px * 0.0085 * (0.45 + 0.55 * front.n[2]));
             var off = Math.max(0.8, br * 0.62);
             for (var b = 0; b < beads; b++) {
                 var ba = 2 * Math.PI * b / beads;
                 var bp = proj(xform(m, [Math.cos(ba) * 0.735, Math.sin(ba) * 0.735, face]));
                 ctx.beginPath();
                 ctx.arc(bp[0] - KEY[0] * off, bp[1] + KEY[1] * off, br, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(48,29,7,' + (0.62 * open).toFixed(2) + ')';
+                ctx.fillStyle = 'rgba(22,24,34,' + (0.62 * open).toFixed(2) + ')';
                 ctx.fill();
                 ctx.beginPath();
                 ctx.arc(bp[0], bp[1], br * 0.92, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255,243,206,' + (0.95 * open).toFixed(2) + ')';
+                ctx.fillStyle = 'rgba(246,248,255,' + (0.95 * open).toFixed(2) + ')';
                 ctx.fill();
             }
         }
 
-        /* Struck lettering: a dark impression offset down-right and a catch of
-           light up-left, with the face colour laid over the top. */
+        /* Struck lettering, sunk into the field: the far wall catches light down-right,
+           the near wall is in shade up-left, and the floor is a step darker than the field. */
         var label = front.i === 0 ? 'HEADS' : 'TAILS';
-        var size = px * 0.135;
+        var size = px * 0.098;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = '700 ' + size.toFixed(1) + 'px "Chakra Petch", sans-serif';
-        var room = R * 1.26 * Math.max(0.35, front.n[2]);
+        ctx.font = '700 ' + size.toFixed(1) + 'px "Barlow Condensed", sans-serif';
+        var room = R * 0.98 * Math.max(0.35, front.n[2]);
         var w = ctx.measureText(label).width;
         if (w > room) {
             size *= room / w;
-            ctx.font = '700 ' + size.toFixed(1) + 'px "Chakra Petch", sans-serif';
+            ctx.font = '700 ' + size.toFixed(1) + 'px "Barlow Condensed", sans-serif';
         }
         var mid = proj(xform(m, [0, 0, face]));
-        var d = Math.max(1, px * 0.0075);
+        var d = Math.max(1, px * 0.0032);
 
-        ctx.fillStyle = 'rgba(44,27,6,' + (0.8 * open).toFixed(2) + ')';
+        ctx.fillStyle = 'rgba(250,251,255,' + (0.62 * open).toFixed(2) + ')';
         ctx.fillText(label, mid[0] + d, mid[1] + d);
-        ctx.fillStyle = 'rgba(255,247,214,' + (0.55 * open).toFixed(2) + ')';
+        ctx.fillStyle = 'rgba(20,22,32,' + (0.6 * open).toFixed(2) + ')';
         ctx.fillText(label, mid[0] - d * 0.75, mid[1] - d * 0.75);
-        ctx.fillStyle = shade(front.n, 1.55, 0);
+        ctx.fillStyle = shade(front.n, 0.74, 0);    // struck into the field: a step darker, not white
         ctx.fillText(label, mid[0], mid[1]);
 
         ctx.globalAlpha = 1;
@@ -596,13 +602,21 @@
         tray.innerHTML = '';
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
         var n = results.length;
-        var px = n === 1 ? 190 : n === 2 ? 150 : n <= 4 ? 120 : 100;
-        px = Math.min(px, Math.floor((tray.clientWidth - 16 * (Math.min(n, 4) - 1)) / Math.min(n, 4)) || px);
+        /* Sized to the stage: one coin about 40% of its height, more coins
+           sharing the width. The canvas keeps headroom above the coin for its
+           arc, but the sides are mostly air, so hosts overlap by that margin
+           (SIDE) instead of standing a full canvas apart. */
+        var SIDE = 0.14, rows = n > 4 ? 2 : 1, per = Math.min(n, 4);
+        var px = n === 1 ? 400 : n === 2 ? 320 : n <= 4 ? 250 : 200;
+        px = Math.min(px, Math.floor((tray.clientWidth - 40 - 16 * (per - 1)) / (per * (1 - 2 * SIDE))) || px);
+        px = Math.min(px, Math.floor((tray.clientHeight - 44) / rows * 0.95) || px);
+        px = Math.min(px, Math.floor(tray.clientWidth * 0.7) || px);   // a phone: keep air round it
         px = Math.max(70, px);
 
         results.forEach(function (r, i) {
             var host = document.createElement('div');
             host.className = 'coin';
+            host.style.margin = '0 ' + Math.round(-px * SIDE) + 'px';
             host.setAttribute('aria-label', r);
             var cv = document.createElement('canvas');
             cv.width = px * dpr; cv.height = px * dpr;
@@ -616,6 +630,8 @@
                the target is one of two fixed orientations — the tumble is what
                makes it unpredictable, not the destination. */
             var target = r === 'HEADS' ? [0, 0, 0, 1] : qAxis([1, 0, 0], Math.PI);
+            /* rest a few degrees off square, so the rim shows and it reads as a disc */
+            target = qMul(qAxis([1, 0, 0], -0.22), target);
             var c = {
                 ctx: ctx, px: px, target: target,
                 /* Mostly horizontal, so it flips end over end rather than
@@ -652,7 +668,7 @@
         $('flipBtn').disabled = true;
         $('flipBtn2').disabled = true;
         tray.classList.add('busy');
-        $('vLed').className = 'led on';
+        $('vLed').className = 'led on blink';
         $('vStat').textContent = 'IN THE AIR';
         var te = $('trayEmpty'); if (te) te.remove();
 
@@ -680,11 +696,14 @@
         var call = document.querySelector('input[name="call"]:checked').value;
         if (results.length === 1) {
             $('verdict').textContent = results[0];
+            $('verdict').className = 'verdict' + (call ? (call === results[0] ? ' right' : ' wrong') : '');
             $('split').innerHTML = call
                 ? (call === results[0] ? 'CALLED IT' : 'CALLED ' + call)
                 : '';
         } else {
             $('verdict').textContent = h + ' / ' + t;
+            $('verdict').className = 'verdict';
+            $('verdict').className = 'verdict';
             $('split').innerHTML = '<b>' + h + '</b> heads &middot; <b>' + t + '</b> tails';
         }
 

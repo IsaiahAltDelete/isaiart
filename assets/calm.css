@@ -1,0 +1,370 @@
+/* ============================================================================
+   CALM — a quiet space layer over vector.css + console.css
+   ---------------------------------------------------------------------------
+   Opt-in, loaded after console.css by pages that want it (dice, coin flip).
+   It keeps every console component and its markup, and changes only how
+   they look: black / white / grey glass panels over a <quiet-sky>, the
+   homepage's Barlow type, one periwinkle accent for state, and the muted
+   iridescent band where a mark is worth a little colour (the brand, meters,
+   the primary key's hover).
+
+   The console furniture — clock well, oscilloscope, power lamp, rack spines,
+   colour stripes — is switched off here rather than deleted, so a page that
+   still wants one can turn it back on locally.
+   ========================================================================= */
+
+:root {
+    --ground:     #07080b;
+    --ground-2:   #111217;
+    --panel:      rgb(15 16 21 / 0.72);
+    --panel-solid:#101116;
+    --well:       rgb(6 7 10 / 0.62);
+    --rule:       rgb(255 255 255 / 0.08);
+    --rule-hi:    rgb(255 255 255 / 0.16);
+    --rule-lo:    rgb(255 255 255 / 0.05);
+
+    --ink:        #ececea;
+    --ink-soft:   #a9a9ae;
+    --ink-faint:  #77777e;
+    --hint-ink:   #8a8a91;
+
+    --accent:     #a9b8f0;
+    --accent-ink: #0d0f18;
+    --tint:       rgb(169 184 240 / 0.14);
+    --hover:      rgb(255 255 255 / 0.05);
+    --press:      rgb(255 255 255 / 0.09);
+
+    --phos:       var(--ink);
+    --phos-dim:   var(--ink-soft);
+    --phos-faint: var(--ink-faint);
+    --ok:         var(--accent);
+    --alert:      #e3a0ad;
+    --s1: #e3a0ad; --s2: #dcb79e; --s3: #dccb9e; --s4: #a3d3c5; --s5: #9fd0d8; --s6: var(--accent);
+
+    --solid-lo:   #272935;
+    --solid-hi:   #6b6f86;
+    --solid-edge: rgb(236 236 234 / 0.3);
+
+    --iris: linear-gradient(115deg, #9db8e8 0%, #bfaee3 30%, #d6a9c4 55%, #dccb9e 80%, #a3d3c5 100%);
+
+    --f-display: 'Barlow Condensed', 'Bahnschrift', system-ui, sans-serif;
+    --f-mono:    'Barlow', system-ui, sans-serif;
+    --f-ui:      'Barlow', system-ui, sans-serif;
+    --label-size:  0.8rem;
+    --label-track: 0.15em;
+
+    --r-s: 8px; --r-m: 12px; --r-l: 18px;
+    --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+    --snap: 120ms ease;
+    --slide: 260ms var(--ease);
+    --lift: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 24px 60px -30px rgb(0 0 0 / 0.8);
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    --ground:     #f2f2f4;
+    --ground-2:   #e9e9ed;
+    --panel:      rgb(255 255 255 / 0.74);
+    --panel-solid:#fbfbfc;
+    --well:       rgb(236 236 241 / 0.7);
+    --rule:       rgb(20 20 30 / 0.09);
+    --rule-hi:    rgb(20 20 30 / 0.18);
+    --rule-lo:    rgb(20 20 30 / 0.05);
+
+    --ink:        #17171b;
+    --ink-soft:   #55555d;
+    --ink-faint:  #85858c;
+    --hint-ink:   #6a6a72;
+
+    --accent:     #4f5fc4;
+    --accent-ink: #ffffff;
+    --tint:       rgb(79 95 196 / 0.1);
+    --hover:      rgb(20 20 30 / 0.04);
+    --press:      rgb(20 20 30 / 0.08);
+    --alert:      #b24a63;
+
+    --phos:       var(--ink);
+    --phos-dim:   var(--ink-soft);
+    --phos-faint: var(--ink-faint);
+    --solid-lo:   #b9bac6;
+    --solid-hi:   #e8e9f0;
+    --solid-edge: rgb(23 23 27 / 0.32);
+    --lift: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 24px 50px -30px rgb(20 20 40 / 0.28);
+    color-scheme: light;
+}
+
+/* ── frame ──────────────────────────────────────────────────────────────── */
+body { font-family: var(--f-ui); background-color: var(--ground); }
+body::before, body::after { display: none !important; }      /* the drafting grid */
+
+quiet-sky {
+    position: fixed; inset: 0; z-index: 0; display: block; pointer-events: none;
+}
+quiet-sky canvas { width: 100%; height: 100%; display: block; }
+.page { position: relative; z-index: 1; gap: 14px; padding-top: 18px; }
+.dock { z-index: 800; }
+
+/* glass, not machined plate */
+.chassis {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-l);
+    box-shadow: var(--lift);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    backdrop-filter: blur(14px) saturate(1.1);
+}
+
+/* ── type ───────────────────────────────────────────────────────────────── */
+.label, .key, .seg-ctl span, .net-nav .net {
+    font-family: var(--f-display);
+    font-size: var(--label-size);
+    font-weight: 500;
+    letter-spacing: var(--label-track);
+    color: var(--ink-faint);
+}
+.designation { font-family: var(--f-display); font-weight: 700; letter-spacing: 0.08em; }
+.hint, .prose { font-family: var(--f-ui); font-size: 0.84rem; line-height: 1.55; letter-spacing: 0; color: var(--hint-ink); max-width: 52ch; }
+
+/* ── header: brand, a pill of sibling tools, theme ──────────────────────── */
+.page-head {
+    background: transparent; border: 0; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    padding: 4px 4px 0;
+}
+.page-head .head-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.head-well, .lamp, .brand-stripe, .stripe, #scope, #clock { display: none !important; }
+.brand { flex-direction: row; align-items: center; gap: 12px; margin-right: auto; }
+.brand::before {
+    content: ''; width: 22px; height: 22px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 34% 30%, rgb(255 255 255 / 0.9), transparent 34%), var(--iris);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12), 0 0 24px -4px rgb(191 174 227 / 0.55);
+}
+.brand .designation { font-size: 1.7rem; line-height: 1; letter-spacing: 0.06em; }
+.brand > .label { font-size: 0.7rem; letter-spacing: 0.22em; color: var(--ink-faint); }
+@media (max-width: 640px) { .brand > .label { display: none; } .brand .designation { font-size: 1.4rem; } }
+
+.head-ctl { gap: 10px; }
+.theme-sw { gap: 7px; }
+:root[data-theme] .theme-sw .theme-ico { color: var(--ink-faint); }
+:root[data-theme="dark"] .theme-sw .ico-moon, :root[data-theme="light"] .theme-sw .ico-sun { color: var(--ink); }
+.rocker { width: 38px; height: 20px; border-radius: 999px; border: 1px solid var(--rule-hi); background: var(--hover); }
+.rocker .rock { top: 2px; bottom: 2px; left: 2px; width: 14px; border-radius: 50%; background: var(--ink-soft); }
+.rocker input:checked + .rock { transform: translateX(18px); background: var(--ink); }
+.rocker input:focus-visible + .rock { outline: 2px solid var(--accent); }
+
+/* sibling tools as a quiet pill, the current one lifted */
+.net-nav {
+    margin: 14px 0 0; padding: 4px; gap: 2px;
+    border: 1px solid var(--rule); border-radius: 999px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    width: max-content; max-width: 100%;
+}
+.net-nav .net, .net-nav .net:first-child {
+    flex: 0 0 auto; min-width: 0; min-height: 34px; padding: 0 18px;
+    border: 0; border-radius: 999px; color: var(--ink-faint);
+}
+.net-nav .net:hover { background: var(--hover); color: var(--ink); }
+.net-nav .net[aria-current="page"] { background: var(--press); color: var(--ink); border: 0; }
+.net-ix { display: none; }
+
+/* ── racks ──────────────────────────────────────────────────────────────── */
+.rack, .rack:focus-within { border-left: 1px solid var(--rule); }
+.rack-head { padding: 14px 18px 10px; border-bottom: 0; gap: 10px; }
+.rack-ix { display: none; }
+.rack-name { font-size: 0.86rem; letter-spacing: 0.2em; color: var(--ink); }
+.rack-body { padding: 4px 18px 18px; gap: 14px; }
+.rule, .rack-body .rule { background: var(--rule); height: 1px; }
+
+/* ── controls ───────────────────────────────────────────────────────────── */
+.key {
+    min-height: 32px; padding: 0 14px;
+    border: 1px solid var(--rule); border-radius: var(--r-s);
+    background: transparent; color: var(--ink-soft);
+    transition: color var(--snap), background var(--snap), border-color var(--snap);
+}
+.key:hover { background: var(--hover); border-color: var(--rule-hi); color: var(--ink); }
+.key:active { background: var(--press); color: var(--ink); border-color: var(--rule-hi); }
+.key.latched, .key[aria-pressed="true"] { background: var(--tint); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 38%, transparent); }
+.key:focus-visible, .seg-ctl input:focus-visible + span, .chk input:focus-visible + .box { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.seg-ctl { border: 1px solid var(--rule); border-radius: var(--r-s); padding: 3px; gap: 3px; background: var(--well); }
+.seg-ctl label + label { border-left: 0; }
+.seg-ctl span { min-height: 32px; border-radius: 6px; color: var(--ink-faint); }
+.seg-ctl label:hover span { background: var(--hover); color: var(--ink); }
+.seg-ctl input:checked + span { background: var(--press); color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule-hi); }
+
+.field { font-family: var(--f-ui); background: var(--well); border: 1px solid var(--rule); border-radius: var(--r-s); caret-color: var(--accent); }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint); }
+
+.led, .led.on, .led.on.green { width: 6px; height: 6px; border-radius: 50%; border: 0; background: var(--ink-faint); }
+.led.on.red { background: var(--alert); }
+.led.blink { background: var(--accent); }
+
+/* meters fill with the iridescent band: the one place colour carries data */
+.meter { height: 4px; border: 0; border-radius: 999px; background: var(--rule); }
+.meter i { background: var(--iris); background-size: 240px 100%; border-radius: 999px; }
+
+/* ── primary action: a white key, the band slides across on hover ───────── */
+.key-go, .dock .key-go {
+    position: relative; overflow: hidden;
+    color: var(--ground); background: var(--ink); border-color: var(--ink);
+    font-weight: 600;
+}
+.key-go::after {
+    content: ''; position: absolute; inset: 0; background: var(--iris); opacity: 0;
+    transform: translateX(-30%); transition: opacity 320ms ease, transform 620ms var(--ease);
+    mix-blend-mode: multiply; pointer-events: none;
+}
+:root[data-theme="light"] .key-go::after { mix-blend-mode: screen; }
+.key-go:hover, .dock .key-go:hover { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+.key-go:hover::after { opacity: 0.55; transform: none; }
+.key-go:active { transform: translateY(1px); }
+.dock .key-go[disabled] { background: transparent; color: var(--ink-faint); border-color: var(--rule); }
+.dock .key-go[disabled]::after { display: none; }
+
+/* ── dock and footer ────────────────────────────────────────────────────── */
+.dock {
+    background: color-mix(in srgb, var(--panel-solid) 78%, transparent);
+    border-top: 1px solid var(--rule);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+.dock-stripe { display: none; }
+.dock .key-go { border-radius: 999px; min-height: 42px; }
+.dock .count { color: var(--ink-faint); }
+
+.page-foot {
+    background: transparent; border: 0; border-top: 1px solid var(--rule);
+    border-radius: 0; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    padding: 16px 4px;
+}
+.page-foot .key { border-color: transparent; }
+.page-foot .key:hover { border-color: var(--rule); }
+
+.readout-toast { background: var(--panel-solid); border: 1px solid var(--rule-hi); border-radius: var(--r-m); color: var(--ink); font-family: var(--f-ui); }
+
+@media (prefers-reduced-motion: reduce) {
+    .key-go::after { transition: none; }
+}
+
+/* ── randomiser stage (dice, coin flip) ─────────────────────────────────────
+   The tray is a window onto a darker sky: a well with a soft pool of light at
+   its centre for the object to land in, and nothing else. */
+.stage { overflow: hidden; }
+.stage-bar { padding: 12px 18px; border-bottom: 1px solid var(--rule-lo); }
+.tray, .tray:hover, .tray.busy:hover {
+    background:
+        radial-gradient(ellipse 46% 52% at 50% 52%, rgb(169 184 240 / 0.09), transparent 70%),
+        radial-gradient(ellipse 30% 26% at 50% 66%, rgb(214 169 196 / 0.05), transparent 70%),
+        var(--well);
+}
+:root[data-theme="light"] .tray, :root[data-theme="light"] .tray:hover {
+    background: radial-gradient(ellipse 46% 52% at 50% 52%, rgb(255 255 255 / 0.9), transparent 70%), var(--well);
+}
+.tray { transition: box-shadow var(--slide); }
+.tray:not(.busy):hover { box-shadow: inset 0 0 0 1px var(--rule-hi); }
+.tray-empty .label { font-size: 0.78rem; letter-spacing: 0.3em; color: var(--ink-faint); animation: calm-breathe 3.2s ease-in-out infinite; }
+@keyframes calm-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+.readout { padding: 16px 18px; border-top: 1px solid var(--rule-lo); align-items: center; }
+.verdict, .total {
+    font-family: var(--f-display); font-weight: 700; color: var(--ink);
+    letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+}
+.verdict { font-size: clamp(2rem, 6vw, 3rem); }
+.total { font-size: clamp(2.6rem, 9vw, 3.8rem); }
+/* a called flip that lands, or a natural crit, takes the band */
+.verdict.right, .total.crit {
+    background: var(--iris); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.verdict.wrong, .total.fail { color: var(--alert); }
+.split, .breakdown { font-family: var(--f-ui); font-size: 0.82rem; color: var(--ink-faint); }
+.split b, .breakdown b { color: var(--ink); font-weight: 600; }
+.throw-2 { border-radius: 999px; min-height: 36px; padding: 0 18px; }
+
+.stepper { border: 1px solid var(--rule); border-radius: var(--r-s); background: var(--well); overflow: hidden; }
+.stepper button { font-family: var(--f-ui); font-size: 1.05rem; color: var(--ink-soft); }
+.stepper button:hover { background: var(--hover); color: var(--ink); }
+.stepper output { font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; color: var(--ink); }
+
+.tally-row .n { font-family: var(--f-display); font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+.log-row { font-family: var(--f-ui); font-size: 0.8rem; border-top: 1px solid var(--rule-lo); color: var(--ink-faint); }
+.log-row .seq, .log-row .expr { color: var(--ink-soft); }
+.log-row .res, .log-row .sum { font-family: var(--f-display); font-weight: 600; font-size: 0.95rem; color: var(--ink); }
+.log-row.crit .sum { color: var(--accent); }
+.dice-row .key { min-height: 40px; font-size: 0.82rem; }
+
+.led.blink { animation: calm-breathe 1s ease-in-out infinite; }
+.dice-row .key[aria-pressed="true"] { background: var(--tint); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 38%, transparent); }
+.tray { min-height: clamp(300px, 54vh, 560px); }
+.breakdown b, .log-row .dice { word-spacing: 0.4em; }
+
+/* ── one shell for every tool (dice, coin, search) ──────────────────────────
+   Brand left, the sibling pill centred, a round theme key right, all on one
+   row; one content width (1216px) that the dock shares. */
+.page { max-width: 1240px; padding-left: 12px; padding-right: 12px; }
+.page-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px 18px; padding: 4px 0 6px; }
+.page-head .head-row { display: contents; }
+.page-head .brand { grid-column: 1; margin-right: 0; }
+.page-head .net-nav { grid-column: 2; grid-row: 1; margin: 0; }
+.page-head .head-ctl { grid-column: 3; justify-self: end; }
+.brand > .label { font-size: 0.78rem; letter-spacing: 0.14em; color: var(--ink-faint); }
+@media (max-width: 760px) {
+    .page-head { grid-template-columns: 1fr auto; }
+    .page-head .net-nav { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+    .page-head .net-nav .net { flex: 1 1 0; }
+    .page-head .head-ctl { grid-column: 2; grid-row: 1; }
+}
+
+/* theme: the same round half-moon key as Search; the checkbox still drives it */
+.theme-sw .theme-ico { display: none; }
+.theme-sw .rocker {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--rule); background: var(--panel);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    transition: border-color var(--snap), background var(--snap);
+}
+.theme-sw .rocker:hover { border-color: var(--rule-hi); background: var(--hover); }
+.theme-sw .rocker .rock, .theme-sw .rocker input:checked + .rock {
+    inset: 0; width: auto; border-radius: 50%; transform: none; background: none;
+}
+.theme-sw .rocker .rock::before {
+    content: ''; position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+    border-radius: 50%; border: 1.6px solid var(--ink-soft);
+    background: linear-gradient(90deg, transparent 50%, var(--ink-soft) 50%);
+}
+.theme-sw .rocker:hover .rock::before { border-color: var(--ink); background: linear-gradient(90deg, transparent 50%, var(--ink) 50%); }
+
+/* dock on the page grid; on a desktop the stage has its own key, so the dock's is secondary */
+.dock-inner { max-width: 1216px; padding: 0; }
+.key-go, .dock .key-go, .throw-2 { font-size: 0.86rem; letter-spacing: 0.16em; font-weight: 600; }
+@media (min-width: 900px) {
+    .dock .key-go, .dock .key-go:hover { background: transparent; color: var(--ink); border-color: var(--rule-hi); }
+    .dock .key-go::after { display: none; }
+    .dock .key-go:hover { background: var(--hover); }
+}
+
+/* the control column and the stage end on the same line */
+@media (min-width: 900px) {
+    .work { align-items: stretch; }
+    .controls > .rack:last-child { flex: 1 1 auto; }
+    .stage .tray { flex: 1 1 auto; }
+}
+
+/* ── round 3: fill the viewport, rule the log, one small-caps size ───────── */
+@media (min-width: 900px) {
+    /* the stage runs down to the footer rather than floating high at 1080p */
+    .stage { min-height: min(880px, calc(100dvh - 262px)); }
+}
+/* the history card is a ruled log: empty slots read as room for what's next */
+.controls > .rack:last-child .rack-body {
+    background-image: repeating-linear-gradient(to bottom, var(--rule) 0 1px, transparent 1px 38px);
+    background-origin: content-box; background-clip: content-box;
+    flex: 1 1 auto;   /* the card grows with the stage; the ruled body has to grow with it */
+}
+.log-row { box-sizing: border-box; height: 38px; padding: 0; align-items: center; border-top-color: transparent; }
+.controls > .rack:last-child .hint { line-height: 38px; }
+
+.stage-bar .label, .page-foot .label, .page-foot .key { font-size: 0.82rem; letter-spacing: 0.14em; }
+@media (min-width: 900px) { .dock .key-go { flex: 0 0 auto; padding: 0 32px; } }
