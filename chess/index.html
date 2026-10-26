@@ -65,7 +65,9 @@
     align-items: start;
 }
 .stage {
-    --board: max(360px, min(720px, calc(100vh - 150px), calc(100vw - 440px)));
+    /* the same formula as the engine-vs-engine page (whose eval bar needs the
+       extra 36px), so the board and panel never shift between the two tabs */
+    --board: max(360px, min(720px, calc(100vh - 186px), calc(100vw - 440px)));
     --sq: calc(var(--board) / 8);
     min-width: 0;
 }

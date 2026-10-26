@@ -276,7 +276,8 @@
         @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
 
         /* ── Media ──────────────────────────────────────────────────────── */
-        .media-img { display: block; width: 100%; height: auto; border-radius: var(--r-s); box-shadow: 0 0 0 1px var(--rule); }
+        /* sized like the icon and avatar demos beside it, and centred the same way */
+        .media-img { display: block; width: min(100%, 220px); height: auto; aspect-ratio: 5 / 2; margin: auto; align-self: center; border-radius: var(--r-s); box-shadow: 0 0 0 1px var(--rule); }
         .icon-row { display: flex; justify-content: center; align-items: center; gap: 22px; }
         .avatar-row { display: flex; justify-content: center; align-items: center; gap: 16px; font-size: 14px; color: var(--ink-soft); }
         .avatar-row img { border-radius: 50%; box-shadow: 0 0 0 1px var(--rule-hi); }

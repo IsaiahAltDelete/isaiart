@@ -342,6 +342,8 @@
     #bulkProgressBar { height: 100%; border-radius: inherit; background: var(--iris); transition: width .35s ease; }
 
     .info-card.panel { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; border-radius: var(--r-m); }
+    .info-card.reads-card { display: none; }
+    .reads-card .fine { margin-top: auto; }
     .info-card .sec-h { margin: 0; }
     .removes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
     .removes li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--ink-faint); line-height: 1.4; }
@@ -428,7 +430,12 @@
       .split { flex: 1; min-height: 0; }
       .col { overflow-y: auto; margin-right: -6px; padding-right: 6px; }
       .col > .stage { flex: 1 0 300px; }
-      .col > .stage:not(.has-image):not(.bulk-drop) { flex: 0 0 auto; height: clamp(300px, 58vh, 420px); }
+      /* empty Inspect: a capped drop zone, the name switch, then the reads
+         card growing to the panel line, so the column ends where the
+         results panel does; on short windows the drop zone gives way first */
+      .col > .stage:not(.has-image):not(.bulk-drop) { flex: 4 1 300px; height: auto; min-height: 260px; max-height: 440px; }
+      .col > .reads-card { display: flex; flex: 1 0 auto; }
+      .col:has(> .stage.has-image) > .reads-card { display: none; }
       .col:has(> .bulk-drop) { gap: 10px; }
       .col > .bulk-drop { flex: 1 0 168px; }
       .bulk-drop .stage-empty { padding: 14px 24px; gap: 5px; }
@@ -562,6 +569,16 @@
             <input type="checkbox" class="rand-toggle switch" />
             <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
           </label>
+          <div class="panel info-card reads-card">
+            <h4 class="sec-h">What it reads</h4>
+            <ul class="removes">
+              <li><span class="material-symbols-outlined">account_tree</span><span><b>ComfyUI</b>Prompt graph and workflow</span></li>
+              <li><span class="material-symbols-outlined">tune</span><span><b>A1111 / Forge</b>Prompts, sampler, seed, LoRAs</span></li>
+              <li><span class="material-symbols-outlined">photo_camera</span><span><b>EXIF</b>Camera, lens, timestamps</span></li>
+              <li><span class="material-symbols-outlined">notes</span><span><b>PNG text</b>Every tEXt, iTXt and zTXt chunk</span></li>
+            </ul>
+            <p class="fine">GPS coordinates are flagged before you share. Nothing leaves your device.</p>
+          </div>
           <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
         </div>
 
