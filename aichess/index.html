@@ -1,263 +1,368 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENGINE vs ENGINE — Infinite Chess</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #0a0a0c;
-            --surface: #111114;
-            --surface-2: #19191e;
-            --surface-3: #222228;
-            --border: #2a2a32;
-            --border-glow: #3a3a45;
-            --text: #e8e6e3;
-            --text-dim: #8a8894;
-            --text-muted: #55535e;
-            --white-accent: #f0c94d;
-            --white-accent-dim: rgba(240, 201, 77, 0.15);
-            --black-accent: #7c6cf0;
-            --black-accent-dim: rgba(124, 108, 240, 0.15);
-            --danger: #e05555;
-            --success: #4ecb71;
-            --sq-light: #c8b898;
-            --sq-dark: #8b7355;
-            --sq-highlight: rgba(240, 201, 77, 0.45);
-            --sq-highlight-dark: rgba(240, 201, 77, 0.35);
-            --radius: 10px;
-            --radius-sm: 6px;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 800px 600px at 20% 30%, rgba(240, 201, 77, 0.04), transparent),
-                radial-gradient(ellipse 600px 800px at 80% 70%, rgba(124, 108, 240, 0.04), transparent);
-            pointer-events: none;
-            z-index: 0;
-        }
-        .header { text-align: center; padding: 28px 20px 20px; position: relative; z-index: 1; }
-        .header h1 { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
-        .header .subtitle { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); }
-        .scoreboard { display: flex; justify-content: center; align-items: center; gap: 32px; padding: 0 20px 20px; position: relative; z-index: 1; }
-        .score-side { display: flex; align-items: center; gap: 12px; }
-        .score-side .engine-name { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-        .score-side.white-side .engine-name { color: var(--white-accent); }
-        .score-side.black-side .engine-name { color: var(--black-accent); }
-        .score-num { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; min-width: 36px; text-align: center; }
-        .score-side.white-side .score-num { color: var(--white-accent); }
-        .score-side.black-side .score-num { color: var(--black-accent); }
-        .score-divider { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: var(--text-muted); }
-        .main { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; position: relative; z-index: 1; }
-        .panel { display: flex; flex-direction: column; gap: 12px; }
-        .engine-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: all 0.3s ease; position: relative; overflow: hidden; }
-        .engine-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: transparent; transition: background 0.3s ease; }
-        .engine-card.active-white::before { background: var(--white-accent); }
-        .engine-card.active-black::before { background: var(--black-accent); }
-        .engine-card.active-white { border-color: rgba(240, 201, 77, 0.25); background: linear-gradient(180deg, rgba(240, 201, 77, 0.05), var(--surface)); }
-        .engine-card.active-black { border-color: rgba(124, 108, 240, 0.25); background: linear-gradient(180deg, rgba(124, 108, 240, 0.05), var(--surface)); }
-        .engine-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .engine-identity { display: flex; align-items: center; gap: 10px; }
-        .engine-piece { font-size: 22px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-2); }
-        .engine-card.active-white .engine-piece { background: var(--white-accent-dim); }
-        .engine-card.active-black .engine-piece { background: var(--black-accent-dim); }
-        .engine-label { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-        .engine-card.white-engine .engine-label { color: var(--white-accent); }
-        .engine-card.black-engine .engine-label { color: var(--black-accent); }
-        .engine-timer { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; color: var(--text-dim); letter-spacing: 2px; transition: color 0.3s; }
-        .engine-card.active-white .engine-timer { color: var(--white-accent); }
-        .engine-card.active-black .engine-timer { color: var(--black-accent); }
-        .engine-timer.low-time { color: var(--danger) !important; animation: pulse-time 1s infinite; }
-        @keyframes pulse-time { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .engine-thinking { font-size: 12px; color: var(--text-muted); min-height: 18px; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
-        .thinking-dots::after { content: ''; animation: dots 1.4s steps(4, end) infinite; }
-        @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
-        .captured-row { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; min-height: 24px; }
-        .captured-row .cap-piece { font-size: 16px; opacity: 0.6; filter: grayscale(0.3); }
-        .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-        .settings-card h3 { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
-        .setting-group { margin-bottom: 14px; }
-        .setting-group:last-child { margin-bottom: 0; }
-        .setting-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-        .setting-value { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); }
-        input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--surface-3); border-radius: 2px; outline: none; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--text); cursor: pointer; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border); }
-        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); background: var(--white-accent); }
-        .board-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-        .chessboard { width: 100%; max-width: 520px; aspect-ratio: 1; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); border-radius: var(--radius); overflow: hidden; box-shadow: 0 0 0 2px var(--border), 0 20px 60px rgba(0,0,0,0.5), 0 0 120px rgba(240,201,77,0.03); }
-        .sq { display: flex; justify-content: center; align-items: center; position: relative; }
-        .sq.light { background: var(--sq-light); }
-        .sq.dark { background: var(--sq-dark); }
-        .sq.hl.light { background: linear-gradient(135deg, var(--sq-light), var(--sq-highlight)); }
-        .sq.hl.dark { background: linear-gradient(135deg, var(--sq-dark), var(--sq-highlight-dark)); }
-        .sq .coord { position: absolute; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; pointer-events: none; opacity: 0.45; }
-        .sq.light .coord { color: var(--sq-dark); }
-        .sq.dark .coord { color: var(--sq-light); }
-        .coord-file { bottom: 2px; right: 3px; }
-        .coord-rank { top: 2px; left: 3px; }
-        .pc { font-size: clamp(28px, 5.5vw, 48px); z-index: 2; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); line-height: 1; user-select: none; }
-        .pc.moved { animation: land 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        @keyframes land { 0% { transform: scale(0.7) translateY(-8px); opacity: 0.5; } 60% { transform: scale(1.12); } 100% { transform: scale(1) translateY(0); opacity: 1; } }
-        .pc-w { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
-        .pc-b { color: #1a1a1a; text-shadow: 0 1px 2px rgba(255,255,255,0.15); }
-        .status-bar { width: 100%; max-width: 520px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; display: flex; align-items: center; gap: 10px; min-height: 44px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
-        .status-dot.live { background: var(--success); animation: glow-dot 2s infinite; }
-        .status-dot.ended { background: var(--danger); }
-        @keyframes glow-dot { 0%, 100% { box-shadow: 0 0 4px rgba(78,203,113,0.4); } 50% { box-shadow: 0 0 10px rgba(78,203,113,0.7); } }
-        .status-text { font-size: 13px; color: var(--text-dim); flex: 1; }
-        .status-text strong { color: var(--text); font-weight: 600; }
-        .move-counter { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
-        .controls-row { display: flex; gap: 8px; width: 100%; max-width: 520px; }
-        .btn { flex: 1; padding: 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-dim); font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-glow); }
-        .btn:active { transform: scale(0.97); }
-        .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-        .btn.primary { background: var(--white-accent); color: #0a0a0c; border-color: var(--white-accent); }
-        .btn.primary:hover { background: #f5d565; }
-        .btn.active-toggle { border-color: var(--success); color: var(--success); }
-        .btn.active-toggle:hover { background: rgba(78,203,113,0.1); }
-        .btn svg { width: 14px; height: 14px; }
-        .analysis-panel { display: flex; flex-direction: column; gap: 12px; }
-        .analysis-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.3s; }
-        .analysis-box.active-w { border-color: rgba(240,201,77,0.3); }
-        .analysis-box.active-b { border-color: rgba(124,108,240,0.3); }
-        .analysis-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .analysis-header .ah-title { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
-        .analysis-box.active-w .ah-title { color: var(--white-accent); }
-        .analysis-box.active-b .ah-title { color: var(--black-accent); }
-        .eval-badge { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--surface-3); color: var(--text-dim); }
-        .analysis-body { padding: 14px 16px; font-size: 13px; line-height: 1.65; color: var(--text-dim); max-height: 160px; overflow-y: auto; }
-        .analysis-body::-webkit-scrollbar { width: 4px; }
-        .analysis-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-        .analysis-line { margin-bottom: 8px; padding-left: 12px; border-left: 2px solid var(--border); }
-        .analysis-line:last-child { margin-bottom: 0; }
-        .analysis-line .al-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 2px; }
-        .analysis-box.active-w .analysis-line { border-left-color: rgba(240,201,77,0.25); }
-        .analysis-box.active-b .analysis-line { border-left-color: rgba(124,108,240,0.25); }
-        .move-log { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: 1; }
-        .move-log-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
-        .move-log-body { padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.8; color: var(--text-dim); max-height: 200px; overflow-y: auto; }
-        .move-log-body::-webkit-scrollbar { width: 4px; }
-        .move-log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-        .move-num { color: var(--text-muted); }
-        .move-w { color: var(--white-accent); }
-        .move-b { color: var(--black-accent); }
-        .eval-bar-wrap { width: 100%; max-width: 520px; height: 6px; background: var(--black-accent-dim); border-radius: 3px; overflow: hidden; }
-        .eval-bar-fill { height: 100%; background: var(--white-accent); border-radius: 3px; width: 50%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
-        @media (max-width: 1100px) {
-            .main { grid-template-columns: 1fr; max-width: 560px; }
-            .panel { order: 2; flex-direction: row; gap: 12px; }
-            .panel > * { flex: 1; }
-            .board-wrap { order: 1; }
-            .analysis-panel { order: 3; }
-        }
-        @media (max-width: 600px) {
-            .main { padding: 0 12px 12px; gap: 12px; }
-            .panel { flex-direction: column; }
-            .scoreboard { gap: 16px; }
-            .score-num { font-size: 22px; }
-            .controls-row { flex-wrap: wrap; }
-            .btn { font-size: 9px; padding: 8px 4px; min-width: 0; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07080b">
+<title>Engine vs Engine — Chess</title>
+<meta name="description" content="Two small chess engines, Nexus and Hydra, playing each other on a loop, with clocks and running commentary.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/kit.css?v=1">
+<script src="../assets/kit.js?v=1"></script>
+<script src="../assets/sky.js?v=1" defer></script>
+<style>
+/* ── The board palette: shared with ../chess/ ───────────────────────────────
+   A quiet set photographed at night: two close cool greys, near-white and
+   near-black pieces with a thin opposite edge, and a breath of the
+   iridescent band for the last move. */
+:root {
+    --sq-lt: #575c68;
+    --sq-dk: #363942;
+    --board-edge: rgb(255 255 255 / 0.10);
+    --coord: #b3b4bb;
+    --pc-w: #f4f3ef;  --pc-w-edge: #17181c;
+    --pc-b: #121317;  --pc-b-edge: rgb(236 236 234 / 0.6);
+    --pc-shadow: drop-shadow(0 2px 3px rgb(0 0 0 / 0.45));
+    --sq-dot: rgb(255 255 255 / 0.24);
+    --sel-a: 0.42;
+    --last-a: 0.22;
+}
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        --sq-lt: #f2f1ec; --sq-dk: #cbc9c1;
+        --board-edge: rgb(20 20 30 / 0.14);
+        --coord: #6c6b66;
+        --pc-w: #fdfdfb; --pc-w-edge: #26272d;
+        --pc-b: #1b1c21; --pc-b-edge: rgb(255 255 255 / 0.75);
+        --pc-shadow: drop-shadow(0 1.5px 2px rgb(20 20 40 / 0.26));
+        --sq-dot: rgb(20 20 30 / 0.16);
+        --sel-a: 0.3;
+        --last-a: 0.34;
+    }
+}
+:root[data-theme="light"] {
+    --sq-lt: #f2f1ec; --sq-dk: #cbc9c1;
+    --board-edge: rgb(20 20 30 / 0.14);
+    --coord: #6c6b66;
+    --pc-w: #fdfdfb; --pc-w-edge: #26272d;
+    --pc-b: #1b1c21; --pc-b-edge: rgb(255 255 255 / 0.75);
+    --pc-shadow: drop-shadow(0 1.5px 2px rgb(20 20 40 / 0.26));
+    --sq-dot: rgb(20 20 30 / 0.16);
+    --sel-a: 0.3;
+    --last-a: 0.34;
+}
+
+/* ── Layout: the board is the hero, the panel sits to its right ─────────── */
+.game {
+    display: grid;
+    grid-template-columns: auto minmax(340px, 1fr);
+    grid-template-areas: "board side" "notes side";
+    gap: 16px 28px;
+    justify-content: stretch;
+    align-items: start;
+}
+.stage {
+    grid-area: board;
+    --board: max(360px, min(720px, calc(100vh - 186px), calc(100vw - 440px)));
+    --sq: calc(var(--board) / 8);
+    min-width: 0;
+}
+.side { grid-area: side; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.frame {
+    padding: 14px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-l);
+    background: var(--panel);
+    box-shadow: var(--lift);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.board-wrap { position: relative; width: var(--board); height: var(--board); }
+/* the faint inlay line a few millimetres out from the squares */
+.board-wrap::before {
+    content: ''; position: absolute; inset: -7px;
+    border: 1px solid var(--rule); border-radius: 9px; pointer-events: none;
+}
+.chessboard {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%; height: 100%;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--board-edge);
+}
+
+/* ── Squares ─────────────────────────────────────────────────────────────── */
+.sq { position: relative; display: flex; align-items: center; justify-content: center; }
+.sq.light { background-color: var(--sq-lt); }
+.sq.dark  { background-color: var(--sq-dk); }
+.sq::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s; }
+.sq.hl::before { background: var(--iris); opacity: var(--last-a); }
+.sq.chk::before {
+    background: radial-gradient(circle at 50% 54%, var(--alert) 0, color-mix(in srgb, var(--alert) 45%, transparent) 36%, transparent 72%);
+    opacity: .8;
+}
+/* coordinates sit in the corners of the edge squares */
+.sq .coord {
+    position: absolute; z-index: 3; pointer-events: none; user-select: none;
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(10px, calc(var(--sq) * 0.14), 11.5px);
+    letter-spacing: .08em; text-transform: uppercase; line-height: 1;
+    color: var(--coord);
+}
+.coord-file { right: 6px; bottom: 5px; }
+.coord-rank { left: 6px; top: 5px; }
+
+/* ── Pieces: Unicode glyphs, filled, with a thin edge in the opposite tone ── */
+.pc, .glyph, .cap-piece {
+    font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', 'Apple Symbols', serif;
+    line-height: 1;
+    paint-order: stroke fill;
+    font-variant-emoji: text;
+    user-select: none;
+}
+.pc {
+    position: relative; z-index: 2;
+    font-size: calc(var(--sq) * 0.74);
+    -webkit-text-stroke: max(1.2px, calc(var(--sq) * 0.024)) transparent;
+}
+.pc-w, .glyph.w, #cap-w .cap-piece { color: var(--pc-w); -webkit-text-stroke-color: var(--pc-w-edge); filter: var(--pc-shadow); }
+.pc-b, .glyph.b, #cap-b .cap-piece { color: var(--pc-b); -webkit-text-stroke-color: var(--pc-b-edge); filter: var(--pc-shadow); }
+/* off the board the black pieces take an ink edge, so they read on the panel in both themes */
+.glyph.b, #cap-b .cap-piece { -webkit-text-stroke-color: var(--ink-soft); }
+.pc.moved { animation: land .32s var(--ease); }
+@keyframes land { from { transform: scale(.86) translateY(-4px); opacity: .4; } }
+
+/* ── Advantage: the band, filled to White's share ───────────────────────── */
+.eval { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 0 2px; }
+.eval .lbl { font-size: 12px; letter-spacing: .14em; }
+.eval-bar-wrap { position: relative; flex: 1; height: 4px; border-radius: 999px; background: var(--rule-hi); overflow: hidden; }
+.eval-bar-wrap::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--ground); opacity: .7; }
+.eval-bar-fill { height: 100%; width: 50%; border-radius: inherit; background: var(--iris); transition: width .6s var(--ease); }
+
+/* ── Side panel ──────────────────────────────────────────────────────────── */
+.side .panel, .notes .panel { padding: 18px 20px 20px; }
+.panel-h { margin-bottom: 14px; }
+.panel-h .aside { font-size: 12.5px; }
+.panel-h .aside b { font-family: var(--f-mono); font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
+
+.players { display: flex; flex-direction: column; gap: 6px; }
+.engine-card {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    grid-template-areas: "badge who timer" "badge cap cap" "badge think think";
+    column-gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r-m);
+    /* no transition: the turn marker moves the instant the turn does */
+}
+.engine-card.active-white, .engine-card.active-black { background: var(--tint); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+.badge {
+    grid-area: badge; align-self: start;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--well); border: 1px solid var(--rule);
+}
+.glyph { font-size: 26px; -webkit-text-stroke: .8px transparent; }
+.who { grid-area: who; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.who b { font-family: var(--f-display); font-size: 17px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+.who span { font-size: 13px; color: var(--ink-faint); }
+.engine-card.active-white .who span, .engine-card.active-black .who span { color: var(--accent); }
+.engine-timer { grid-area: timer; font-family: var(--f-mono); font-size: 18px; font-weight: 500; color: var(--ink-faint); font-variant-numeric: tabular-nums; transition: color .3s; }
+.engine-card.active-white .engine-timer, .engine-card.active-black .engine-timer { color: var(--ink); }
+.engine-timer.low-time { color: var(--alert) !important; animation: breathe 1.6s ease-in-out infinite; }
+.captured-row { grid-area: cap; display: flex; flex-wrap: wrap; gap: 0 1px; min-height: 28px; align-items: center; }
+.cap-piece { font-size: 22px; -webkit-text-stroke: 1px transparent; }
+.engine-thinking { grid-area: think; min-height: 18px; font-family: var(--f-mono); font-size: 12px; color: var(--ink-faint); }
+.engine-thinking:empty { min-height: 0; }
+.thinking-dots::after { content: ''; animation: dots 1.4s steps(4, end) infinite; }
+@keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+@keyframes breathe { 50% { opacity: .4; } }
+
+.status-bar {
+    display: flex; align-items: center; gap: 11px;
+    margin-top: 14px;
+    padding: 11px 14px;
+    border: 1px solid var(--rule); border-radius: var(--r-m);
+    background: var(--well);
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ink-faint); transition: background .2s; }
+.status-dot.live { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 16%, transparent); animation: breathe 2.4s ease-in-out infinite; }
+.status-dot.ended { background: var(--alert); box-shadow: 0 0 0 4px color-mix(in srgb, var(--alert) 16%, transparent); }
+.status-text { flex: 1; min-width: 0; font-size: 14px; color: var(--ink-soft); }
+.status-text strong { color: var(--ink); font-weight: 600; }
+.move-counter { font-family: var(--f-display); font-size: 12.5px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
+
+.controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.controls-row .btn-go { grid-column: 1 / -1; order: -1; }
+.btn.active-toggle { background: var(--tint); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* move list: the log's inline spans fall into a three-column grid */
+.move-log-body {
+    display: grid; grid-template-columns: 2.8em 1fr 1fr; column-gap: 6px; row-gap: 2px;
+    max-height: 236px; overflow-y: auto;
+    font-family: var(--f-mono); font-size: 13px; line-height: 1.5;
+}
+.move-log-body > span { padding: 3px 0; }
+.move-log-body:empty { display: block; }
+.move-log-body:empty::before { content: 'No moves yet. Press Start.'; font-family: var(--f-text); font-size: 13.5px; color: var(--ink-faint); }
+.move-num { color: var(--ink-faint); padding-left: 8px !important; }
+.move-w { color: var(--ink); }
+.move-b { color: var(--ink-soft); }
+
+/* settings */
+.setting-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.setting-group:last-child { margin-bottom: 0; }
+.setting-label { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--f-display); font-size: 13px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint); }
+.setting-value { font-family: var(--f-mono); font-size: 12.5px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+
+/* ── Commentary: under the board ────────────────────────────────────────── */
+.notes { grid-area: notes; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 0; min-width: 100%; }
+.analysis-box { transition: border-color .3s, background .3s; }
+.analysis-box.active-w, .analysis-box.active-b { border-color: color-mix(in srgb, var(--accent) 28%, var(--rule)); }
+.analysis-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.analysis-header .ah-title { font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+.analysis-header .ah-title::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); opacity: .5; }
+.analysis-box.active-w .ah-title::before, .analysis-box.active-b .ah-title::before { background: var(--accent); opacity: 1; }
+.eval-badge { font-family: var(--f-mono); font-size: 12.5px; font-weight: 500; padding: 2px 9px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.analysis-body { max-height: 180px; overflow-y: auto; font-size: 14px; line-height: 1.55; color: var(--ink-soft); }
+.analysis-line { margin-bottom: 10px; padding-left: 12px; border-left: 2px solid var(--rule-hi); }
+.analysis-line:last-child { margin-bottom: 0; }
+.analysis-box.active-w .analysis-line, .analysis-box.active-b .analysis-line { border-left-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.analysis-line .al-label { display: block; margin-bottom: 1px; font-family: var(--f-display); font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); }
+.al-wait { font-size: 13.5px; color: var(--ink-faint); }
+
+/* ── Narrower screens: board first, panel, then commentary ──────────────── */
+@media (max-width: 900px) {
+    .game { grid-template-columns: minmax(0, 1fr); grid-template-areas: "board" "side" "notes"; justify-items: center; gap: 18px; }
+    .stage { --board: min(640px, calc(100vw - 58px)); }
+    .side, .notes { width: 100%; max-width: 670px; min-width: 0; }
+}
+/* phones: tiny coordinates tucked into the very corners, clear of the pieces */
+@media (max-width: 480px) {
+    .sq .coord { font-size: 8px; letter-spacing: .02em; opacity: .75; }
+    .coord-file { right: 3px; bottom: 2px; }
+    .coord-rank { left: 3px; top: 2px; }
+    .pc { font-size: calc(var(--sq) * 0.7); }
+}
+@media (max-width: 680px) {
+    .stage { --board: calc(100vw - 48px); }
+    .frame { padding: 7px 7px 12px; border-radius: var(--r-m); }
+    .board-wrap::before { display: none; }
+    .eval { margin-top: 12px; padding: 0 5px; }
+    .side .panel, .notes .panel { padding: 16px; }
+    .notes { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
-<div class="header">
-    <h1>Engine vs Engine</h1>
-    <div class="subtitle">Infinite Chess Battle</div>
-</div>
-<div class="scoreboard">
-    <div class="score-side white-side">
-        <span class="engine-name">Nexus</span>
-        <span class="score-num" id="score-w">0</span>
-    </div>
-    <span class="score-divider">:</span>
-    <div class="score-side black-side">
-        <span class="score-num" id="score-b">0</span>
-        <span class="engine-name">Hydra</span>
-    </div>
-</div>
-<div class="main">
-    <div class="panel">
-        <div class="engine-card white-engine" id="card-w">
-            <div class="engine-header">
-                <div class="engine-identity">
-                    <div class="engine-piece">♔</div>
-                    <span class="engine-label">Nexus</span>
+<quiet-sky></quiet-sky>
+
+<main class="kit-page">
+
+    <header class="top">
+        <a class="brand" href="./">Chess <small>two engines, on a loop</small></a>
+        <nav class="tabs" aria-label="Mode">
+            <a href="../chess/">Vs AI</a>
+            <a href="../aichess/" aria-current="page">Engine vs engine</a>
+        </nav>
+        <div class="top-actions">
+            <a class="icon-btn" href="/" aria-label="isaiart.com home"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5h11V10"/></svg></a>
+            <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle light / dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+        </div>
+    </header>
+
+    <div class="game">
+
+        <!-- Board -->
+        <section class="stage" aria-label="Board">
+            <div class="frame">
+                <div class="board-wrap">
+                    <div class="chessboard" id="board"></div>
                 </div>
-                <div class="engine-timer" id="timer-w">05:00</div>
-            </div>
-            <div class="captured-row" id="cap-w"></div>
-            <div class="engine-thinking" id="think-w"></div>
-        </div>
-        <div class="engine-card black-engine" id="card-b">
-            <div class="engine-header">
-                <div class="engine-identity">
-                    <div class="engine-piece">♚</div>
-                    <span class="engine-label">Hydra</span>
+                <div class="eval" aria-label="Advantage">
+                    <span class="lbl">Nexus</span>
+                    <div class="eval-bar-wrap"><div class="eval-bar-fill" id="eval-bar"></div></div>
+                    <span class="lbl">Hydra</span>
                 </div>
-                <div class="engine-timer" id="timer-b">05:00</div>
             </div>
-            <div class="captured-row" id="cap-b"></div>
-            <div class="engine-thinking" id="think-b"></div>
-        </div>
-        <div class="settings-card">
-            <h3>Parameters</h3>
-            <div class="setting-group">
-                <div class="setting-label"><span>Entropy</span><span class="setting-value" id="entropy-val">0.20</span></div>
-                <input type="range" id="entropy-slider" min="0" max="100" value="20">
+        </section>
+
+        <!-- Panel -->
+        <aside class="side">
+            <section class="panel">
+                <h2 class="panel-h">Match <span class="aside">Score <b id="score-w">0</b> : <b id="score-b">0</b></span></h2>
+                <div class="players">
+                    <div class="engine-card black-engine" id="card-b">
+                        <span class="badge"><span class="engine-piece glyph b">&#9818;</span></span>
+                        <div class="who"><b class="engine-label">Hydra</b><span>Black</span></div>
+                        <div class="engine-timer" id="timer-b">05:00</div>
+                        <div class="captured-row" id="cap-b" aria-label="Black pieces lost"></div>
+                        <div class="engine-thinking" id="think-b"></div>
+                    </div>
+                    <div class="engine-card white-engine" id="card-w">
+                        <span class="badge"><span class="engine-piece glyph w">&#9818;</span></span>
+                        <div class="who"><b class="engine-label">Nexus</b><span>White</span></div>
+                        <div class="engine-timer" id="timer-w">05:00</div>
+                        <div class="captured-row" id="cap-w" aria-label="White pieces lost"></div>
+                        <div class="engine-thinking" id="think-w"></div>
+                    </div>
+                </div>
+                <div class="status-bar" role="status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <div class="status-text" id="status-text">Press <strong>Start</strong> to begin the battle.</div>
+                    <div class="move-counter" id="move-counter"></div>
+                </div>
+                <div class="controls-row">
+                    <button class="btn btn-go" id="btn-start" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>Start</button>
+                    <button class="btn" id="btn-pause" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pause</button>
+                    <button class="btn" id="btn-infinite" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.2 8c5 0 5 8 0 8H12m-6.2 0c-5 0-5-8 0-8H12"/></svg>Loop</button>
+                </div>
+            </section>
+
+            <section class="panel move-log">
+                <h2 class="panel-h move-log-header">Moves</h2>
+                <div class="move-log-body" id="move-log"></div>
+            </section>
+
+            <section class="panel settings-card">
+                <h2 class="panel-h">Parameters</h2>
+                <div class="setting-group">
+                    <label class="setting-label" for="entropy-slider"><span>Entropy</span><span class="setting-value" id="entropy-val">0.20</span></label>
+                    <input class="range" type="range" id="entropy-slider" min="0" max="100" value="20">
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label" for="depth-slider"><span>Knowledge depth</span><span class="setting-value" id="depth-val">3</span></label>
+                    <input class="range" type="range" id="depth-slider" min="1" max="5" value="3">
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label" for="speed-slider"><span>Speed</span><span class="setting-value" id="speed-val">Normal</span></label>
+                    <input class="range" type="range" id="speed-slider" min="0" max="2" value="1">
+                </div>
+            </section>
+        </aside>
+
+        <!-- Commentary -->
+        <section class="notes" aria-label="Analysis">
+            <div class="panel analysis-box" id="analysis-w">
+                <div class="analysis-header"><span class="ah-title">Nexus analysis</span><span class="eval-badge" id="eval-w">0.0</span></div>
+                <div class="analysis-body" id="analysis-body-w"><div class="al-wait">Waiting for game…</div></div>
             </div>
-            <div class="setting-group">
-                <div class="setting-label"><span>Knowledge Depth</span><span class="setting-value" id="depth-val">3</span></div>
-                <input type="range" id="depth-slider" min="1" max="5" value="3">
+            <div class="panel analysis-box" id="analysis-b">
+                <div class="analysis-header"><span class="ah-title">Hydra analysis</span><span class="eval-badge" id="eval-b">0.0</span></div>
+                <div class="analysis-body" id="analysis-body-b"><div class="al-wait">Waiting for game…</div></div>
             </div>
-            <div class="setting-group">
-                <div class="setting-label"><span>Speed</span><span class="setting-value" id="speed-val">Normal</span></div>
-                <input type="range" id="speed-slider" min="0" max="2" value="1">
-            </div>
-        </div>
+        </section>
     </div>
-    <div class="board-wrap">
-        <div class="eval-bar-wrap"><div class="eval-bar-fill" id="eval-bar"></div></div>
-        <div class="chessboard" id="board"></div>
-        <div class="status-bar">
-            <div class="status-dot" id="status-dot"></div>
-            <div class="status-text" id="status-text">Press <strong>Start</strong> to begin the battle.</div>
-            <div class="move-counter" id="move-counter"></div>
-        </div>
-        <div class="controls-row">
-            <button class="btn primary" id="btn-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>Start</button>
-            <button class="btn" id="btn-pause" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pause</button>
-            <button class="btn" id="btn-infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.2 8c5 0 5 8 0 8H12m-6.2 0c-5 0-5-8 0-8H12"/></svg>Loop</button>
-        </div>
-    </div>
-    <div class="analysis-panel">
-        <div class="analysis-box" id="analysis-w">
-            <div class="analysis-header"><span class="ah-title">Nexus Analysis</span><span class="eval-badge" id="eval-w">0.0</span></div>
-            <div class="analysis-body" id="analysis-body-w"><div style="color:var(--text-muted);font-style:italic">Waiting for game…</div></div>
-        </div>
-        <div class="analysis-box" id="analysis-b">
-            <div class="analysis-header"><span class="ah-title">Hydra Analysis</span><span class="eval-badge" id="eval-b">0.0</span></div>
-            <div class="analysis-body" id="analysis-body-b"><div style="color:var(--text-muted);font-style:italic">Waiting for game…</div></div>
-        </div>
-        <div class="move-log">
-            <div class="move-log-header">Move Log</div>
-            <div class="move-log-body" id="move-log"></div>
-        </div>
-    </div>
-</div>
+
+</main>
 
 <!-- ========== WEB WORKER — runs AI off main thread ========== -->
 <script id="worker-src" type="text/js-worker">
@@ -406,7 +511,7 @@ self.onmessage=function(e){
 
 <script>
 // ==================== MAIN THREAD — UI ONLY, ZERO AI WORK ====================
-const PM={wP:'♙',wR:'♖',wN:'♘',wB:'♗',wQ:'♕',wK:'♔',bP:'♟',bR:'♜',bN:'♞',bB:'♝',bQ:'♛',bK:'♚'};
+const PM={wP:'♟',wR:'♜',wN:'♞',wB:'♝',wQ:'♛',wK:'♚',bP:'♟',bR:'♜',bN:'♞',bB:'♝',bQ:'♛',bK:'♚'};
 const PN={p:'Pawn',r:'Rook',n:'Knight',b:'Bishop',q:'Queen',k:'King'};
 const FILES='abcdefgh'.split('');
 const $=id=>document.getElementById(id);
@@ -455,13 +560,15 @@ function buildBoard(){
 
 function updateBoard(){
     const bd=G.chess.board();
+    const chkSide=G.chess.in_check()?G.chess.turn():null; // soft glow on the king in check
     for(let r=0;r<8;r++)for(let c=0;c<8;c++){
         const idx=r*8+c,s=sqEls[idx],nota=FILES[c]+(8-r);
         const isHL=G.highlights.includes(nota);
         const base=(r+c)%2===0?'light':'dark';
-        s.className=`sq ${base}${isHL?' hl':''}`;
-        const old=s.querySelector('.pc');if(old)old.remove();
         const p=bd[r][c];
+        const isChk=!!(p&&chkSide&&p.type==='k'&&p.color===chkSide);
+        s.className=`sq ${base}${isHL?' hl':''}${isChk?' chk':''}`;
+        const old=s.querySelector('.pc');if(old)old.remove();
         if(p){
             const e=document.createElement('span');
             e.className=`pc pc-${p.color==='w'?'w':'b'}`;
@@ -599,15 +706,29 @@ function startGame(){
 
     updateBoard();updateTimers();updateCaptured();
     $('move-log').innerHTML='';
-    $('analysis-body-w').innerHTML='<div style="color:var(--text-muted);font-style:italic">Thinking…</div>';
-    $('analysis-body-b').innerHTML='<div style="color:var(--text-muted);font-style:italic">Waiting…</div>';
+    $('analysis-body-w').innerHTML='<div class="al-wait">Thinking…</div>';
+    $('analysis-body-b').innerHTML='<div class="al-wait">Waiting…</div>';
     $('eval-w').textContent='0.0';$('eval-b').textContent='0.0';$('eval-bar').style.width='50%';
     $('status-dot').className='status-dot live';
     $('status-text').innerHTML=`Game #${G.gameNum} — <strong>Nexus</strong> to move.`;
     $('move-counter').textContent='';
-    $('btn-start').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg> Reset`;
-    $('btn-pause').disabled=false;
+    setKeys();
     startTimer('w');makeMove();
+}
+
+// The primary key is always the next sensible action: Start when stopped or
+// finished, Pause while a match runs, Resume while it is paused.
+const ICON={
+    play:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+    pause:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`,
+    reset:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>`
+};
+function setKeys(){
+    const live=G.running,st=$('btn-start'),pa=$('btn-pause');
+    st.classList.toggle('btn-go',!live);pa.classList.toggle('btn-go',live);
+    st.innerHTML=live?`${ICON.reset} Reset`:`${ICON.play} Start`;
+    pa.innerHTML=live&&G.paused?`${ICON.play} Resume`:`${ICON.pause} Pause`;
+    pa.disabled=!live;
 }
 
 function endGame(winner,reason){
@@ -620,7 +741,7 @@ function endGame(winner,reason){
     if(reason==='checkmate')msg=`Checkmate! <strong>${winner==='w'?'Nexus':'Hydra'}</strong> wins.`;
     else if(reason==='timeout')msg=`Time out — <strong>${winner==='w'?'Nexus':'Hydra'}</strong> wins.`;
     else msg='Game drawn.';
-    $('status-text').innerHTML=msg;$('btn-pause').disabled=true;
+    $('status-text').innerHTML=msg;$('btn-pause').disabled=true;setKeys();
     $('think-w').textContent='';$('think-b').textContent='';
     $('card-w').className='engine-card white-engine';$('card-b').className='engine-card black-engine';
     $('analysis-w').className='analysis-box';$('analysis-b').className='analysis-box';
@@ -629,13 +750,11 @@ function endGame(winner,reason){
 
 function togglePause(){
     if(!G.running)return;G.paused=!G.paused;
-    const btn=$('btn-pause');
+    setKeys();
     if(G.paused){
         stopTimer();if(G.moveTimeout)clearTimeout(G.moveTimeout);searchId++;pendingResolve=null;
-        btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume`;
         $('status-text').innerHTML='<strong>Paused</strong>';
     }else{
-        btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause`;
         startTimer(G.chess.turn());makeMove();
     }
 }
@@ -655,7 +774,7 @@ $('btn-start').addEventListener('click',startGame);
 $('btn-pause').addEventListener('click',togglePause);
 $('btn-infinite').addEventListener('click',toggleInfinite);
 
-function init(){G.chess=new Chess();buildBoard();}
+function init(){G.chess=new Chess();buildBoard();updateBoard();}
 </script>
 </body>
 </html>

@@ -4,280 +4,238 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JSON | ISAIART</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500&family=Barlow+Condensed:wght@300;400;700;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
+  <meta name="description" content="Paste, validate, format, minify, sort and export JSON in the browser." />
+  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/kit.css?v=1">
+  <script src="../assets/kit.js?v=1"></script>
+  <script src="../assets/sky.js?v=1" defer></script>
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:      #07070a;
-      --panel:   #0c0c10;
-      --rule:    rgba(255,255,255,0.08);
-      --rule-hi: rgba(255,255,255,0.18);
-      --white:   #f2f2f0;
-      --off:     #888882;
-      --dim:     #3a3a38;
-      --ok:      #7dd487;
-      --err:     #e06a6a;
+    /* the page is one screen: header, toolbar, then the editor takes the rest */
+    .json-page {
+      display: flex; flex-direction: column;
+      height: 100vh; height: 100dvh;
+      padding-bottom: 20px;
     }
+    .json-page > .top { flex: none; margin-bottom: 18px; }
 
-    html, body { height: 100%; }
-
-    body {
-      background: var(--bg);
-      color: var(--white);
-      font-family: 'Barlow', sans-serif;
-      font-weight: 300;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(var(--rule) 1px, transparent 1px),
-        linear-gradient(90deg, var(--rule) 1px, transparent 1px);
-      background-size: 72px 72px;
-      opacity: 0.14;
-    }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--dim); }
-    ::-webkit-scrollbar-thumb:hover { background: var(--off); }
-
-    .msy {
-      font-family: 'Material Symbols Outlined';
-      font-size: 1rem;
-      line-height: 1;
-      vertical-align: -2px;
-    }
-
-    /* NAV */
-    nav {
-      position: relative; z-index: 10;
-      display: flex; align-items: stretch;
-      height: 52px; flex-shrink: 0;
-      border-bottom: 1px solid var(--rule-hi);
-      background: rgba(7,7,10,0.88);
-      backdrop-filter: blur(12px);
-    }
-
-    .nav-brand {
-      display: flex; align-items: center; gap: 18px;
-      padding: 0 24px;
-      border-right: 1px solid var(--rule-hi);
-    }
-
-    .brand-name {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 1.05rem; font-weight: 900;
-      letter-spacing: 0.28em; text-transform: uppercase;
-      color: var(--white); text-decoration: none;
-    }
-    .brand-name:hover { color: var(--off); }
-
-    .brand-tag {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.56rem; font-weight: 400;
-      letter-spacing: 0.22em; text-transform: uppercase;
-      color: var(--dim);
-      border-left: 1px solid var(--rule); padding-left: 18px;
-    }
-
-    .nav-status {
-      flex: 1;
-      display: flex; align-items: center; justify-content: flex-end;
-      gap: 20px; padding: 0 24px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--dim);
-      overflow: hidden; white-space: nowrap;
-    }
-
-    #status-badge { color: var(--dim); transition: color 0.2s; }
-    #status-badge.ok  { color: var(--ok); }
-    #status-badge.err { color: var(--err); }
-
-    /* TOOLBAR */
+    /* ── toolbar ─────────────────────────────────────────────────────────── */
     .toolbar {
-      position: relative; z-index: 10;
-      display: flex; align-items: stretch; flex-wrap: wrap;
-      border-bottom: 1px solid var(--rule);
-      background: rgba(7,7,10,0.7);
-      flex-shrink: 0;
+      flex: none;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      border-radius: var(--r-l);
     }
+    .toolbar .grp { display: flex; gap: 6px; align-items: center; }
+    .toolbar .grp + .grp { padding-left: 10px; border-left: 1px solid var(--rule); }
+    .toolbar .spacer { flex: 1; }
+    .btn.tb { height: 38px; padding: 0 15px; gap: 8px; border-color: transparent; color: var(--ink-soft); }
+    .btn.tb:hover { border-color: var(--rule-hi); }
 
-    .toolbar button, .toolbar .fname-wrap {
-      appearance: none; border: none; background: transparent;
-      color: var(--off);
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.68rem; font-weight: 400;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      padding: 12px 18px;
-      border-right: 1px solid var(--rule);
-      cursor: pointer;
-      display: flex; align-items: center; gap: 8px;
-      transition: color 0.15s, background 0.15s;
+    .file { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .fname-wrap {
+      display: flex; align-items: center;
+      height: 38px; padding: 0 12px 0 4px;
+      border: 1px solid var(--rule); border-radius: var(--r-s);
+      background: var(--well);
+      cursor: text;
+      transition: border-color .15s, box-shadow .15s;
     }
-
-    .toolbar button:hover { color: var(--white); background: rgba(255,255,255,0.04); }
-
-    .toolbar button.primary { color: var(--white); }
-    .toolbar button.primary:hover { background: rgba(255,255,255,0.08); }
-
-    .toolbar .spacer { flex: 1; border-right: none; }
-
-    .fname-wrap { cursor: default; gap: 10px; }
-    .fname-wrap:hover { background: transparent; }
-
+    .fname-wrap:hover { border-color: var(--rule-hi); }
+    .fname-wrap:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
     #fname {
-      background: transparent; border: none; outline: none;
-      color: var(--white);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem; font-weight: 400;
-      letter-spacing: 0.08em;
-      width: 9ch;
-      border-bottom: 1px solid var(--rule-hi);
-      padding-bottom: 1px;
-      text-align: center;
+      width: 10ch; height: 100%;
+      padding: 0 2px 0 8px;
+      border: 0; outline: none; background: none;
+      font-family: var(--f-mono); font-size: 14px; color: var(--ink);
+      caret-color: var(--accent);
+      text-align: right;
     }
-    .fname-ext { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: none; }
+    .fname-ext { font-family: var(--f-mono); font-size: 14px; color: var(--ink-faint); }
+    #btn-dice { width: 38px; height: 38px; }
+    #btn-export { height: 38px; padding: 0 20px; }
 
-    #btn-dice { padding: 12px 12px; }
-
-    /* EDITOR */
-    .editor-wrap {
-      position: relative; z-index: 5;
-      flex: 1;
-      display: flex;
-      min-height: 0;
+    /* ── editor ──────────────────────────────────────────────────────────── */
+    .editor-panel {
+      flex: 1; min-height: 260px;
+      display: flex; flex-direction: column;
+      padding: 0; overflow: hidden;
     }
+    /* in light the sky must not show through the page of text */
+    :root[data-theme="light"] .editor-panel { background: var(--panel-solid); }
+    @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .editor-panel { background: var(--panel-solid); } }
+    .editor-wrap { flex: 1; display: flex; min-height: 0; }
 
+    .gutter, #hl, #editor {
+      font-family: var(--f-mono); font-size: 13.5px; line-height: 22px;
+      font-variant-ligatures: none; tab-size: 2;
+    }
     .gutter {
-      flex-shrink: 0;
-      padding: 16px 0;
-      width: 52px;
+      flex: none; width: 58px;
+      padding: 18px 0 48px;
       overflow: hidden;
       text-align: right;
-      background: var(--panel);
       border-right: 1px solid var(--rule);
-      color: var(--dim);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.74rem; font-weight: 300;
-      line-height: 1.55;
+      background: color-mix(in srgb, var(--well) 60%, transparent);
+      color: var(--ink-faint);
       user-select: none;
     }
-    .gutter div { padding-right: 12px; }
-    .gutter div.err-line { color: var(--err); }
+    .gutter div { padding-right: 14px; opacity: .7; }
+    .gutter div.err-line {
+      position: relative; opacity: 1; font-weight: 500; color: var(--alert);
+      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--alert) 12%, transparent));
+    }
+    .gutter div.err-line::before {
+      content: ''; position: absolute; left: 10px; top: 50%;
+      width: 6px; height: 6px; margin-top: -3px; border-radius: 50%;
+      background: var(--alert);
+    }
+    .editor-panel.invalid { border-color: color-mix(in srgb, var(--alert) 42%, transparent); }
+    .err-band {
+      position: absolute; left: 0; right: 0; top: 0; height: 22px;
+      background: color-mix(in srgb, var(--alert) 11%, transparent);
+      box-shadow: inset 2px 0 0 var(--alert);
+      pointer-events: none;
+    }
 
+    .code { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+    #hl, #editor {
+      position: absolute; inset: 0;
+      margin: 0; padding: 18px 22px;
+      white-space: pre; overflow: auto;
+      border: 0;
+    }
+    /* the coloured copy sits under the textarea and scrolls with it */
+    #hl { overflow: scroll; scrollbar-color: transparent transparent; color: var(--ink); pointer-events: none; }
+    #hl::-webkit-scrollbar { background: transparent; }
+    #hl::-webkit-scrollbar-thumb { background: transparent; }
+    #hl .k { color: var(--s6); }
+    #hl .s { color: var(--s4); }
+    #hl .n { color: var(--s2); }
+    #hl .b { color: var(--s3); }
+    #hl .z { color: var(--s1); }
+    #hl .p { color: var(--ink-faint); }
     #editor {
-      flex: 1;
-      background: transparent;
-      border: none; outline: none; resize: none;
-      color: var(--white);
-      caret-color: var(--white);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.74rem; font-weight: 300;
-      line-height: 1.55;
-      padding: 16px 20px;
-      white-space: pre;
-      overflow: auto;
-      tab-size: 2;
+      z-index: 1;
+      width: 100%; height: 100%;
+      background: transparent; outline: none; resize: none;
+      color: transparent; -webkit-text-fill-color: transparent;
+      caret-color: var(--accent);
     }
-    #editor::placeholder { color: var(--dim); }
-    #editor::selection { background: rgba(255,255,255,0.18); }
+    #editor::placeholder { color: var(--ink-faint); -webkit-text-fill-color: var(--ink-faint); }
+    #editor::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+    .code.plain #hl { display: none; }
+    .code.plain #editor { color: var(--ink); -webkit-text-fill-color: var(--ink); }
 
-    /* FOOTER */
-    footer {
-      position: relative; z-index: 10;
-      display: flex; align-items: center;
-      height: 34px; flex-shrink: 0;
+    /* ── status line ─────────────────────────────────────────────────────── */
+    .status {
+      flex: none;
+      display: flex; align-items: center; gap: 16px;
+      min-height: 44px; padding: 8px 18px;
       border-top: 1px solid var(--rule);
-      background: rgba(7,7,10,0.88);
-      padding: 0 24px;
-      gap: 24px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--dim);
-      overflow: hidden; white-space: nowrap;
+      font-size: 13.5px; color: var(--ink-faint);
+      white-space: nowrap;
     }
-    #err-msg { color: var(--err); overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.08em; text-transform: none; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; }
-    footer .f-spacer { flex: 1; }
-
-    /* TOAST */
-    #toast {
-      position: fixed; bottom: 54px; left: 50%;
-      transform: translateX(-50%) translateY(10px);
-      z-index: 100;
-      background: var(--panel);
-      border: 1px solid var(--rule-hi);
-      color: var(--white);
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.66rem; letter-spacing: 0.2em; text-transform: uppercase;
-      padding: 10px 22px;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
+    .status .num { font-variant-numeric: tabular-nums; }
+    #status-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 3px 11px;
+      border: 1px solid var(--rule); border-radius: 999px;
+      font-size: 13px; font-weight: 500; color: var(--ink-soft);
+      --c: var(--ink-faint);
     }
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+    #status-badge.ok  { --c: var(--ok); }
+    #status-badge.err { --c: var(--alert); color: var(--alert); border-color: color-mix(in srgb, var(--alert) 35%, transparent); }
+    #err-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; font-weight: 500; color: var(--alert); }
+    .status .keys { display: flex; gap: 16px; }
 
-    @media (max-width: 640px) {
-      .brand-tag { display: none; }
-      .nav-status { display: none; }
-      .toolbar button span.lbl { display: none; }
+    /* ── narrow ──────────────────────────────────────────────────────────── */
+    @media (max-width: 860px) {
+      .btn.tb { padding: 0 11px; }
+      .btn.tb .t { display: none; }
+      .status .keys { display: none; }
+    }
+    @media (max-width: 680px) {
+      .json-page { height: auto; min-height: 100vh; min-height: 100dvh; }
+      .toolbar { gap: 8px; padding: 8px; }
+      .toolbar .grp + .grp { padding-left: 6px; }
+      .toolbar .grp { gap: 2px; }
+      .toolbar .spacer { display: none; }
+      .file { flex: 1 1 100%; min-width: 0; margin-left: 0; }
+      .fname-wrap { flex: 1; min-width: 0; }
+      #fname { flex: 1; width: 0; min-width: 0; }
+      .editor-panel { flex: none; height: calc(100dvh - 210px); min-height: 380px; }
+      .gutter { width: 44px; }
+      .gutter div { padding-right: 10px; }
+      #hl, #editor { padding: 18px 14px; }
+      .status { flex-wrap: wrap; row-gap: 4px; gap: 12px; padding: 8px 14px; }
+      #err-msg { flex-basis: 100%; }
+      #err-msg:empty { display: none; }
     }
   </style>
 </head>
 <body>
+<quiet-sky></quiet-sky>
 
-  <nav>
-    <div class="nav-brand">
-      <a class="brand-name" href="../">Isaiart</a>
-      <span class="brand-tag">JSON // Paste · Edit · Export</span>
+<main class="kit-page json-page">
+  <header class="top">
+    <a class="brand" href="./">JSON <small>Paste, edit, export</small></a>
+    <div class="top-actions">
+      <a class="icon-btn" href="/" aria-label="isaiart.com home"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5h11V10"/></svg></a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle light / dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
     </div>
-    <div class="nav-status">
-      <span id="stat-size">0 B</span>
-      <span id="stat-lines">0 lines</span>
-      <span id="status-badge">— Empty</span>
-    </div>
-  </nav>
+  </header>
 
-  <div class="toolbar">
-    <button id="btn-paste" title="Paste from clipboard (replaces content)"><span class="msy">content_paste</span><span class="lbl">Paste</span></button>
-    <button id="btn-format" title="Pretty-print (Ctrl+Shift+F)"><span class="msy">format_align_left</span><span class="lbl">Format</span></button>
-    <button id="btn-minify" title="Minify to one line"><span class="msy">compress</span><span class="lbl">Minify</span></button>
-    <button id="btn-sort" title="Sort object keys A–Z (recursive)"><span class="msy">sort_by_alpha</span><span class="lbl">Sort Keys</span></button>
-    <button id="btn-copy" title="Copy all to clipboard"><span class="msy">content_copy</span><span class="lbl">Copy</span></button>
-    <button id="btn-clear" title="Clear editor"><span class="msy">backspace</span><span class="lbl">Clear</span></button>
+  <div class="toolbar panel" role="toolbar" aria-label="JSON actions">
+    <div class="grp">
+      <button class="btn tb" id="btn-paste" type="button" title="Paste from clipboard (replaces content)"><svg viewBox="0 0 24 24"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9 3.5h6v3H9z"/></svg><span class="t">Paste</span></button>
+    </div>
+    <div class="grp">
+      <button class="btn tb" id="btn-format" type="button" title="Pretty-print (Ctrl+Shift+F)"><svg viewBox="0 0 24 24"><path d="M4 6h16M8 10h12M8 14h12M4 18h16"/></svg><span class="t">Format</span></button>
+      <button class="btn tb" id="btn-minify" type="button" title="Minify to one line"><svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg><span class="t">Minify</span></button>
+      <button class="btn tb" id="btn-sort" type="button" title="Sort object keys A–Z (recursive)"><svg viewBox="0 0 24 24"><path d="M7 5v14M4 16l3 3 3-3M13 7h7M13 12h5M13 17h3"/></svg><span class="t">Sort keys</span></button>
+    </div>
+    <div class="grp">
+      <button class="btn tb" id="btn-copy" type="button" title="Copy all to clipboard"><svg viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg><span class="t">Copy</span></button>
+      <button class="btn tb btn-danger" id="btn-clear" type="button" title="Clear editor"><svg viewBox="0 0 24 24"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="m12 9.5 5 5M17 9.5l-5 5"/></svg><span class="t">Clear</span></button>
+    </div>
     <div class="spacer"></div>
-    <div class="fname-wrap" title="Filename — click dice to re-roll">
-      <input id="fname" spellcheck="false" maxlength="8" />
-      <span class="fname-ext">.json</span>
+    <div class="file">
+      <label class="fname-wrap" title="Filename — click dice to re-roll">
+        <input id="fname" spellcheck="false" maxlength="8" aria-label="File name" />
+        <span class="fname-ext">.json</span>
+      </label>
+      <button class="icon-btn" id="btn-dice" type="button" title="Randomize filename" aria-label="Randomize filename"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/></svg></button>
+      <button class="btn btn-go" id="btn-export" type="button" title="Download .json (Ctrl+S)"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg><span class="t">Export</span></button>
     </div>
-    <button id="btn-dice" title="Randomize filename"><span class="msy">casino</span></button>
-    <button id="btn-export" class="primary" title="Download .json (Ctrl+S)"><span class="msy">download</span><span class="lbl">Export</span></button>
   </div>
 
-  <div class="editor-wrap">
-    <div class="gutter" id="gutter"><div>1</div></div>
-    <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"
-      placeholder='Paste JSON here…&#10;&#10;{ "hello": "world" }'></textarea>
-  </div>
+  <section class="panel editor-panel" id="editor-panel">
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"><div>1</div></div>
+      <div class="code" id="code">
+        <div class="err-band" id="err-band" hidden></div>
+        <pre id="hl" aria-hidden="true"></pre>
+        <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="JSON"
+          placeholder='Paste JSON here…&#10;&#10;{ "hello": "world" }'></textarea>
+      </div>
+    </div>
+    <div class="status">
+      <span id="status-badge">Empty</span>
+      <span class="num" id="stat-size">0 B</span>
+      <span class="num" id="stat-lines">0 lines</span>
+      <span id="err-msg"></span>
+      <span class="keys"><span><kbd>Ctrl</kbd> <kbd>S</kbd> Export</span><span><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd> Format</span></span>
+    </div>
+  </section>
+</main>
 
-  <footer>
-    <span>Ctrl+S Export</span>
-    <span>Ctrl+Shift+F Format</span>
-    <span class="f-spacer"></span>
-    <span id="err-msg"></span>
-  </footer>
-
-  <div id="toast"></div>
+<div id="toast" class="kit-toast" role="status"></div>
 
   <script>
     const editor  = document.getElementById('editor');
@@ -306,34 +264,121 @@
     });
 
     /* ---------- validation + stats ---------- */
-    let errLine = -1;
+    let errLine = -1, errCol = -1;
+
+    /* Where did the parse stop, and why? Engine messages differ and often
+       quote a mangled excerpt of the input, so a small scanner walks the text
+       to the first offence and names it in plain words. JSON.parse stays the
+       judge of validity; the scanner only explains. */
+    function scanError(s) {
+      let i = 0;
+      const NUM = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+      const ws = () => { while (i < s.length && ' \t\n\r'.includes(s[i])) i++; };
+      const show = ch => ch === '\n' ? 'line break' : ch === '\t' ? 'tab' : "'" + ch + "'";
+      const fail = why => { throw { pos: Math.min(i, s.length), why }; };
+      const end = () => i >= s.length;
+      function str() {
+        i++;
+        while (i < s.length) {
+          const ch = s[i];
+          if (ch === '"') { i++; return; }
+          if (ch === '\\') {
+            const e = s[i + 1];
+            if (e === 'u') {
+              if (!/^[0-9a-fA-F]{4}$/.test(s.slice(i + 2, i + 6))) fail('bad \\u escape (needs 4 hex digits)');
+              i += 6; continue;
+            }
+            if (e === undefined || !'"\\/bfnrt'.includes(e)) fail('invalid escape in string');
+            i += 2; continue;
+          }
+          if (ch === '\n') fail('unterminated string');
+          if (ch < ' ') fail('control character inside a string');
+          i++;
+        }
+        fail('unterminated string');
+      }
+      function val(after) {
+        ws();
+        const c = s[i];
+        if (end()) fail('unexpected end of input');
+        if (c === '{') {
+          i++; ws();
+          if (s[i] === '}') { i++; return; }
+          for (let first = true; ; first = false) {
+            ws();
+            if (end()) fail('unexpected end of input');
+            if (s[i] === '}' && !first) fail('trailing comma');
+            if (s[i] === "'") fail('keys need double quotes');
+            if (s[i] !== '"') fail('unexpected ' + show(s[i]) + ' (expected a quoted key)');
+            str(); ws();
+            if (end()) fail('unexpected end of input');
+            if (s[i] !== ':') fail("missing ':' after key");
+            i++; val('object'); ws();
+            if (end()) fail('unexpected end of input');
+            if (s[i] === ',') { i++; continue; }
+            if (s[i] === '}') { i++; return; }
+            fail('missing comma or closing brace');
+          }
+        }
+        if (c === '[') {
+          i++; ws();
+          if (s[i] === ']') { i++; return; }
+          for (;;) {
+            val('array'); ws();
+            if (end()) fail('unexpected end of input');
+            if (s[i] === ',') { i++; continue; }
+            if (s[i] === ']') { i++; return; }
+            fail('missing comma or closing bracket');
+          }
+        }
+        if (c === '"') { str(); return; }
+        if (c === "'") fail('strings need double quotes');
+        NUM.lastIndex = i;
+        if (NUM.test(s)) { i = NUM.lastIndex; return; }
+        for (const lit of ['true', 'false', 'null']) if (s.startsWith(lit, i)) { i += lit.length; return; }
+        if (c === ']' && after === 'array') fail('trailing comma');
+        fail('unexpected ' + show(c) + ' (expected a value)');
+      }
+      try { val(); ws(); if (!end()) fail('unexpected ' + show(s[i]) + ' after the end of the JSON'); return null; }
+      catch (p) { return p && typeof p.pos === 'number' ? p : null; }
+    }
+    function lineCol(text, pos) {
+      const before = text.slice(0, pos);
+      return [before.split('\n').length, pos - before.lastIndexOf('\n')];
+    }
+    function locate(text, message) {
+      const hit = scanError(text);
+      if (hit) return [...lineCol(text, hit.pos), hit.why];
+      // the scanner found nothing: fall back to what the engine reported
+      const lc = message.match(/line (\d+) column (\d+)/);
+      if (lc) return [+lc[1], +lc[2], 'not valid JSON here'];
+      const p = message.match(/position (\d+)/);
+      if (p) return [...lineCol(text, +p[1]), 'not valid JSON here'];
+      return [-1, -1, 'not valid JSON'];
+    }
 
     function validate() {
       const text = editor.value;
-      errLine = -1;
+      errLine = -1; errCol = -1;
       if (!text.trim()) {
-        badge.textContent = '— Empty';
+        badge.textContent = 'Empty';
         badge.className = '';
-        errMsg.textContent = '';
+        errMsg.textContent = ''; errMsg.title = '';
         return null;
       }
       try {
         const parsed = JSON.parse(text);
-        badge.textContent = '● Valid JSON';
+        badge.textContent = 'Valid JSON';
         badge.className = 'ok';
-        errMsg.textContent = '';
+        errMsg.textContent = ''; errMsg.title = '';
         return parsed;
       } catch (e) {
-        badge.textContent = '● Invalid';
+        badge.textContent = 'Invalid';
         badge.className = 'err';
-        errMsg.textContent = e.message;
-        const m = e.message.match(/line (\d+)/);
-        if (m) {
-          errLine = +m[1];
-        } else {
-          const p = e.message.match(/position (\d+)/);
-          if (p) errLine = text.slice(0, +p[1]).split('\n').length;
-        }
+        let why;
+        [errLine, errCol, why] = locate(text, e.message);
+        errMsg.textContent = (errLine > 0 ? 'Line ' + errLine + ', col ' + errCol + ': ' : '') + why;
+        errMsg.title = e.message; // the engine's own wording, on hover
         return undefined;
       }
     }
@@ -344,7 +389,8 @@
       statSz.textContent = bytes < 1024 ? bytes + ' B'
         : bytes < 1048576 ? (bytes / 1024).toFixed(1) + ' KB'
         : (bytes / 1048576).toFixed(2) + ' MB';
-      statLn.textContent = (text ? text.split('\n').length : 0) + ' lines';
+      const n = text.split('\n').length; // the gutter always shows line 1
+      statLn.textContent = n + (n === 1 ? ' line' : ' lines');
     }
 
     function updateGutter() {
@@ -361,13 +407,61 @@
       gutter.scrollTop = editor.scrollTop;
       gutter.firstChild && (gutter.style.paddingTop = '');
       gutter.scrollTo(0, editor.scrollTop);
+      syncHl();
     }
-    editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
+    editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; syncHl(); });
+
+    /* ---------- syntax colour (a coloured copy under the textarea) ---------- */
+    const hl = document.getElementById('hl');
+    const codeBox = document.getElementById('code');
+    const HL_MAX = 200000; // past this, plain text keeps typing smooth
+    const TOK = /("(?:[^"\\\n]|\\.)*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false)\b|\b(null)\b|([{}\[\],:])/g;
+    function hlEsc(s) { return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+    function highlight(src) {
+      let out = '', last = 0, m;
+      TOK.lastIndex = 0;
+      while ((m = TOK.exec(src))) {
+        out += hlEsc(src.slice(last, m.index));
+        if (m[1] !== undefined) {
+          out += m[2] !== undefined
+            ? '<span class="k">' + hlEsc(m[1]) + '</span><span class="p">' + m[2] + '</span>'
+            : '<span class="s">' + hlEsc(m[1]) + '</span>';
+        }
+        else if (m[3] !== undefined) out += '<span class="n">' + m[3] + '</span>';
+        else if (m[4] !== undefined) out += '<span class="b">' + m[4] + '</span>';
+        else if (m[5] !== undefined) out += '<span class="z">' + m[5] + '</span>';
+        else out += '<span class="p">' + m[6] + '</span>';
+        last = TOK.lastIndex;
+      }
+      return out + hlEsc(src.slice(last));
+    }
+    const band = document.getElementById('err-band');
+    const panel = document.getElementById('editor-panel');
+    const LH = 22, PAD = 18; // line height and top padding, as in the CSS
+    function syncHl() {
+      hl.scrollTop = editor.scrollTop; hl.scrollLeft = editor.scrollLeft;
+      if (!band.hidden) band.style.transform = 'translateY(' + (PAD + (errLine - 1) * LH - editor.scrollTop) + 'px)';
+    }
+    /* mark the offending line: a tinted band under the text, a red border */
+    function paintErr() {
+      band.hidden = !(errLine > 0);
+      panel.classList.toggle('invalid', badge.className === 'err');
+      syncHl();
+    }
+    function paintHl() {
+      const text = editor.value;
+      const plain = text.length > HL_MAX;
+      codeBox.classList.toggle('plain', plain);
+      hl.innerHTML = plain ? '' : highlight(text) + '\n ';
+      syncHl();
+    }
 
     let debounce;
     function refresh(immediate) {
+      paintHl();
       clearTimeout(debounce);
-      const run = () => { validate(); updateStats(); updateGutter(); };
+      const run = () => { validate(); updateStats(); updateGutter(); paintErr(); };
+      if (!immediate) band.hidden = true; // the old mark would sit on the wrong line while typing
       immediate ? run() : debounce = setTimeout(run, 200);
     }
     editor.addEventListener('input', () => refresh(false));
@@ -490,9 +584,9 @@
     let toastTimer;
     function showToast(msg) {
       toast.textContent = msg;
-      toast.classList.add('show');
+      toast.classList.add('up');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+      toastTimer = setTimeout(() => toast.classList.remove('up'), 1800);
     }
 
     refresh(true);

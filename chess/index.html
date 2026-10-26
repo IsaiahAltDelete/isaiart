@@ -3,386 +3,410 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07080b">
 <title>Chess</title>
+<meta name="description" content="Play chess against a small in-browser engine, from easy to expert.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/kit.css?v=1">
+<script src="../assets/kit.js?v=1"></script>
+<script src="../assets/sky.js?v=1" defer></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-
+/* ── The board palette: shared with ../aichess/ ─────────────────────────────
+   A quiet set photographed at night: two close cool greys, near-white and
+   near-black pieces with a thin opposite edge, periwinkle for selection and a
+   breath of the iridescent band for the last move. */
 :root {
-  --sq: 68px;
-  --bg: #0B0B0B;
-  --surface: #141414;
-  --surface2: #1C1C1C;
-  --border: #252525;
-  --text: #EFEFEF;
-  --muted: #555;
-  --muted2: #888;
-  --red: #D72638;
-  --red-dim: rgba(215,38,56,0.12);
-  --red-glow: rgba(215,38,56,0.4);
-  --sq-light: #E9E2CF;
-  --sq-dark: #5B7392;
-  --gold: rgba(245,190,55,0.55);
-  --gold2: rgba(245,190,55,0.38);
-  --ff-d: 'Barlow Condensed', sans-serif;
-  --ff-b: 'Barlow', sans-serif;
-  --ff-m: 'JetBrains Mono', monospace;
+    --sq-lt: #575c68;
+    --sq-dk: #363942;
+    --board-edge: rgb(255 255 255 / 0.10);
+    --coord: #b3b4bb;
+    --pc-w: #f4f3ef;  --pc-w-edge: #17181c;
+    --pc-b: #121317;  --pc-b-edge: rgb(236 236 234 / 0.6);
+    --pc-shadow: drop-shadow(0 2px 3px rgb(0 0 0 / 0.45));
+    --sq-dot: rgb(255 255 255 / 0.24);
+    --sel-a: 0.42;
+    --last-a: 0.22;
+}
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        --sq-lt: #f2f1ec; --sq-dk: #cbc9c1;
+        --board-edge: rgb(20 20 30 / 0.14);
+        --coord: #6c6b66;
+        --pc-w: #fdfdfb; --pc-w-edge: #26272d;
+        --pc-b: #1b1c21; --pc-b-edge: rgb(255 255 255 / 0.75);
+        --pc-shadow: drop-shadow(0 1.5px 2px rgb(20 20 40 / 0.26));
+        --sq-dot: rgb(20 20 30 / 0.2);
+        --sel-a: 0.3;
+        --last-a: 0.34;
+    }
+}
+:root[data-theme="light"] {
+    --sq-lt: #f2f1ec; --sq-dk: #cbc9c1;
+    --board-edge: rgb(20 20 30 / 0.14);
+    --coord: #6c6b66;
+    --pc-w: #fdfdfb; --pc-w-edge: #26272d;
+    --pc-b: #1b1c21; --pc-b-edge: rgb(255 255 255 / 0.75);
+    --pc-shadow: drop-shadow(0 1.5px 2px rgb(20 20 40 / 0.26));
+    --sq-dot: rgb(20 20 30 / 0.2);
+    --sel-a: 0.3;
+    --last-a: 0.34;
 }
 
-html,body{width:100%;background:var(--bg);color:var(--text);font-family:var(--ff-b);overflow-x:hidden}
+/* ── Layout: the board is the hero, the panel sits to its right ─────────── */
+.game {
+    display: grid;
+    grid-template-columns: auto minmax(340px, 1fr);
+    gap: 28px;
+    justify-content: stretch;
+    align-items: start;
+}
+.stage {
+    --board: max(360px, min(720px, calc(100vh - 150px), calc(100vw - 440px)));
+    --sq: calc(var(--board) / 8);
+    min-width: 0;
+}
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-body {
-  display:flex;flex-direction:column;align-items:center;
-  min-height:100vh;padding:20px 24px 40px;gap:0;
+.frame {
+    padding: 14px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-l);
+    background: var(--panel);
+    box-shadow: var(--lift);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
 }
+.board-wrap { position: relative; width: var(--board); height: var(--board); }
+/* the faint inlay line a few millimetres out from the squares */
+.board-wrap::before {
+    content: ''; position: absolute; inset: -7px;
+    border: 1px solid var(--rule); border-radius: 9px; pointer-events: none;
+}
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%; height: 100%;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--board-edge);
+    transition: box-shadow .4s;
+}
+.board.in-check-mode { box-shadow: 0 0 0 1px color-mix(in srgb, var(--alert) 45%, transparent); }
 
-/* Watermark */
-.watermark{
-  font-family:var(--ff-m);font-size:8px;letter-spacing:.45em;
-  color:var(--muted);text-decoration:none;text-transform:uppercase;
-  margin-bottom:22px;opacity:.55;transition:opacity .3s,color .3s;
-  display:block;text-align:center;width:100%;
+/* coordinates sit in the corners of the edge squares */
+.rank-col, .file-row { position: absolute; display: flex; pointer-events: none; z-index: 3; }
+.rank-col { left: 0; top: 0; bottom: 0; width: var(--sq); flex-direction: column; }
+.file-row { left: 0; right: 0; bottom: 0; height: var(--sq); }
+.rank-lbl, .file-lbl {
+    display: flex;
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(10px, calc(var(--sq) * 0.14), 11.5px);
+    letter-spacing: .08em; text-transform: uppercase; line-height: 1;
+    color: var(--coord); user-select: none;
 }
-.watermark:hover{opacity:1;color:var(--red)}
+.rank-lbl { height: var(--sq); padding: 5px 0 0 6px; align-items: flex-start; }
+.file-lbl { width: var(--sq); padding: 0 6px 5px 0; align-items: flex-end; justify-content: flex-end; }
 
-/* App */
-.app{
-  display:grid;grid-template-columns:auto 230px;
-  gap:28px;align-items:start;width:fit-content;max-width:100%;
+/* ── Squares ─────────────────────────────────────────────────────────────── */
+.sq {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
+.sq.lt { background-color: var(--sq-lt); }
+.sq.dk { background-color: var(--sq-dk); }
+.sq::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .18s; }
+.sq.last-f::before, .sq.last-t::before { background: var(--iris); opacity: var(--last-a); }
+.sq.last-f::before { opacity: calc(var(--last-a) * 0.62); }
+.sq.sel::before { background: var(--accent); opacity: var(--sel-a); }
+.sq.pos:hover::before { background: var(--accent); opacity: calc(var(--sel-a) * 0.55); }
+.sq.chk::before {
+    background: radial-gradient(circle at 50% 54%, var(--alert) 0, color-mix(in srgb, var(--alert) 45%, transparent) 36%, transparent 72%);
+    opacity: .8;
+}
+/* legal targets: soft ink dots, rings where something can be taken */
+.sq.pos::after {
+    content: ''; position: absolute; z-index: 1;
+    width: 30%; height: 30%; border-radius: 50%;
+    background: var(--sq-dot); pointer-events: none;
+    animation: dotIn .16s var(--ease) both;
+}
+.sq.pos.cap-sq::after {
+    width: 88%; height: 88%;
+    background: transparent;
+    border: max(2px, calc(var(--sq) * 0.055)) solid var(--sq-dot);
+}
+@keyframes dotIn { from { transform: scale(.4); opacity: 0; } }
 
-/* Difficulty */
-.diff-row{
-  display:flex;gap:2px;margin-bottom:14px;
-  background:var(--surface);border:1px solid var(--border);padding:3px;
-  border-radius:2px;
+/* ── Pieces: Unicode glyphs, filled, with a thin edge in the opposite tone ── */
+.piece, .glyph, .cap-pc, .promo-sq {
+    font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', 'Apple Symbols', serif;
+    line-height: 1;
+    paint-order: stroke fill;
+    font-variant-emoji: text;
 }
-.diff-btn{
-  flex:1;padding:10px 8px;
-  font-family:var(--ff-d);font-size:12px;font-weight:700;
-  letter-spacing:.18em;text-transform:uppercase;
-  background:transparent;color:var(--muted2);border:none;cursor:pointer;
-  border-radius:1px;transition:all .2s cubic-bezier(.4,0,.2,1);
-  position:relative;
+.piece {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%;
+    font-size: calc(var(--sq) * 0.74);
+    pointer-events: none;
+    -webkit-text-stroke: max(1.2px, calc(var(--sq) * 0.024)) transparent;
+    transition: transform .2s var(--ease);
 }
-.diff-btn:hover:not(.active){color:var(--text);background:var(--surface2)}
-.diff-btn.active{background:var(--red);color:#fff}
-.diff-btn.active::after{
-  content:'';position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);
-  width:4px;height:4px;border-radius:50%;background:var(--red);
-}
+.piece.w, .glyph.w, #capW .cap-pc, .promo-sq { color: var(--pc-w); -webkit-text-stroke-color: var(--pc-w-edge); filter: var(--pc-shadow); }
+.piece.b, .glyph.b, #capB .cap-pc { color: var(--pc-b); -webkit-text-stroke-color: var(--pc-b-edge); filter: var(--pc-shadow); }
+/* off the board the black pieces take an ink edge, so they read on the panel in both themes */
+.glyph.b, #capB .cap-pc { -webkit-text-stroke-color: var(--ink-soft); }
+@media (hover: hover) { .sq:hover .piece { transform: translateY(-1px); } }
+.sq.sel .piece { transform: translateY(-2px) scale(1.04); }
+.piece.in { animation: pieceIn .2s var(--ease) both; }
+@keyframes pieceIn { from { transform: scale(.8); opacity: 0; } }
 
-/* Thinking bar */
-.think-bar{
-  height:2px;background:var(--surface2);border-radius:1px;
-  margin-bottom:10px;overflow:hidden;position:relative;
-}
-.think-bar-fill{
-  position:absolute;inset:0;
-  background:linear-gradient(90deg,transparent,var(--red),transparent);
-  background-size:200% 100%;
-  opacity:0;transition:opacity .3s;
-  animation:shimmer 1s linear infinite;
-}
-.think-bar-fill.on{opacity:1}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* ── Side panel ──────────────────────────────────────────────────────────── */
+.side .panel { padding: 18px 20px 20px; }
+.panel-h { margin-bottom: 14px; }
+.panel-h .aside { font-size: 12.5px; }
 
-/* Board wrapper */
-.board-outer{display:flex;align-items:flex-start;gap:8px}
-.board-col{display:flex;flex-direction:column}
+.players { display: flex; flex-direction: column; gap: 6px; }
+.player {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    grid-template-areas: "badge who" "badge cap";
+    column-gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r-m);
+    /* no transition: the turn marker moves the instant the turn does */
+}
+.player.on { background: var(--tint); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+.badge {
+    grid-area: badge;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--well); border: 1px solid var(--rule);
+}
+.glyph { font-size: 26px; -webkit-text-stroke: .8px transparent; }
+.who { grid-area: who; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.who b { font-family: var(--f-display); font-size: 17px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+.who span { font-size: 13px; color: var(--ink-faint); }
+.player.on .who span { color: var(--accent); }
 
-/* Labels */
-.rank-col{display:flex;flex-direction:column;padding-top:0}
-.rank-lbl,.file-lbl{
-  font-family:var(--ff-m);font-size:10px;color:var(--muted);
-  display:flex;align-items:center;justify-content:center;
-  transition:color .3s;user-select:none;
-}
-.rank-lbl{width:18px;height:var(--sq)}
-.file-row{display:flex;margin-top:6px;padding-left:0}
-.file-lbl{width:var(--sq);height:16px}
+.cap-row { grid-area: cap; display: flex; flex-wrap: wrap; gap: 0 1px; min-height: 28px; align-items: center; }
+.cap-pc { font-size: 22px; -webkit-text-stroke: 1px transparent; }
 
-/* Board */
-.board{
-  display:grid;
-  grid-template-columns:repeat(8,var(--sq));
-  grid-template-rows:repeat(8,var(--sq));
-  border:1.5px solid var(--border);
-  box-shadow:0 32px 96px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.03);
-  border-radius:1px;overflow:hidden;
-  transition:box-shadow .4s;
+.status {
+    display: flex; align-items: center; gap: 11px;
+    margin-top: 14px;
+    padding: 11px 14px;
+    border: 1px solid var(--rule); border-radius: var(--r-m);
+    background: var(--well);
+    font-family: var(--f-display); font-size: 14px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink);
 }
-.board.in-check-mode{box-shadow:0 32px 96px rgba(0,0,0,.7),0 0 0 2px var(--red-glow),0 0 40px var(--red-glow)}
+.status-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex: none;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--tint);
+    transition: background .2s;
+}
+.status.thinking .status-dot { background: var(--warn); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 16%, transparent); animation: breathe 1.4s ease-in-out infinite; }
+.status.check .status-dot { background: var(--alert); box-shadow: 0 0 0 4px color-mix(in srgb, var(--alert) 18%, transparent); }
+.status.over .status-dot { background: var(--ink-faint); box-shadow: none; }
+@keyframes breathe { 50% { opacity: .35; } }
 
-/* Square */
-.sq{
-  width:var(--sq);height:var(--sq);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;position:relative;
-  transition:background-color .12s ease,box-shadow .12s;
-  user-select:none;
+/* the thinking hairline: the band drifts across while the engine works */
+.think-bar { position: relative; height: 2px; margin: 10px 4px 0; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.think-bar-fill {
+    position: absolute; inset: 0;
+    background: var(--iris); background-size: 200% 100%;
+    opacity: 0; transition: opacity .3s;
 }
-.sq.lt{background:var(--sq-light)}
-.sq.dk{background:var(--sq-dark)}
-.sq.sel{background:var(--red) !important;box-shadow:inset 0 0 0 3px rgba(255,255,255,.15)}
-.sq.last-f{background:var(--gold2) !important}
-.sq.last-t{background:var(--gold) !important}
-.sq.chk{background:var(--red-glow) !important;animation:chkPulse .6s ease-in-out infinite alternate}
-@keyframes chkPulse{0%{background:rgba(215,38,56,.35) !important}100%{background:rgba(215,38,56,.65) !important}}
+.think-bar-fill.on { opacity: .9; animation: drift 1.6s linear infinite; }
+@keyframes drift { from { background-position: 200% 0; } to { background-position: 0 0; } }
 
-/* Possible dots */
-.sq.pos::after{
-  content:'';position:absolute;
-  width:26px;height:26px;border-radius:50%;
-  background:rgba(215,38,56,.38);pointer-events:none;
-  animation:dotIn .14s cubic-bezier(.34,1.56,.64,1) forwards;
-}
-.sq.pos.cap-sq::after{
-  width:calc(100% - 4px);height:calc(100% - 4px);
-  border-radius:0;background:transparent;
-  border:3px solid rgba(215,38,56,.6);
-}
-@keyframes dotIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.keys { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.keys .btn-go { grid-column: 1 / -1; }
 
-.sq:hover:not(.sel):not(.pos){filter:brightness(1.08)}
+.seg > button.active { background: var(--press); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1px var(--rule-hi); }
+.seg > button { padding: 9px 4px; }
 
-/* Piece */
-.piece{
-  font-size:clamp(30px,3.6vw,42px);
-  line-height:1;width:58px;height:58px;
-  display:flex;align-items:center;justify-content:center;
-  transition:transform .18s cubic-bezier(.34,1.56,.64,1),filter .15s;
-  position:relative;z-index:2;
-  pointer-events:none;
-  -webkit-text-stroke:1.4px transparent;
-  paint-order:stroke fill;
+/* move list */
+/* same plain grid as the aichess log: number, white, black */
+.hist-wrap { display: flex; flex-direction: column; gap: 2px; max-height: 236px; overflow-y: auto; }
+.hist-wrap:empty::before { content: 'No moves yet. White to open.'; display: block; font-size: 13.5px; color: var(--ink-faint); }
+.hist-row {
+    display: grid; grid-template-columns: 2.8em 1fr 1fr; column-gap: 6px;
+    font-family: var(--f-mono); font-size: 13px; line-height: 1.5;
 }
-.piece.w{color:#FBFAF6;-webkit-text-stroke-color:#23262B;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
-.piece.b{color:#1A1C20;-webkit-text-stroke-color:#E7ECF1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
-.sq:hover .piece{transform:translateY(-2px) scale(1.07)}
-.sq.sel .piece{transform:scale(1.14);filter:drop-shadow(0 6px 16px rgba(215,38,56,.5)) drop-shadow(0 2px 5px rgba(0,0,0,.9))}
+.hist-row > span { padding: 3px 0; }
+.hist-num { color: var(--ink-faint); padding-left: 8px !important; }
+.hist-w { color: var(--ink); }
+.hist-b { color: var(--ink-soft); }
 
-.piece.in{animation:pieceIn .2s cubic-bezier(.34,1.56,.64,1) forwards}
-@keyframes pieceIn{from{transform:scale(.6) translateY(-6px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+/* ── Promotion and game over: glass cards over a dimmed night ────────────── */
+.promo-overlay, .go-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    background: color-mix(in srgb, var(--ground) 55%, transparent);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+}
+.promo-overlay { z-index: 110; }
+.promo-overlay.on, .go-overlay.on { opacity: 1; pointer-events: auto; }
+.promo-card, .go-card {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    background: var(--panel-solid);
+    transform: translateY(10px) scale(.98);
+    transition: transform .4s var(--ease);
+}
+.promo-overlay.on .promo-card, .go-overlay.on .go-card { transform: none; }
+.promo-card { gap: 16px; padding: 24px 26px 26px; }
+.promo-label { font-family: var(--f-display); font-size: 13px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-soft); }
+.promo-pieces { display: flex; gap: 10px; }
+.promo-sq {
+    width: 68px; height: 68px;
+    display: grid; place-items: center;
+    font-size: 46px;
+    -webkit-text-stroke: 1.4px var(--pc-w-edge);
+    background: var(--sq-dk);
+    border: 1px solid var(--rule); border-radius: var(--r-m);
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .2s var(--ease);
+}
+.promo-sq:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 22%, var(--sq-dk)); transform: translateY(-2px); }
+.go-card { width: min(420px, 100%); padding: 40px 36px 34px; }
+.go-title { font-family: var(--f-display); font-size: 46px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; color: var(--ink); }
+.go-sub { margin: 12px 0 28px; font-family: var(--f-display); font-size: 15px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint); }
+.go-card::before {
+    content: ''; width: 44px; height: 3px; margin-bottom: 22px; border-radius: 999px;
+    background: var(--iris); opacity: .8;
+}
+.go-btn { min-width: 180px; }
 
-/* Status */
-.status{
-  display:flex;align-items:center;gap:10px;
-  margin-top:14px;padding:11px 18px;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:2px;
-  font-family:var(--ff-d);font-size:13px;font-weight:700;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--text);
-  transition:all .3s;
+/* ── Narrower screens: board first, panel below ──────────────────────────── */
+@media (max-width: 900px) {
+    .game { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 18px; }
+    .stage { --board: min(640px, calc(100vw - 58px)); }
+    .side { width: 100%; max-width: 670px; }
 }
-.status-dot{
-  width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0;
-  animation:dotPulse 1.8s ease-in-out infinite;
+/* phones: tiny coordinates tucked into the very corners, clear of the pieces */
+@media (max-width: 480px) {
+    .rank-lbl, .file-lbl { font-size: 8px; letter-spacing: .02em; opacity: .75; }
+    .rank-lbl { padding: 2px 0 0 3px; }
+    .file-lbl { padding: 0 3px 2px 0; }
+    .piece { font-size: calc(var(--sq) * 0.7); }
 }
-@keyframes dotPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
-.status.thinking .status-dot{background:#F0A500;animation-duration:.8s}
-.status.check .status-dot{animation-duration:.4s}
-.status.over .status-dot{background:var(--muted);animation:none}
-
-/* Info Panel */
-.info{display:flex;flex-direction:column;gap:12px}
-.panel{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:2px;padding:16px;
-}
-.plbl{
-  font-family:var(--ff-d);font-size:10px;font-weight:700;
-  letter-spacing:.22em;text-transform:uppercase;color:var(--muted);
-  margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);
-}
-.sub-lbl{
-  font-family:var(--ff-m);font-size:9px;color:var(--muted);
-  letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;margin-top:10px;
-}
-.sub-lbl:first-of-type{margin-top:0}
-
-/* Captured */
-.cap-row{
-  display:flex;flex-wrap:wrap;gap:1px;min-height:24px;
-  padding:2px 0;
-}
-.cap-pc{
-  font-size:18px;opacity:.85;
-  animation:capIn .2s cubic-bezier(.34,1.56,.64,1) forwards;
-}
-@keyframes capIn{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
-
-.score-lbl{
-  font-family:var(--ff-m);font-size:10px;color:var(--red);margin-top:8px;
-  letter-spacing:.06em;
-}
-
-/* Move history */
-.hist-wrap{max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-.hist-row{
-  display:grid;grid-template-columns:22px 1fr 1fr;gap:4px;
-  padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);
-  font-family:var(--ff-m);font-size:10px;
-  animation:rowIn .18s ease forwards;
-}
-@keyframes rowIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
-.hist-num{color:var(--muted)}
-.hist-w{color:var(--text)}
-.hist-b{color:var(--muted2)}
-
-/* Buttons */
-.btn{
-  width:100%;padding:11px;margin-bottom:6px;
-  font-family:var(--ff-d);font-size:12px;font-weight:700;
-  letter-spacing:.18em;text-transform:uppercase;
-  background:transparent;color:var(--text);
-  border:1px solid var(--border);border-radius:2px;
-  cursor:pointer;transition:all .2s;
-}
-.btn:last-child{margin-bottom:0}
-.btn:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
-.btn.pri{background:var(--red);color:#fff;border-color:var(--red)}
-.btn.pri:hover{background:#b81e2c;border-color:#b81e2c}
-
-/* Promotion modal */
-.promo-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.82);
-  display:flex;align-items:center;justify-content:center;z-index:200;
-  opacity:0;pointer-events:none;transition:opacity .3s;
-  backdrop-filter:blur(6px);
-}
-.promo-overlay.on{opacity:1;pointer-events:all}
-.promo-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:3px;padding:28px 32px;
-  display:flex;flex-direction:column;align-items:center;gap:16px;
-  transform:scale(.9);transition:transform .3s cubic-bezier(.34,1.56,.64,1);
-}
-.promo-overlay.on .promo-card{transform:scale(1)}
-.promo-label{
-  font-family:var(--ff-d);font-size:12px;font-weight:700;
-  letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);
-}
-.promo-pieces{display:flex;gap:10px}
-.promo-sq{
-  width:68px;height:68px;display:flex;align-items:center;justify-content:center;
-  font-size:38px;background:var(--surface2);border:1px solid var(--border);
-  border-radius:2px;cursor:pointer;transition:all .18s;
-}
-.promo-sq:hover{border-color:var(--red);background:var(--red-dim);transform:translateY(-4px) scale(1.08)}
-
-/* Game over */
-.go-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.86);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  z-index:100;opacity:0;pointer-events:none;transition:opacity .4s;
-  backdrop-filter:blur(10px);
-}
-.go-overlay.on{opacity:1;pointer-events:all}
-.go-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:3px;padding:56px 80px;text-align:center;
-  transform:scale(.88) translateY(20px);
-  transition:transform .45s cubic-bezier(.34,1.56,.64,1);
-}
-.go-overlay.on .go-card{transform:scale(1) translateY(0)}
-.go-title{
-  font-family:var(--ff-d);font-size:56px;font-weight:700;
-  letter-spacing:.08em;text-transform:uppercase;color:var(--red);
-  margin-bottom:6px;line-height:1;
-}
-.go-sub{
-  font-family:var(--ff-d);font-size:15px;letter-spacing:.25em;
-  color:var(--muted2);text-transform:uppercase;margin-bottom:36px;
-}
-.go-btn{
-  padding:14px 36px;font-family:var(--ff-d);font-size:13px;font-weight:700;
-  letter-spacing:.18em;text-transform:uppercase;
-  background:var(--red);color:#fff;border:none;border-radius:2px;
-  cursor:pointer;transition:background .2s;
-}
-.go-btn:hover{background:#b81e2c}
-
-/* Responsive */
-@media(max-width:720px){
-  .app{grid-template-columns:1fr;gap:20px}
-  :root{--sq:46px}
-  .piece{font-size:24px;width:40px;height:40px}
-  .go-card{padding:40px 40px}
-  .go-title{font-size:40px}
+@media (max-width: 680px) {
+    .stage { --board: calc(100vw - 48px); }
+    .frame { padding: 7px; border-radius: var(--r-m); }
+    .board-wrap::before { display: none; }
+    .side .panel { padding: 16px; }
+    .go-title { font-size: 38px; }
+    .promo-sq { width: 60px; height: 60px; font-size: 40px; }
 }
 </style>
 </head>
 <body>
+<quiet-sky></quiet-sky>
 
-<a href="https://isaiart.com" target="_blank" class="watermark">ISAIART.COM</a>
+<main class="kit-page">
 
-<div class="app">
-
-  <!-- Board Section -->
-  <div>
-    <div class="diff-row" id="diffRow">
-      <button class="diff-btn" data-d="1">EASY</button>
-      <button class="diff-btn active" data-d="2">MEDIUM</button>
-      <button class="diff-btn" data-d="3">HARD</button>
-      <button class="diff-btn" data-d="4">EXPERT</button>
+  <header class="top">
+    <a class="brand" href="./">Chess <small>you vs the engine</small></a>
+    <nav class="tabs" aria-label="Mode">
+      <a href="../chess/" aria-current="page">Vs AI</a>
+      <a href="../aichess/">Engine vs engine</a>
+    </nav>
+    <div class="top-actions">
+      <a class="icon-btn" href="/" aria-label="isaiart.com home"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5h11V10"/></svg></a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle light / dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
     </div>
+  </header>
 
-    <div class="think-bar"><div class="think-bar-fill" id="thinkFill"></div></div>
+  <div class="game">
 
-    <div class="board-outer">
-      <div class="rank-col" id="rankCol"></div>
-      <div class="board-col">
-        <div class="board" id="board"></div>
-        <div class="file-row" id="fileRow"></div>
+    <!-- Board -->
+    <section class="stage" aria-label="Board">
+      <div class="frame">
+        <div class="board-wrap">
+          <div class="board" id="board"></div>
+          <div class="rank-col" id="rankCol" aria-hidden="true"></div>
+          <div class="file-row" id="fileRow" aria-hidden="true"></div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="status" id="status">
-      <div class="status-dot" id="sDot"></div>
-      <span id="sTxt">YOUR TURN — WHITE</span>
-    </div>
+    <!-- Panel -->
+    <aside class="side">
+      <section class="panel">
+        <h2 class="panel-h">Game <span class="aside" id="scoreLbl"></span></h2>
+        <div class="players">
+          <div class="player" id="pB">
+            <span class="badge"><span class="glyph b">&#9818;</span></span>
+            <div class="who"><b>Engine</b><span>Black</span></div>
+            <div class="cap-row" id="capW" aria-label="White pieces taken"></div>
+          </div>
+          <div class="player" id="pW">
+            <span class="badge"><span class="glyph w">&#9818;</span></span>
+            <div class="who"><b>You</b><span>White</span></div>
+            <div class="cap-row" id="capB" aria-label="Black pieces taken"></div>
+          </div>
+        </div>
+        <div class="status" id="status" role="status">
+          <div class="status-dot" id="sDot"></div>
+          <span id="sTxt">YOUR TURN — WHITE</span>
+        </div>
+        <div class="think-bar"><div class="think-bar-fill" id="thinkFill"></div></div>
+        <div class="keys">
+          <button class="btn btn-go" type="button" onclick="newGame()">New game</button>
+          <button class="btn" type="button" onclick="undoMove()">Undo move</button>
+          <button class="btn" type="button" onclick="flipBoard()">Flip board</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-h">Moves</h2>
+        <div class="hist-wrap" id="hist"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-h">Difficulty</h2>
+        <div class="seg" id="diffRow">
+          <button class="diff-btn" type="button" data-d="1">Easy</button>
+          <button class="diff-btn active" type="button" data-d="2">Medium</button>
+          <button class="diff-btn" type="button" data-d="3">Hard</button>
+          <button class="diff-btn" type="button" data-d="4">Expert</button>
+        </div>
+      </section>
+    </aside>
   </div>
 
-  <!-- Info Panel -->
-  <div class="info">
-    <div class="panel">
-      <div class="plbl">Captured</div>
-      <div class="sub-lbl">Black Lost</div>
-      <div class="cap-row" id="capB"></div>
-      <div class="sub-lbl">White Lost</div>
-      <div class="cap-row" id="capW"></div>
-      <div class="score-lbl" id="scoreLbl"></div>
-    </div>
-    <div class="panel">
-      <div class="plbl">Move History</div>
-      <div class="hist-wrap" id="hist"></div>
-    </div>
-    <div class="panel">
-      <div class="plbl">Controls</div>
-      <button class="btn pri" onclick="newGame()">NEW GAME</button>
-      <button class="btn" onclick="undoMove()">UNDO MOVE</button>
-      <button class="btn" onclick="flipBoard()">FLIP BOARD</button>
-    </div>
-  </div>
-</div>
+</main>
 
 <!-- Promotion Modal -->
 <div class="promo-overlay" id="promoModal">
-  <div class="promo-card">
-    <div class="promo-label">PROMOTE PAWN</div>
+  <div class="promo-card panel" role="dialog" aria-label="Promote pawn">
+    <div class="promo-label">Promote pawn</div>
     <div class="promo-pieces" id="promoPieces"></div>
   </div>
 </div>
 
 <!-- Game Over -->
 <div class="go-overlay" id="goOverlay">
-  <div class="go-card">
+  <div class="go-card panel" role="dialog" aria-labelledby="goTitle">
     <div class="go-title" id="goTitle">CHECKMATE</div>
     <div class="go-sub" id="goSub">WHITE WINS</div>
-    <button class="go-btn" onclick="newGame()">PLAY AGAIN</button>
+    <button class="go-btn btn btn-go" type="button" onclick="newGame()">Play again</button>
   </div>
 </div>
 
@@ -748,8 +772,7 @@ function showPromo(mv){
   [5,4,3,2].forEach(pt=>{
     const s=document.createElement('div');
     s.className='promo-sq';
-    s.textContent=UNI[pt]; s.style.color='#F8F5EE';
-    s.style.filter='drop-shadow(0 2px 5px rgba(0,0,0,.8))';
+    s.textContent=UNI[pt]; // colour and edge come from .promo-sq (kit tokens)
     s.onclick=()=>{
       document.getElementById('promoModal').classList.remove('on');
       executeMove(pendingPromo,pt);
@@ -867,6 +890,8 @@ function renderHistory(){
 
 function updateStatus(){
   const el=document.getElementById('status');
+  document.getElementById('pW').classList.toggle('on',!G.over&&G.turn==='white');
+  document.getElementById('pB').classList.toggle('on',!G.over&&G.turn==='black');
   const tx=document.getElementById('sTxt');
   el.className='status';
   if(G.over){el.classList.add('over');tx.textContent='GAME OVER';return}
