@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-25",
-  "updated": "2026-10-25T07:57:00-04:00",
-  "events": 15,
+  "date": "2026-10-26",
+  "updated": "2026-10-26T08:00:00-04:00",
+  "events": 4,
   "headlines": [
-    "Chiefs at Seahawks, Sunday Night Football (8:20 PM ET, NBC/Peacock)",
-    "Steelers vs. Saints in Paris (9:30 AM ET, NFL Network)",
-    "United States Grand Prix (4:00 PM ET, Apple TV)"
+    "Dream at Valkyries, WNBA Finals Game 5, winner take all (8:00 PM ET, USA Network)",
+    "Brewers at Rays, World Series Game 3 with Milwaukee up 2\u20130 (8:00 PM ET, FOX)",
+    "Cowboys at Eagles, Monday Night Football (8:15 PM ET, ESPN/ABC)"
   ],
   "template": "2026-09-29.1"
 }

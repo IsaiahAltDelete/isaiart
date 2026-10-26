@@ -1,0 +1,188 @@
+{
+ "date": "2026-10-26",
+ "updated": "2026-10-26T08:00:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Dream at Valkyries, WNBA Finals Game 5, winner take all (8:00 PM ET, USA Network)",
+  "Brewers at Rays, World Series Game 3 with Milwaukee up 2\u20130 (8:00 PM ET, FOX)",
+  "Cowboys at Eagles, Monday Night Football (8:15 PM ET, ESPN/ABC)"
+ ],
+ "leagues": [
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "Finals",
+   "note": "Game 5 \u2022 winner take all",
+   "color": "#956f82"
+  },
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "World Series",
+   "note": "Game 3 in Tampa Bay"
+  },
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 7",
+   "note": "Monday Night Football"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "NBCSN late game"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-mil-tb-ws3",
+   "league": "MLB",
+   "label": "MLB \u2022 World Series",
+   "flags": [
+    "World Series \u2022 Game 3"
+   ],
+   "competitors": [
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL champion \u2022 leads 2\u20130 \u2022 Gasser",
+     "logo": "mlb/mil"
+    },
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL champion \u2022 Peralta",
+     "logo": "mlb/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-26T20:00:00-04:00",
+   "watch": "FOX \u2022 FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Tropicana Field, St. Petersburg, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Milwaukee won the first two games 3\u20132 and 5\u20134. Robert Gasser faces Freddy Peralta as the series shifts to Tampa Bay.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "wnba-atl-gs-g5",
+   "league": "WNBA",
+   "label": "WNBA \u2022 Finals",
+   "flags": [
+    "Finals \u2022 Game 5",
+    "Winner take all"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "30\u201314 \u2022 series 2\u20132",
+     "logo": "wnba/atl"
+    },
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "32\u201312 \u2022 series 2\u20132",
+     "logo": "wnba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-26T20:00:00-04:00",
+   "watch": "USA Network \u2022 CNBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBCUniversal cable window.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Winner takes the WNBA title. Golden State forced Game 5 with a 67\u201362 win in Atlanta on Saturday. Tip is 5:00 p.m. local.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "nfl-dal-phi",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "2\u20134",
+     "logo": "nfl/dal"
+    },
+    {
+     "name": "Philadelphia Eagles",
+     "abbr": "PHI",
+     "detail": "2\u20134",
+     "logo": "nfl/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-26T20:15:00-04:00",
+   "watch": "ESPN \u2022 ABC",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window.",
+   "venue": "Lincoln Financial Field, Philadelphia",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "NFC East rivals, both 2\u20134, close Week 7.",
+   "blackout": "No territorial blackout. Local ABC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  },
+  {
+   "id": "nba-gs-den",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "NBCSN Monday"
+   ],
+   "competitors": [
+    {
+     "name": "Golden State Warriors",
+     "abbr": "GS",
+     "detail": "0\u20133",
+     "logo": "nba/gs"
+    },
+    {
+     "name": "Denver Nuggets",
+     "abbr": "DEN",
+     "detail": "1\u20131",
+     "logo": "nba/den"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-26T22:00:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "Ball Arena, Denver",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Winless Golden State visits Denver in the late window.",
+   "blackout": "Local team-network availability varies by market; NBA League Pass restrictions may apply to national games."
+  }
+ ],
+ "footer_note": "Four qualifying events fall inside Monday's Eastern calendar day. Regional NHL and NBA games, preseason and exhibition games are excluded. The desk skips Tuesday and Wednesday; it returns Thursday.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-26"
+  },
+  {
+   "label": "ESPN WNBA scoreboard",
+   "url": "https://www.espn.com/wnba/scoreboard/_/date/20261026"
+  },
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/7/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261026"
+  }
+ ]
+}
