@@ -3,262 +3,445 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CUE CLOCK</title>
+<title>Cue Clock</title>
 <meta name="description" content="A function-first theater cue clock: stage timer, countdowns to curtain, SM message board and a fullscreen backstage display.">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/kit.css?v=1">
+<script src="../assets/kit.js?v=1"></script>
+<script src="../assets/sky.js?v=1" defer></script>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    font-family:'Courier New',Courier,monospace;background:#000;color:#fff;
-    display:flex;flex-direction:column;min-height:100%;
-    -webkit-user-select:none;user-select:none;
+  body { -webkit-user-select: none; user-select: none; }
+  input { -webkit-user-select: text; user-select: text; }
+
+  /* ── header: brand | wall clock | keys ─────────────────────────────────── */
+  .wallclock {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    padding: 4px 20px;
+    border: 1px solid var(--rule); border-radius: 999px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    font-family: var(--f-display); font-size: 26px; font-weight: 600;
+    letter-spacing: .06em; line-height: 1.3;
+    font-variant-numeric: tabular-nums; color: var(--ink);
   }
-  button,input,select{font-family:inherit;color:#fff;background:#000}
+  .wallclock .ampm { font-size: 13px; letter-spacing: .14em; color: var(--ink-faint); }
+  .wallclock .ampm:empty { display: none; }
+  .top-actions .keys, .top-actions .site { display: flex; gap: 8px; align-items: center; }
+  .top-actions .site { padding-left: 10px; margin-left: 2px; border-left: 1px solid var(--rule); }
+  #sound-btn .off-mark { display: none; }
+  #sound-btn:not(.on) .on-mark { display: none; }
+  #sound-btn:not(.on) .off-mark { display: inline; }
+  #stage-btn { height: 40px; padding: 0 16px; gap: 8px; }
+  #stage-btn.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--tint); }
 
-  /* top bar */
-  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #333;flex-wrap:wrap}
-  .brand{font-size:1rem;letter-spacing:3px;text-transform:uppercase;line-height:1.1}
-  .brand small{display:block;font-size:.58rem;letter-spacing:.25em;color:#777}
-  .wallclock{margin-left:auto;font-size:clamp(1.4rem,5vw,2.2rem);font-weight:bold;letter-spacing:2px;font-variant-numeric:tabular-nums}
-  .wallclock .ampm{font-size:.5em;color:#888;margin-left:6px}
-  .top-actions{display:flex;gap:6px}
-  .ibtn{border:1px solid #444;background:#000;padding:8px 11px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;font-size:.72rem}
-  .ibtn:hover{background:#222}
-  .ibtn.on{border-color:#fff}
+  /* ── message banner ────────────────────────────────────────────────────── */
+  #message-banner {
+    display: none;
+    margin: 0 0 18px;
+    padding: 14px 20px;
+    border: 1px solid color-mix(in srgb, var(--m, var(--ink)) 32%, transparent);
+    border-radius: var(--r-l);
+    background: color-mix(in srgb, var(--m, var(--ink)) 9%, var(--panel));
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    text-align: center;
+    font-family: var(--f-display); font-weight: 700;
+    font-size: clamp(30px, 6vw, 64px); line-height: 1.1;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: var(--m, var(--ink));
+    overflow-wrap: anywhere;
+  }
+  #message-banner.show { display: block; }
+  #message-banner.standby  { --m: var(--warn); }
+  #message-banner.go       { --m: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+  #message-banner.hold     { --m: var(--alert); }
+  #message-banner.blackout { --m: var(--ink-faint); }
+  #message-banner.custom   { --m: var(--ink); }
+  @keyframes pulse { 50% { opacity: .45; } }
 
-  /* message banner */
-  #message-banner{display:none;text-align:center;padding:12px;border-bottom:1px solid #333;
-    font-size:clamp(1.6rem,7vw,3.2rem);font-weight:bold;letter-spacing:5px;text-transform:uppercase}
-  #message-banner.show{display:block}
-  #message-banner.standby{color:#ff0}
-  #message-banner.go{color:#0f0;animation:blink 1s steps(2,start) infinite}
-  #message-banner.hold{color:#f00}
-  #message-banner.blackout{color:#444}
-  #message-banner.custom{color:#fff}
+  /* ── deck: timer left, board and cues right ────────────────────────────── */
+  /* On a desktop the page is one screen: the deck takes whatever the header
+     and banner leave, both columns end on the same edge, and the cue list
+     scrolls inside its own panel. */
+  .kit-page { display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 700px; padding-bottom: 22px; }
+  .kit-page > .top, #message-banner { flex: none; }
+  .deck {
+    flex: 1; min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 18px;
+  }
+  #card-primary { grid-row: 1 / span 2; display: flex; flex-direction: column; padding: 22px 28px 28px; min-height: 0; }
+  #card-message, #card-cues { grid-column: 2; }
+  #card-cues { display: flex; flex-direction: column; min-height: 0; }
+  #card-cues-editor { flex: none; }
 
-  /* layout */
-  .stage{flex:1;max-width:900px;width:100%;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
-  .card{border:1px solid #333;padding:16px}
-  .card h2{font-size:.68rem;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:12px}
+  /* ── primary timer ─────────────────────────────────────────────────────── */
+  #primary { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; }
+  /* the clock takes every pixel the controls leave; its size follows the
+     box (and the number of characters on it, set from JS as data-len) */
+  .time-box {
+    flex: 1 1 0; min-height: 150px; align-self: stretch;
+    display: grid; place-items: center;
+    container-type: size;
+  }
+  .primary-label {
+    display: block; width: 100%; max-width: 520px;
+    padding: 6px 10px;
+    border: 1px solid transparent; border-radius: var(--r-s);
+    background: none; text-align: center;
+    font-family: var(--f-display); font-size: 16px; font-weight: 600;
+    letter-spacing: .22em; text-transform: uppercase;
+    color: var(--ink-soft);
+    transition: border-color .15s, color .15s;
+  }
+  .primary-label:hover { border-color: var(--rule); }
+  .primary-label:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--ink); }
+  .big-time {
+    --w: 24cqi;
+    padding: 0 .1em;
+    border-radius: var(--r-l);
+    font-family: var(--f-display); font-weight: 600;
+    font-size: max(64px, min(var(--w), 92cqh)); line-height: .95;
+    letter-spacing: .01em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .big-time[data-len="5"] { --w: 41cqi; }
+  .big-time[data-len="6"] { --w: 35cqi; }
+  .big-time[data-len="7"] { --w: 30cqi; }
+  .big-time[data-len="8"] { --w: 27cqi; }
+  .state-normal { color: var(--ink); }
+  .state-run    { color: var(--ink); }
+  .state-warn   { color: var(--warn); }
+  .state-crit, .state-over { color: var(--alert); }
+  /* the digits stay full strength; the blink is a tinted field behind them */
+  .blink { animation: blink 1s steps(1, end) infinite; }
+  @keyframes blink { 0% { background: color-mix(in srgb, var(--alert) 16%, transparent); } 50% { background: transparent; } }
 
-  /* primary timer */
-  #primary{text-align:center}
-  .primary-label{display:block;width:100%;text-align:center;border:none;color:#888;
-    font-size:1rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px}
-  .primary-label:focus{outline:none;color:#fff}
-  .big-time{font-size:clamp(4rem,22vw,12rem);font-weight:bold;line-height:1;letter-spacing:2px;font-variant-numeric:tabular-nums}
-  .state-normal,.state-run{color:#fff}
-  .state-warn{color:#ff0}
-  .state-crit,.state-over{color:#f00}
-  .blink{animation:blink 1s steps(2,start) infinite}
-  @keyframes blink{50%{opacity:.2}}
+  .mode-tabs { width: 100%; max-width: 440px; margin: 14px 0 16px; }
 
-  .mode-tabs{display:flex;gap:6px;justify-content:center;margin:14px 0 10px;flex-wrap:wrap}
-  .tab{border:1px solid #444;background:#000;color:#888;padding:8px 16px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;font-size:.78rem}
-  .tab:hover{background:#222;color:#fff}
-  .tab.active{background:#fff;color:#000}
+  .timer-inputs { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .duration-field, .clock-field {
+    width: 150px; height: 48px;
+    font-family: var(--f-display); font-size: 26px; font-weight: 600;
+    letter-spacing: .06em; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .clock-field { width: 180px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  button.chip, button.quick {
+    height: 36px; padding: 0 14px;
+    border: 1px solid var(--rule-hi); border-radius: 999px;
+    background: none; cursor: pointer;
+    font-family: var(--f-display); font-size: 15px; font-weight: 500; letter-spacing: .05em;
+    color: var(--ink-soft); font-variant-numeric: tabular-nums;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  button.chip::before { display: none; }
+  button.chip:hover, button.quick:hover { border-color: var(--ink-faint); color: var(--ink); background: var(--hover); }
 
-  .timer-inputs{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-  .duration-field,.clock-field{border:1px solid #444;font-size:1.6rem;font-weight:bold;text-align:center;
-    width:170px;height:50px;letter-spacing:2px;font-variant-numeric:tabular-nums}
-  .duration-field:focus,.clock-field:focus{outline:none;border-color:#fff}
-  .presets{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
-  .chip{border:1px solid #444;padding:7px 10px;cursor:pointer;font-size:.8rem}
-  .chip:hover{background:#222}
+  .primary-controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
+  .primary-controls .btn { height: 52px; transition: none; min-width: 150px; padding: 0 32px; font-size: 15px; letter-spacing: .18em; }
+  .primary-controls .btn.pause { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: var(--tint); }
+  .nudges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .nudge {
+    height: 36px; min-width: 64px; padding: 0 12px;
+    border: 1px solid var(--rule); border-radius: 999px;
+    background: var(--well); cursor: pointer;
+    font-family: var(--f-display); font-size: 15px; font-weight: 500; letter-spacing: .04em;
+    color: var(--ink-faint); font-variant-numeric: tabular-nums;
+    transition: border-color .15s, color .15s;
+  }
+  .nudge:hover { border-color: var(--rule-hi); color: var(--ink); }
 
-  .primary-controls{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
-  .btn{border:1px solid #444;height:50px;padding:0 26px;cursor:pointer;text-transform:uppercase;letter-spacing:2px;font-size:1rem;font-weight:bold}
-  .btn:hover{background:#222}
-  .btn.go{border-color:#0c0;color:#0f0}
-  .btn.go:hover{background:#031003}
-  .btn.pause{border-color:#cc0;color:#ff0}
-  .btn.pause:hover{background:#100f03}
-  .nudges{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:8px}
-  .nudge{border:1px solid #333;color:#888;height:36px;min-width:56px;padding:0 10px;cursor:pointer;font-size:.85rem}
-  .nudge:hover{background:#222;color:#fff}
+  /* ── message board ─────────────────────────────────────────────────────── */
+  .msg-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .msg-btn { width: 100%; padding: 0 10px; }
+  .msg-btn[data-msg]::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--m); flex: none; }
+  .msg-btn[data-msg="STANDBY"]  { --m: var(--warn); }
+  .msg-btn[data-msg="GO"]       { --m: var(--ok); }
+  .msg-btn[data-msg="HOLD"]     { --m: var(--alert); }
+  .msg-btn[data-msg="BLACKOUT"] { --m: var(--ink-faint); }
+  .msg-btn[data-msg]:hover { border-color: color-mix(in srgb, var(--m) 55%, transparent); }
+  #card-message .hint { margin: 12px 0 0; }
 
-  /* message board */
-  .msg-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .msg-row input{flex:1;min-width:150px;height:42px;border:1px solid #444;padding:0 12px;font-size:1rem}
-  .msg-row input:focus{outline:none;border-color:#fff}
-  .msg-btn{height:42px;padding:0 14px;border:1px solid #444;cursor:pointer;letter-spacing:2px;font-size:.78rem}
-  .msg-btn:hover{background:#222}
-  .msg-btn[data-msg=GO]{color:#0f0;border-color:#0c0}
-  .msg-btn[data-msg=STANDBY]{color:#ff0;border-color:#cc0}
-  .msg-btn[data-msg=HOLD]{color:#f00;border-color:#c00}
+  /* ── cues ──────────────────────────────────────────────────────────────── */
+  .cue-add { display: grid; grid-template-columns: 1fr 128px; gap: 8px; }
+  .cue-add #cue-name { text-transform: uppercase; }
+  .cue-add #cue-name::placeholder { text-transform: none; letter-spacing: 0; }
+  .cue-add #cue-time { font-variant-numeric: tabular-nums; }
+  .cue-quick { display: flex; align-items: center; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .cue-quick .lbl { margin-right: 4px; }
+  .cue-quick #cue-add-btn { margin-left: auto; }
+  .cue-list {
+    flex: 1; min-height: 0; overflow-y: auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; gap: 10px;
+    margin: 8px -6px 0; padding: 10px 6px 28px;  /* room for the NEXT tag above, and to scroll clear of the fade */
+  }
+  /* more cards below: the list fades out over its last 28px */
+  .cue-list.more {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  }
+  .cue {
+    position: relative; min-width: 0;
+    padding: 14px 16px 13px;
+    border: 1px solid var(--rule); border-radius: var(--r-m);
+    background: var(--well);
+    transition: border-color .2s, background .2s, opacity .2s;
+  }
+  .cue.next { border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 7%, var(--well)); }
+  .cue.fired { opacity: .42; }
+  .cue-name {
+    padding-right: 24px;
+    font-family: var(--f-display); font-size: 14px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--ink-soft);
+  }
+  .cue-count {
+    margin: 4px 0 1px;
+    font-family: var(--f-display); font-size: 34px; font-weight: 600; line-height: 1.05;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .cue.warn .cue-count { color: var(--warn); }
+  .cue.crit .cue-count { color: var(--alert); }
+  .cue.fired .cue-count { color: var(--ink-faint); }
+  .cue-at { font-size: 13px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .next-tag {
+    position: absolute; top: -9px; left: 14px;
+    padding: 1px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--on-accent);
+    font-family: var(--f-display); font-size: 11px; font-weight: 700; letter-spacing: .16em;
+  }
+  .cue-del {
+    position: absolute; top: 8px; right: 8px;
+    width: 26px; height: 26px; display: grid; place-items: center;
+    padding: 0; border: 0; border-radius: 50%; background: none;
+    color: var(--ink-faint); cursor: pointer;
+    transition: color .15s, background .15s;
+  }
+  .cue-del svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; pointer-events: none; }
+  .cue-del:hover { color: var(--alert); background: color-mix(in srgb, var(--alert) 10%, transparent); }
+  .empty { grid-column: 1 / -1; padding: 22px 12px; border: 1px dashed var(--rule-hi); border-radius: var(--r-m); text-align: center; font-size: 14px; color: var(--ink-faint); }
 
-  /* cues */
-  .cue-add{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-  .cue-add input{height:42px;border:1px solid #444;padding:0 10px;font-size:.95rem}
-  .cue-add input[type=text]{flex:1;min-width:140px;text-transform:uppercase}
-  .cue-add input[type=time]{width:120px;font-variant-numeric:tabular-nums}
-  .cue-add .chip{height:42px;display:inline-flex;align-items:center}
-  .cue-add .add{height:42px;padding:0 18px;border:1px solid #fff;cursor:pointer;letter-spacing:2px;text-transform:uppercase}
-  .cue-add .add:hover{background:#fff;color:#000}
-  .cue-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
-  .cue{border:1px solid #333;padding:12px;position:relative}
-  .cue.next{border-color:#fff}
-  .cue.fired{opacity:.4}
-  .cue.warn{border-color:#cc0}
-  .cue.crit{border-color:#c00}
-  .cue-name{text-transform:uppercase;font-size:.84rem;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:18px;color:#ccc}
-  .cue-count{font-size:1.7rem;font-weight:bold;margin:6px 0 2px;font-variant-numeric:tabular-nums}
-  .cue.warn .cue-count{color:#ff0}
-  .cue.crit .cue-count{color:#f00}
-  .cue.fired .cue-count{color:#666}
-  .cue-at{font-size:.72rem;color:#777}
-  .next-tag{position:absolute;top:-8px;left:10px;background:#fff;color:#000;font-size:.58rem;letter-spacing:2px;padding:1px 6px}
-  .cue-del{position:absolute;top:5px;right:6px;border:none;background:none;color:#666;cursor:pointer;font-size:1.1rem;line-height:1}
-  .cue-del:hover{color:#f00}
-  .empty{color:#666;text-align:center;padding:14px;font-size:.9rem}
+  /* ── alert flash ───────────────────────────────────────────────────────── */
+  #flash { position: fixed; inset: 0; z-index: 90; background: var(--alert); opacity: 0; pointer-events: none; }
+  #flash.fire { animation: flashFire 1.6s ease-out; }
+  @keyframes flashFire { 0%,100% { opacity: 0 } 10% { opacity: .32 } 30% { opacity: 0 } 40% { opacity: .32 } 60% { opacity: 0 } 70% { opacity: .28 } }
 
-  /* alert flash */
-  #flash{position:fixed;inset:0;background:#f00;opacity:0;pointer-events:none;z-index:90}
-  #flash.fire{animation:flashFire 1.6s ease-out}
-  @keyframes flashFire{0%,100%{opacity:0}10%{opacity:.5}30%{opacity:0}40%{opacity:.5}60%{opacity:0}70%{opacity:.45}}
-
-  /* stage / display mode */
+  /* ── stage / display mode ──────────────────────────────────────────────── */
   body.stage-mode .brand small,
   body.stage-mode .mode-tabs,
   body.stage-mode .timer-inputs,
   body.stage-mode .nudges,
   body.stage-mode #card-message,
-  body.stage-mode #card-cues-editor{display:none}
-  body.stage-mode .stage{max-width:none}
-  body.stage-mode #card-primary{border:none;padding:6px}
-  body.stage-mode .big-time{font-size:clamp(6rem,32vw,22rem)}
-  body.stage-mode .primary-controls .btn.reset{display:none}
+  body.stage-mode #card-cues-editor { display: none !important; }
+  body.stage-mode .kit-page { max-width: none; padding-left: 24px; padding-right: 24px; }
+  body.stage-mode .deck { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  body.stage-mode #card-primary { grid-row: auto; padding: 4px 6px 12px; border-color: transparent; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body.stage-mode #card-cues { grid-column: 1; max-height: 34vh; }
+  body.stage-mode #card-cues .cue-list { margin-top: -6px; }
+  body.stage-mode .primary-controls .btn.reset { display: none; }
 
-  /* modals */
-  .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.85);padding:16px}
-  .modal.open{display:flex}
-  .modal .inner{border:1px solid #444;max-width:460px;width:100%;padding:20px;position:relative;background:#000}
-  .modal h3{margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;font-size:1rem}
-  .modal .close{position:absolute;top:8px;right:12px;font-size:22px;color:#888;cursor:pointer;background:none;border:none}
-  .kbd-row,.set-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #222;font-size:.9rem}
-  .kbd-row:last-child,.set-row:last-child{border:none}
-  kbd{border:1px solid #444;padding:2px 7px;font-size:.8rem}
-  .set-row label{color:#aaa}
-  .set-row input[type=number]{width:80px;height:36px;border:1px solid #444;text-align:center;font-weight:bold}
+  /* ── modals ────────────────────────────────────────────────────────────── */
+  .modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    background: color-mix(in srgb, var(--ground) 72%, transparent);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .modal.open { display: flex; }
+  .modal .inner { position: relative; width: 100%; max-width: 460px; background: var(--panel-solid); }
+  .modal .panel-h { margin-bottom: 8px; padding-right: 44px; }
+  .modal .close { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; }
+  .kbd-row, .set-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 14px;
+    padding: 11px 0; border-bottom: 1px solid var(--rule);
+    font-size: 14.5px; color: var(--ink-soft);
+  }
+  .kbd-row:last-of-type, .set-row:last-of-type { border-bottom: 0; }
+  .set-row label { cursor: pointer; }
+  .set-row .field { width: 96px; height: 38px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .modal .hint { margin: 14px 0 0; line-height: 1.6; }
 
-  @media (max-width:600px){
-    .stage{padding:12px}
-    .card{padding:13px}
+  /* ── narrow ────────────────────────────────────────────────────────────── */
+  /* below this the page stacks and scrolls; the clock sizes by width */
+  @media (max-width: 960px) {
+    .kit-page { height: auto; min-height: 0; }
+    .deck { display: flex; flex-direction: column; }
+    #card-primary { grid-row: auto; }
+    .time-box { flex: none; min-height: 0; padding: 6px 0; container-type: inline-size; }
+    .big-time { font-size: max(64px, min(var(--w), 46vh)); }
+    .cue-list { overflow: visible; padding-bottom: 4px; }
+    .cue-list.more { -webkit-mask-image: none; mask-image: none; }
+    body.stage-mode .kit-page { min-height: 100dvh; }
+    body.stage-mode .deck { flex: 1; }
+    body.stage-mode #card-cues { max-height: none; }
+  }
+  @media (max-width: 680px) {
+    .top { grid-template-columns: auto 1fr auto; grid-template-areas: "brand brand site" "wall keys keys"; row-gap: 14px; }
+    .top > .brand { grid-area: brand; }
+    .top > .wallclock { grid-area: wall; justify-self: start; font-size: 22px; padding: 3px 14px; }
+    .top > .top-actions { display: contents; }
+    .top-actions .site { grid-area: site; justify-self: end; padding-left: 0; margin-left: 0; border-left: 0; }
+    .top-actions .keys { grid-area: keys; justify-self: end; gap: 6px; }
+    #stage-btn { padding: 0 13px; }
+    #card-primary { padding: 20px 16px 24px; }
+    .primary-controls .btn { min-width: 0; flex: 1; padding: 0 18px; }
+    .msg-keys { grid-template-columns: repeat(2, 1fr); }
+    .msg-keys #msg-clear { grid-column: 1 / -1; }
+    .cue-add { grid-template-columns: 1fr 136px; }
+    /* chips in even grids, no orphans */
+    .timer-inputs { width: 100%; }
+    .presets { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+    .nudges { width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); }
+    .nudge { min-width: 0; padding: 0; }
+  }
+  @media (max-width: 440px) {
+    #stage-btn { width: 40px; padding: 0; }
+    #stage-btn .t { display: none; }
   }
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">CUE CLOCK<small>Stage Timer</small></div>
-    <div class="wallclock"><span id="wall">00:00:00</span><span class="ampm" id="wall-ampm"></span></div>
+<quiet-sky></quiet-sky>
+
+<main class="kit-page">
+  <header class="top">
+    <a class="brand" href="./">Cue Clock <small>Stage timer</small></a>
+    <div class="wallclock" aria-label="Wall clock"><span id="wall">00:00:00</span><span class="ampm" id="wall-ampm"></span></div>
     <div class="top-actions">
-      <button class="ibtn" id="sound-btn">SOUND ●</button>
-      <button class="ibtn" id="settings-btn">SET</button>
-      <button class="ibtn" id="help-btn">?</button>
-      <button class="ibtn" id="stage-btn">STAGE</button>
+      <div class="keys">
+        <button class="icon-btn" id="sound-btn" type="button" aria-label="Alert sound" title="Alert sound">
+          <svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="on-mark" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/><path class="off-mark" d="m16 9.5 5 5m0-5-5 5"/></svg>
+        </button>
+        <button class="icon-btn" id="settings-btn" type="button" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+        </button>
+        <button class="icon-btn" id="help-btn" type="button" aria-label="Shortcuts" title="Shortcuts">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><path d="M12 16.8v.2"/></svg>
+        </button>
+        <button class="btn" id="stage-btn" type="button" title="Stage display (F)">
+          <svg viewBox="0 0 24 24"><path d="M4 9V5h4M16 5h4v4M20 15v4h-4M8 19H4v-4"/></svg><span class="t">Stage</span>
+        </button>
+      </div>
+      <div class="site">
+        <a class="icon-btn" href="/" aria-label="isaiart.com home"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5h11V10"/></svg></a>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle light / dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+      </div>
     </div>
-  </div>
+  </header>
 
-  <div id="message-banner"></div>
+  <div id="message-banner" role="status" aria-live="polite"></div>
 
-  <main class="stage">
+  <div class="deck">
     <!-- PRIMARY TIMER -->
-    <section class="card" id="card-primary">
+    <section class="panel" id="card-primary">
       <div id="primary">
         <input class="primary-label" id="primary-label" value="STAGE TIMER" maxlength="40" spellcheck="false" aria-label="Timer label">
-        <div class="big-time state-normal" id="big-time">05:00</div>
+        <div class="time-box"><div class="big-time state-normal" id="big-time" data-len="5">05:00</div></div>
 
-        <div class="mode-tabs">
-          <button class="tab active" data-mode="countdown">Countdown</button>
-          <button class="tab" data-mode="stopwatch">Count Up</button>
-          <button class="tab" data-mode="target">To Clock Time</button>
+        <div class="mode-tabs seg" role="group" aria-label="Timer mode">
+          <button class="tab active" type="button" data-mode="countdown">Countdown</button>
+          <button class="tab" type="button" data-mode="stopwatch">Count up</button>
+          <button class="tab" type="button" data-mode="target">To clock time</button>
         </div>
 
         <div class="timer-inputs" id="inputs-countdown">
-          <input class="duration-field" id="duration-input" value="05:00" inputmode="numeric" aria-label="Duration mm:ss" spellcheck="false">
+          <input class="field duration-field" id="duration-input" value="05:00" inputmode="numeric" aria-label="Duration mm:ss" spellcheck="false">
           <div class="presets">
-            <button class="chip" data-min="1">1:00</button>
-            <button class="chip" data-min="5">5:00</button>
-            <button class="chip" data-min="10">10:00</button>
-            <button class="chip" data-min="15">15:00</button>
-            <button class="chip" data-min="20">20:00</button>
-            <button class="chip" data-min="30">30:00</button>
+            <button class="chip" type="button" data-min="1">1:00</button>
+            <button class="chip" type="button" data-min="5">5:00</button>
+            <button class="chip" type="button" data-min="10">10:00</button>
+            <button class="chip" type="button" data-min="15">15:00</button>
+            <button class="chip" type="button" data-min="20">20:00</button>
+            <button class="chip" type="button" data-min="30">30:00</button>
           </div>
         </div>
         <div class="timer-inputs" id="inputs-target" style="display:none">
-          <input type="time" class="clock-field" id="target-input" step="60" aria-label="Target clock time">
+          <input type="time" class="field clock-field" id="target-input" step="60" aria-label="Target clock time">
         </div>
 
         <div class="primary-controls">
-          <button class="btn go" id="start-btn">START</button>
-          <button class="btn reset" id="reset-btn">RESET</button>
+          <button class="btn btn-go go" id="start-btn" type="button">START</button>
+          <button class="btn reset" id="reset-btn" type="button">RESET</button>
         </div>
         <div class="nudges" id="nudges">
-          <button class="nudge" data-sec="-60">&minus;1:00</button>
-          <button class="nudge" data-sec="-10">&minus;0:10</button>
-          <button class="nudge" data-sec="10">+0:10</button>
-          <button class="nudge" data-sec="60">+1:00</button>
-          <button class="nudge" data-sec="300">+5:00</button>
+          <button class="nudge" type="button" data-sec="-60">&minus;1:00</button>
+          <button class="nudge" type="button" data-sec="-10">&minus;0:10</button>
+          <button class="nudge" type="button" data-sec="10">+0:10</button>
+          <button class="nudge" type="button" data-sec="60">+1:00</button>
+          <button class="nudge" type="button" data-sec="300">+5:00</button>
         </div>
       </div>
     </section>
 
     <!-- MESSAGE BOARD -->
-    <section class="card" id="card-message">
-      <h2>Message to display</h2>
-      <div class="msg-row">
-        <input id="msg-input" placeholder="Type a custom message…" maxlength="60">
-        <button class="msg-btn" data-msg="STANDBY">STANDBY</button>
-        <button class="msg-btn" data-msg="GO">GO</button>
-        <button class="msg-btn" data-msg="HOLD">HOLD</button>
-        <button class="msg-btn" data-msg="BLACKOUT">BLACKOUT</button>
-        <button class="msg-btn" id="msg-clear">CLEAR</button>
+    <section class="panel" id="card-message">
+      <h2 class="panel-h">Message to display</h2>
+      <input class="field" id="msg-input" placeholder="Type a custom message…" maxlength="60" aria-label="Custom message">
+      <div class="msg-keys">
+        <button class="btn sm msg-btn" type="button" data-msg="STANDBY">Standby</button>
+        <button class="btn sm msg-btn" type="button" data-msg="GO">Go</button>
+        <button class="btn sm msg-btn" type="button" data-msg="HOLD">Hold</button>
+        <button class="btn sm msg-btn" type="button" data-msg="BLACKOUT">Blackout</button>
+        <button class="btn sm msg-btn" type="button" id="msg-clear">Clear</button>
       </div>
+      <p class="hint">Enter shows your own text. <kbd>G</kbd> GO, <kbd>S</kbd> STANDBY, <kbd>Esc</kbd> clears.</p>
     </section>
 
     <!-- CUE LIST -->
-    <section class="card" id="card-cues">
-      <h2>Cues</h2>
+    <section class="panel" id="card-cues">
+      <h2 class="panel-h">Cues</h2>
       <div id="card-cues-editor">
         <div class="cue-add">
-          <input type="text" id="cue-name" placeholder="CUE NAME (e.g. HOUSE OPEN)" maxlength="32">
-          <input type="time" id="cue-time" step="60">
-          <button class="chip" data-cuemin="15">+15m</button>
-          <button class="chip" data-cuemin="30">+30m</button>
-          <button class="chip" data-cuemin="60">+60m</button>
-          <button class="add" id="cue-add-btn">Add Cue</button>
+          <input class="field" type="text" id="cue-name" placeholder="Cue name" maxlength="32" aria-label="Cue name">
+          <input class="field" type="time" id="cue-time" step="60" aria-label="Cue clock time">
+        </div>
+        <div class="cue-quick">
+          <span class="lbl">From now</span>
+          <button class="quick" type="button" data-cuemin="15">+15m</button>
+          <button class="quick" type="button" data-cuemin="30">+30m</button>
+          <button class="quick" type="button" data-cuemin="60">+60m</button>
+          <button class="btn sm" id="cue-add-btn" type="button">Add cue</button>
         </div>
       </div>
       <div class="cue-list" id="cue-list"></div>
     </section>
-  </main>
+  </div>
+</main>
 
-  <div id="flash"></div>
+<div id="flash"></div>
 
-  <!-- Help modal -->
-  <div class="modal" id="help-modal"><div class="inner">
-    <button class="close" data-close>&times;</button>
-    <h3>Shortcuts</h3>
-    <div class="kbd-row"><span>Start / Pause timer</span><kbd>Space</kbd></div>
-    <div class="kbd-row"><span>Reset timer</span><kbd>R</kbd></div>
-    <div class="kbd-row"><span>Stage / display mode</span><kbd>F</kbd></div>
-    <div class="kbd-row"><span>Flash GO</span><kbd>G</kbd></div>
-    <div class="kbd-row"><span>Flash STANDBY</span><kbd>S</kbd></div>
-    <div class="kbd-row"><span>Clear message</span><kbd>Esc</kbd></div>
-    <p style="margin-top:12px;color:#888;font-size:.84rem;line-height:1.6">
-      COUNTDOWN times a segment. COUNT UP tracks running time. TO CLOCK TIME counts down to curtain (e.g. 19:30). At zero the timer flashes, beeps, and rolls into red overtime.</p>
-  </div></div>
+<!-- Help modal -->
+<div class="modal" id="help-modal"><div class="inner panel" role="dialog" aria-modal="true" aria-label="Shortcuts">
+  <button class="close icon-btn" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg></button>
+  <h3 class="panel-h">Shortcuts</h3>
+  <div class="kbd-row"><span>Start / pause timer</span><kbd>Space</kbd></div>
+  <div class="kbd-row"><span>Reset timer</span><kbd>R</kbd></div>
+  <div class="kbd-row"><span>Stage / display mode</span><kbd>F</kbd></div>
+  <div class="kbd-row"><span>Flash GO</span><kbd>G</kbd></div>
+  <div class="kbd-row"><span>Flash STANDBY</span><kbd>S</kbd></div>
+  <div class="kbd-row"><span>Clear message</span><kbd>Esc</kbd></div>
+  <p class="hint">Countdown times a segment. Count up tracks running time. To clock time counts down to curtain (e.g. 19:30). At zero the timer flashes, beeps, and rolls into red overtime.</p>
+</div></div>
 
-  <!-- Settings modal -->
-  <div class="modal" id="settings-modal"><div class="inner">
-    <button class="close" data-close>&times;</button>
-    <h3>Settings</h3>
-    <div class="set-row"><label>Amber (warning) at — sec left</label><input type="number" id="set-warn" value="120" min="5" max="3600"></div>
-    <div class="set-row"><label>Red (critical) at — sec left</label><input type="number" id="set-crit" value="30" min="1" max="3600"></div>
-    <div class="set-row"><label>24-hour clock</label><input type="checkbox" id="set-24h"></div>
-    <div class="set-row"><label>Blink in critical / overtime</label><input type="checkbox" id="set-blink" checked></div>
-    <div class="set-row"><label>Alert sound at zero</label><input type="checkbox" id="set-sound" checked></div>
-  </div></div>
+<!-- Settings modal -->
+<div class="modal" id="settings-modal"><div class="inner panel" role="dialog" aria-modal="true" aria-label="Settings">
+  <button class="close icon-btn" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg></button>
+  <h3 class="panel-h">Settings</h3>
+  <div class="set-row"><label for="set-warn">Amber (warning) at, sec left</label><input class="field" type="number" id="set-warn" value="120" min="5" max="3600"></div>
+  <div class="set-row"><label for="set-crit">Red (critical) at, sec left</label><input class="field" type="number" id="set-crit" value="30" min="1" max="3600"></div>
+  <div class="set-row"><label for="set-24h">24-hour clock</label><input class="switch" type="checkbox" id="set-24h"></div>
+  <div class="set-row"><label for="set-blink">Blink in critical / overtime</label><input class="switch" type="checkbox" id="set-blink" checked></div>
+  <div class="set-row"><label for="set-sound">Alert sound at zero</label><input class="switch" type="checkbox" id="set-sound" checked></div>
+</div></div>
 
 <script>
 "use strict";
@@ -375,15 +558,15 @@ function setDurationFromInput(){
 }
 function renderControls(){
   const btn=$('start-btn');
-  if(P.mode==='target'){ btn.textContent = P.running?'ARMED':'ARM ALERT'; btn.className='btn '+(P.running?'pause':'go'); }
-  else { btn.textContent = P.running?'PAUSE':'START'; btn.className='btn '+(P.running?'pause':'go'); }
+  if(P.mode==='target'){ btn.textContent = P.running?'ARMED':'ARM ALERT'; btn.className='btn '+(P.running?'pause':'btn-go go'); }
+  else { btn.textContent = P.running?'PAUSE':'START'; btn.className='btn '+(P.running?'pause':'btn-go go'); }
 }
 
 /* ---------------- paint ---------------- */
 function paintPrimary(){
   const v=primaryValue();
   const big=$('big-time');
-  big.textContent=fmt(v,true);
+  big.textContent=fmt(v,true); big.dataset.len=big.textContent.length;
   let cls='state-normal';
   if(P.mode==='stopwatch'){ cls=P.running?'state-run':'state-normal'; }
   else {
@@ -426,7 +609,7 @@ function addCueRelative(min){
 function renderCues(){
   const list=$('cue-list');
   store.cues.sort((a,b)=>a.target-b.target);
-  if(!store.cues.length){ list.innerHTML='<div class="empty">No cues yet. Add curtain, places, house-open times above.</div>'; return; }
+  if(!store.cues.length){ list.innerHTML='<div class="empty">No cues yet. Add curtain, places, house-open times above.</div>'; fadeCues(); return; }
   const upcoming = store.cues.filter(c=>c.target-now()>0).sort((a,b)=>a.target-b.target)[0];
   list.innerHTML = store.cues.map(c=>{
     const d=new Date(c.target);
@@ -435,12 +618,18 @@ function renderCues(){
       : `${(d.getHours()%12)||12}:${pad(d.getMinutes())} ${d.getHours()>=12?'PM':'AM'}`;
     return `<div class="cue" data-id="${c.id}" data-target="${c.target}" data-next="${upcoming&&upcoming.id===c.id?1:0}">
       ${upcoming&&upcoming.id===c.id?'<span class="next-tag">NEXT</span>':''}
-      <button class="cue-del" data-del="${c.id}">&times;</button>
+      <button class="cue-del" type="button" data-del="${c.id}" aria-label="Delete cue"><svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg></button>
       <div class="cue-name">${escapeHtml(c.name)}</div>
       <div class="cue-count">--:--</div>
       <div class="cue-at">at ${at}</div>
     </div>`;
   }).join('');
+  fadeCues();
+}
+/* fade the list's foot only while there is more to scroll to */
+function fadeCues(){
+  const l=$('cue-list');
+  l.classList.toggle('more', l.scrollHeight-l.clientHeight-l.scrollTop>2);
 }
 function paintCues(){
   document.querySelectorAll('#cue-list .cue').forEach(el=>{
@@ -461,9 +650,10 @@ function paintCues(){
 function setMessage(text,kind){ store.message = text?{text,kind:kind||'custom'}:null; save(); paintMessage(); }
 function paintMessage(){
   const b=$('message-banner');
-  if(!store.message){ b.className=''; b.textContent=''; return; }
+  if(!store.message){ b.className=''; b.textContent=''; fadeCues(); return; }
   b.className='show '+(store.message.kind||'custom');
   b.textContent=store.message.text;
+  fadeCues();
 }
 
 /* ---------------- loop ---------------- */
@@ -504,6 +694,9 @@ function init(){
   $('cue-name').addEventListener('keydown',e=>{if(e.key==='Enter'&&$('cue-time').value){addCue($('cue-name').value.trim(),$('cue-time').value);$('cue-name').value='';}});
   document.querySelectorAll('[data-cuemin]').forEach(c=>c.addEventListener('click',()=>addCueRelative(+c.dataset.cuemin)));
   $('cue-list').addEventListener('click',e=>{ const del=e.target.dataset.del; if(del){ store.cues=store.cues.filter(c=>c.id!==del); save(); renderCues(); }});
+  $('cue-list').addEventListener('scroll',fadeCues,{passive:true});
+  window.addEventListener('resize',fadeCues);
+  document.addEventListener('fullscreenchange',fadeCues);
 
   $('stage-btn').addEventListener('click',toggleStage);
   $('sound-btn').addEventListener('click',()=>{SET.sound=!SET.sound;save();updateSoundBtn();if(SET.sound)beep(1);});
@@ -530,10 +723,11 @@ function init(){
 
   renderCues(); paintMessage(); startLoop();
 }
-function updateSoundBtn(){ const b=$('sound-btn'); b.classList.toggle('on',SET.sound); b.textContent = SET.sound?'SOUND ●':'SOUND ○'; }
+function updateSoundBtn(){ const b=$('sound-btn'); b.classList.toggle('on',SET.sound); b.setAttribute('aria-pressed',SET.sound?'true':'false'); b.title = SET.sound?'Alert sound on':'Alert sound off'; }
 function toggleStage(){
   const on=document.body.classList.toggle('stage-mode');
   $('stage-btn').classList.toggle('on',on);
+  fadeCues();
   try{ if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
        else if(!on && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }catch(e){}
 }

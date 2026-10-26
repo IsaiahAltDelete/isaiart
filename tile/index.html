@@ -3,137 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Tiling Tester</title>
+    <title>Tile</title>
+    <meta name="description" content="See how an image repeats as a tiled pattern: tile size, gap and rotation, live in the browser.">
+
+    <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/kit.css?v=1">
+    <script src="../assets/kit.js?v=1"></script>
+    <script src="../assets/sky.js?v=1" defer></script>
     <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f0f0f0;
+
+        .work {
+            display: grid;
+            grid-template-columns: 360px minmax(0, 1fr);
+            gap: 18px;
+            align-items: start;
         }
-        
-        .controls {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+
+        /* controls */
+        .controls { display: flex; flex-direction: column; gap: 22px; }
+        .group { display: flex; flex-direction: column; gap: 18px; }
+        .group + .group { padding-top: 22px; border-top: 1px solid var(--rule); }
+        .group .panel-h { margin-bottom: 0; }
+
+        .drop { min-height: 168px; gap: 8px; }
+        .drop strong { font-size: 18px; }
+        .preview-image {
+            display: none;
+            max-width: 100%;
+            max-height: 120px;
+            border-radius: var(--r-s);
+            box-shadow: 0 0 0 1px var(--rule-hi);
         }
-        
-        .slider-container {
-            margin-bottom: 15px;
+        /* once a picture is in, its thumbnail stands where the icon was */
+        .drop:has(.preview-image[style*="block"]) .drop-ico { display: none; }
+
+        .error-message {
+            display: none;
+            margin-top: -8px;
+            font-size: 13.5px;
+            color: var(--alert);
         }
-        
-        .slider-container label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        
+
         .slider-info {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            margin: 10px 0;
+            margin-top: -2px;
+            font-size: 12.5px;
+            color: var(--ink-faint);
+            font-variant-numeric: tabular-nums;
         }
 
-        .file-upload {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .file-upload label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-
-        .preview-image {
-            max-width: 200px;
-            margin-top: 10px;
-            display: none;
-        }
-        
-        .preview-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
+        /* preview */
+        .stage { display: flex; flex-direction: column; padding: 16px; }
+        .stage .panel-h { margin: 4px 6px 14px; }
         #imagePreview {
-            width: 100%;
-            height: 400px;
-            border: 1px solid #ddd;
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        .tile-container {
-            width: 100%;
-            height: 100%;
             position: relative;
+            width: 100%;
+            height: clamp(420px, calc(100vh - 210px), 820px);
+            overflow: hidden;
+            border-radius: var(--r-m);
+        }
+        .tile-container { width: 100%; height: 100%; position: relative; }
+        .tile-container img { display: block; user-select: none; -webkit-user-drag: none; }
+        #imagePreview.over { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); }
+
+        .empty-note {
+            position: absolute; left: 50%; bottom: 18px; z-index: 2;
+            transform: translateX(-50%);
+            padding: 8px 18px;
+            border: 1px solid var(--rule);
+            border-radius: 999px;
+            background: var(--panel-solid);
+            color: var(--ink-soft);
+            font-size: 13.5px;
+            white-space: nowrap;
+            pointer-events: none;
         }
 
-        .error-message {
-            color: #d32f2f;
-            margin-top: 5px;
-            display: none;
+        @media (max-width: 900px) {
+            .work { grid-template-columns: minmax(0, 1fr); }
+            #imagePreview { height: 380px; }
+        }
+        @media (max-width: 680px) {
+            .stage { padding: 12px; }
+            .drop { min-height: 136px; padding: 20px; }
+            #imagePreview { height: 340px; }
+            .empty-note { white-space: normal; text-align: center; width: max-content; max-width: calc(100% - 32px); }
         }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <div class="file-upload">
-            <label for="imageUpload">Upload Image</label>
-            <input type="file" id="imageUpload" accept="image/*">
-            <img id="uploadPreview" class="preview-image" alt="Upload preview">
-            <div id="errorMessage" class="error-message"></div>
-        </div>
+<quiet-sky></quiet-sky>
 
-        <div class="slider-container">
-            <label for="imageSize">Image Size</label>
-            <input type="range" id="imageSize" min="50" max="200" value="100">
-            <div class="slider-info">
-                <span>50px</span>
-                <span id="imageSizeValue">100px</span>
-                <span>200px</span>
-            </div>
+<main class="kit-page">
+    <header class="top">
+        <a class="brand" href="./">Tile <small>repeat preview</small></a>
+        <div class="top-actions">
+            <a class="icon-btn" href="/" aria-label="isaiart.com home"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5h11V10"/></svg></a>
+            <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle light / dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
         </div>
-        
-        <div class="slider-container">
-            <label for="gapSize">Gap Size</label>
-            <input type="range" id="gapSize" min="0" max="50" value="0">
-            <div class="slider-info">
-                <span>0px</span>
-                <span id="gapSizeValue">0px</span>
-                <span>50px</span>
+    </header>
+
+
+    <div class="work">
+        <section class="panel controls" aria-label="Controls">
+            <div class="group file-upload">
+                <h2 class="panel-h">Image</h2>
+                <label class="drop" id="dropZone" for="imageUpload">
+                    <input class="sr-only" type="file" id="imageUpload" accept="image/*">
+                    <span class="drop-ico"><svg viewBox="0 0 24 24"><path d="M12 15.5V5"/><path d="m7.5 9.5 4.5-4.5 4.5 4.5"/><path d="M5 15v3.5h14V15"/></svg></span>
+                    <img id="uploadPreview" class="preview-image" alt="Upload preview">
+                    <strong>Drop an image</strong>
+                    <span class="hint">or click to choose one</span>
+                </label>
+                <div id="errorMessage" class="error-message" role="alert"></div>
             </div>
-        </div>
-        
-        <div class="slider-container">
-            <label for="rotation">Rotation</label>
-            <input type="range" id="rotation" min="0" max="360" value="0">
-            <div class="slider-info">
-                <span>0°</span>
-                <span id="rotationValue">0°</span>
-                <span>360°</span>
+
+            <div class="group">
+                <h2 class="panel-h">Tiles</h2>
+
+                <div class="fld slider-container">
+                    <label class="lbl" for="imageSize">Tile size <span class="val" id="imageSizeValue">100px</span></label>
+                    <input class="range" type="range" id="imageSize" min="50" max="200" value="100">
+                    <div class="slider-info"><span>50px</span><span>200px</span></div>
+                </div>
+
+                <div class="fld slider-container">
+                    <label class="lbl" for="gapSize">Gap <span class="val" id="gapSizeValue">0px</span></label>
+                    <input class="range" type="range" id="gapSize" min="0" max="50" value="0">
+                    <div class="slider-info"><span>0px</span><span>50px</span></div>
+                </div>
+
+                <div class="fld slider-container">
+                    <label class="lbl" for="rotation">Rotation <span class="val" id="rotationValue">0°</span></label>
+                    <input class="range" type="range" id="rotation" min="0" max="360" value="0">
+                    <div class="slider-info"><span>0°</span><span>360°</span></div>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <section class="panel stage preview-container" aria-label="Preview">
+            <h2 class="panel-h">Preview</h2>
+            <div id="imagePreview" class="well">
+                <div class="tile-container"></div>
+                <div class="empty-note" id="emptyNote">A placeholder tile until you add an image. You can drop one here too.</div>
+            </div>
+        </section>
     </div>
 
-    <div class="preview-container">
-        <div id="imagePreview">
-            <div class="tile-container"></div>
-        </div>
-    </div>
+</main>
 
     <script>
         const imageSizeSlider = document.getElementById('imageSize');
@@ -146,54 +167,85 @@
         const imageUpload = document.getElementById('imageUpload');
         const uploadPreview = document.getElementById('uploadPreview');
         const errorMessage = document.getElementById('errorMessage');
+        const dropZone = document.getElementById('dropZone');
+        const previewBox = document.getElementById('imagePreview');
+        const emptyNote = document.getElementById('emptyNote');
 
         let uploadedImageUrl = null;
 
-        imageUpload.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        uploadedImageUrl = e.target.result;
-                        uploadPreview.src = uploadedImageUrl;
-                        uploadPreview.style.display = 'block';
-                        errorMessage.style.display = 'none';
-                        updateTiles();
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    errorMessage.textContent = 'Please upload an image file';
-                    errorMessage.style.display = 'block';
-                    uploadPreview.style.display = 'none';
-                }
+        function loadFile(file) {
+            if (!file) return;
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImageUrl = e.target.result;
+                    uploadPreview.src = uploadedImageUrl;
+                    uploadPreview.style.display = 'block';
+                    errorMessage.style.display = 'none';
+                    emptyNote.hidden = true;
+                    updateTiles();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                errorMessage.textContent = 'Please upload an image file';
+                errorMessage.style.display = 'block';
+                uploadPreview.style.display = 'none';
             }
+        }
+
+        imageUpload.addEventListener('change', function(e) {
+            loadFile(e.target.files[0]);
         });
+
+        // the drop zone and the preview both take a dropped file
+        [dropZone, previewBox].forEach(function (el) {
+            el.addEventListener('dragover', function (e) { e.preventDefault(); el.classList.add('over'); });
+            el.addEventListener('dragleave', function () { el.classList.remove('over'); });
+            el.addEventListener('drop', function (e) {
+                e.preventDefault();
+                el.classList.remove('over');
+                if (e.dataTransfer && e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+            });
+        });
+
+        // A quiet stand-in tile in the page's own greys, until there is an image.
+        function placeholderTile() {
+            const css = getComputedStyle(document.documentElement);
+            const fill = css.getPropertyValue('--panel-solid').trim() || '#111217';
+            const mark = css.getPropertyValue('--ink-faint').trim() || '#77777e';
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+                '<rect x="0.5" y="0.5" width="99" height="99" rx="10" fill="' + fill + '" stroke="' + mark + '" stroke-opacity=".28"/>' +
+                '<path d="M50 30 C52 44 56 48 70 50 C56 52 52 56 50 70 C48 56 44 52 30 50 C44 48 48 44 50 30Z" fill="' + mark + '" fill-opacity=".45"/>' +
+                '</svg>';
+            return 'data:image/svg+xml,' + encodeURIComponent(svg);
+        }
 
         function updateTiles() {
             const imageSize = parseInt(imageSizeSlider.value);
             const gapSize = parseInt(gapSizeSlider.value);
             const rotation = parseInt(rotationSlider.value);
-            
+
             // Update value displays
             imageSizeValue.textContent = `${imageSize}px`;
             gapSizeValue.textContent = `${gapSize}px`;
             rotationValue.textContent = `${rotation}°`;
-            
+
             // Clear existing tiles
             tileContainer.innerHTML = '';
-            
+
             // Calculate number of tiles needed
-            const containerWidth = document.getElementById('imagePreview').offsetWidth;
-            const containerHeight = document.getElementById('imagePreview').offsetHeight;
+            const containerWidth = previewBox.offsetWidth;
+            const containerHeight = previewBox.offsetHeight;
             const tilesAcross = Math.ceil(containerWidth / (imageSize + gapSize)) + 1;
             const tilesDown = Math.ceil(containerHeight / (imageSize + gapSize)) + 1;
-            
+            const src = uploadedImageUrl || placeholderTile();
+
             // Create tiles
             for (let y = 0; y < tilesDown; y++) {
                 for (let x = 0; x < tilesAcross; x++) {
                     const img = document.createElement('img');
-                    img.src = uploadedImageUrl || '/api/placeholder/' + imageSize + '/' + imageSize;
+                    img.src = src;
+                    img.alt = '';
                     img.style.position = 'absolute';
                     img.style.left = `${x * (imageSize + gapSize)}px`;
                     img.style.top = `${y * (imageSize + gapSize)}px`;
@@ -215,8 +267,9 @@
         // Initial render
         updateTiles();
 
-        // Update on window resize
+        // Update on window resize, and repaint the placeholder when the theme flips
         window.addEventListener('resize', updateTiles);
+        document.addEventListener('kit:theme', function () { if (!uploadedImageUrl) updateTiles(); });
     </script>
 </body>
 </html>
