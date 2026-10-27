@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f6f3ec">
+<title>Critic Loop</title>
+<meta name="description" content="A Claude skill that runs a build, critique, fix loop with a brutal expert critic until the work scores a pass mark.">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --paper: #f6f3ec;
+    --ink: #161616;
+    --soft: #6d6a63;
+    --line: #dcd7cb;
+    --red: #e2483d;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #141414;
+        --ink: #f1ede4;
+        --soft: #9c978c;
+        --line: #2c2b28;
+    }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 16px/1.6 Poppins, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+.page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 28px 16px 64px;
+}
+.back {
+    display: inline-flex;
+    width: 36px; height: 36px;
+    align-items: center; justify-content: center;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+    transition: background .15s, color .15s;
+}
+.back:hover { background: var(--ink); color: var(--paper); }
+
+.stage {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    max-width: 420px;
+    margin: 8px auto 0;
+    cursor: grab;
+    touch-action: pan-y;
+}
+.stage:active { cursor: grabbing; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+
+h1 {
+    margin: 4px 0 2px;
+    text-align: center;
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.tag {
+    margin: 0 0 28px;
+    text-align: center;
+    color: var(--soft);
+}
+.dl {
+    display: flex;
+    width: max-content;
+    margin: 0 auto 8px;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 22px;
+    background: var(--red);
+    color: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: 0 4px 0 var(--ink);
+    font: 600 16px/1 Poppins, sans-serif;
+    text-decoration: none;
+    transition: transform .1s, box-shadow .1s;
+}
+.dl:hover { transform: translateY(1px); box-shadow: 0 3px 0 var(--ink); }
+.dl:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+.dl svg { width: 18px; height: 18px; }
+.meta {
+    margin: 0 0 48px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--soft);
+}
+
+h2 {
+    margin: 40px 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+p { margin: 0 0 14px; }
+.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 2px solid var(--ink);
+}
+.steps li {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+}
+.steps b { font-weight: 600; }
+.steps .n { color: var(--red); font-weight: 700; }
+code {
+    font: 500 14px/1.5 ui-monospace, Consolas, monospace;
+    background: var(--line);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+.small { font-size: 14px; color: var(--soft); }
+
+@media (max-width: 480px) {
+    h1 { font-size: 32px; }
+}
+</style>
+</head>
+<body>
+
+<main class="page">
+    <a class="back" href="https://isaiart.com" aria-label="Back to isaiart.com">&larr;</a>
+
+    <div class="stage" id="stage" aria-label="A floppy disk labelled critic loop, slowly turning" role="img"></div>
+
+    <h1>Critic Loop</h1>
+    <p class="tag">A skill for Claude that won't call it done until an expert would.</p>
+
+    <a class="dl" href="critic-loop.skill" download="critic-loop.skill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        Download critic-loop.skill
+    </a>
+    <p class="meta">7 KB &middot; SKILL.md + two prompt templates</p>
+
+    <h2>What it is</h2>
+    <p>Ask Claude to make something subjective, like a page, a layout, some copy or a game screen, and it usually stops at "looks fine." This skill sets up a second agent whose only job is to be the harshest credible judge in that field: an art director, a staff engineer, a magazine editor. It scores the work from 1 to 10 against a pass mark, and Claude keeps fixing until it passes or runs out of attempts.</p>
+
+    <h2>The loop</h2>
+    <ol class="steps">
+        <li><span class="n">1</span><span><b>Set the rules.</b> Pick the persona, the pass mark (8.5 by default) and the attempt budget (3 by default). Choices you already made are locked so the critic can't argue you out of them.</span></li>
+        <li><span class="n">2</span><span><b>Build and gather evidence.</b> Real screenshots, files or renders the critic can inspect itself, so it grades the work and not the description of it.</span></li>
+        <li><span class="n">3</span><span><b>Get scored.</b> A calibrated scale, a two-line verdict and a ranked list of defects, each tied to something visible.</span></li>
+        <li><span class="n">4</span><span><b>Fix and resubmit to the same critic.</b> It marks each earlier note fixed or not before adding new ones, so the bar doesn't move between rounds.</span></li>
+        <li><span class="n">5</span><span><b>Report honestly.</b> The whole score history (7.1 &rarr; 7.8 &rarr; 8.6), whether it passed, and what's still on the list.</span></li>
+    </ol>
+
+    <h2>Install</h2>
+    <p>On claude.ai, upload the <code>.skill</code> file under Settings &rarr; Capabilities &rarr; Skills. For Claude Code, unzip it into <code>~/.claude/skills/</code>.</p>
+    <p class="small">Then just ask: "set up a critic and make this a 9," "grade this," or "you have 3 attempts."</p>
+</main>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="floppy.js?v=1"></script>
+</body>
+</html>
