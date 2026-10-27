@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sidetone Bench</title>
+<meta name="description" content="Hear your own mic in your headphones, live. Tune sidetone volume, add lag to feel latency, and record a clip to hear what callers hear.">
+<meta name="theme-color" content="#F2ECDF">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<style>
+/* Layout: one narrow bench column, a live signal strip up top, controls below in labelled bays. Cream paper, black ink. */
+:root {
+  --paper: #F2ECDF;
+  --paper-2: #E8E1D1;
+  --ink: #141210;
+  --ink-2: #57514A;
+  --ink-3: #8C857A;
+  --line: #CFC6B4;
+  --on-ink: #F2ECDF;
+  --hot: #B8401A;
+  --warm: #A87512;
+  --cool: #3F6B4E;
+  --d-ok: #8FCB9F; --d-warm: #E2AE4A; --d-hot: #F07A4C;
+  --display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.22,.8,.24,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #100F0D; --paper-2: #1B1916; --ink: #F2ECDF; --ink-2: #BDB5A6; --ink-3: #847D71;
+    --line: #34302A; --on-ink: #100F0D; --hot: #E8693E; --warm: #D9A441; --cool: #79B08A;
+    --d-ok: #2F5E3E; --d-warm: #8A5E0A; --d-hot: #A8380F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #100F0D; --paper-2: #1B1916; --ink: #F2ECDF; --ink-2: #BDB5A6; --ink-3: #847D71;
+  --line: #34302A; --on-ink: #100F0D; --hot: #E8693E; --warm: #D9A441; --cool: #79B08A;
+    --d-ok: #2F5E3E; --d-warm: #8A5E0A; --d-hot: #A8380F;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; }
+h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(34px, 7vw, 52px); font-weight: 800; line-height: 1; }
+h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-2); font-family: var(--body); }
+p { margin: 0; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: 13px; }
+
+header { display: grid; gap: 10px; }
+header .lede { max-width: 58ch; color: var(--ink-2); }
+
+.warn {
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 1.5px solid var(--ink); border-radius: 4px; padding: 12px 14px;
+  background: var(--paper-2);
+}
+.warn svg { flex: none; margin-top: 2px; }
+.warn strong { font-weight: 600; }
+
+/* Control strip */
+.deck {
+  background: var(--ink); color: var(--on-ink);
+  border-radius: 6px; padding: 18px; display: grid; gap: 16px;
+}
+.deck-top { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.go {
+  appearance: none; border: 0; cursor: pointer;
+  background: var(--on-ink); color: var(--ink);
+  font: 700 17px/1 var(--display); letter-spacing: .01em;
+  padding: 16px 26px 16px 20px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 12px;
+  position: relative; transition: transform .25s var(--ease), background .3s;
+}
+.go:hover { transform: translateY(-1px); }
+.go:active { transform: scale(.97); }
+.go:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible + .sw, input[type=range]:focus-visible { outline: 2px solid var(--warm); outline-offset: 3px; }
+.go .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ink); transition: background .3s, border-radius .3s var(--ease); }
+.go.live .dot { background: var(--hot); border-radius: 3px; }
+.go.live::after {
+  content: ""; position: absolute; inset: -5px; border-radius: 999px;
+  border: 1.5px solid var(--on-ink); opacity: .0; animation: ring 1.8s var(--ease) infinite;
+}
+@keyframes ring { 0% { opacity: .55; transform: scale(.96); } 100% { opacity: 0; transform: scale(1.08); } }
+.status { display: grid; gap: 2px; min-width: 0; }
+.status .s1 { font: 600 15px/1.2 var(--body); }
+.status .s2 { font-size: 13px; opacity: .7; }
+
+.big-lat { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.bl-v { font: 500 clamp(44px, 10vw, 64px)/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; transition: color .4s var(--ease); }
+.bl-v[data-zone="ok"] { color: var(--d-ok); } .bl-v[data-zone="warm"] { color: var(--d-warm); } .bl-v[data-zone="hot"] { color: var(--d-hot); }
+.bl-u { font: 500 18px var(--mono); opacity: .6; }
+.bl-k { font-size: 13px; opacity: .7; margin-left: 6px; }
+.hw { opacity: .7; margin-top: -8px; max-width: 62ch; }
+.lat { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; background: color-mix(in srgb, var(--on-ink) 18%, transparent); border-radius: 4px; overflow: hidden; }
+.lat > div { background: var(--ink); padding: 10px 12px; display: grid; gap: 2px; }
+.lat .k { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; opacity: .6; }
+.lat .v { font: 500 20px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.lat .v small { font-size: 12px; opacity: .6; margin-left: 2px; }
+.lat .total .v { color: var(--d-warm); }
+
+.meter-box { display: grid; gap: 8px; }
+.meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.meter-head .k { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; opacity: .6; }
+.meter-head .v { font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
+.clip { color: var(--d-hot); font-weight: 600; opacity: 0; transition: opacity .2s; }
+.clip.on { opacity: 1; }
+.meter { position: relative; height: 22px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--on-ink) 10%, transparent); }
+.meter .bar {
+  position: absolute; inset: 0; transform-origin: left center; transform: scaleX(0);
+  background: linear-gradient(90deg, var(--d-ok) 0%, var(--d-ok) 70%, var(--d-warm) 85%, var(--d-hot) 97%);
+  will-change: transform;
+}
+.meter .mask { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 5px, var(--ink) 5px 7px); opacity: .55; }
+.meter .peak { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--on-ink); left: 0; will-change: transform; }
+.scale { position: relative; height: 14px; font: 10px/1 var(--mono); opacity: .55; }
+.scale span { position: absolute; transform: translateX(-50%); }
+.scale span:first-child { transform: none; }
+.scale span:last-child { transform: translateX(-100%); }
+canvas.scope { width: 100%; height: 64px; display: block; }
+
+/* Bays */
+.bay { display: grid; gap: 14px; padding-top: 16px; border-top: 1.5px solid var(--ink); }
+.row { display: grid; gap: 6px; }
+.row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.row-head label { font-weight: 600; }
+.readout { font: 500 15px var(--mono); font-variant-numeric: tabular-nums; }
+.zone { font-size: 13px; color: var(--ink-2); min-height: 1.5em; transition: color .3s; }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; cursor: pointer; margin: 0;
+  --fill: 0%;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--ink) 0 var(--fill), var(--line) var(--fill) 100%);
+}
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--ink); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; margin-top: -8px;
+  background: var(--paper); border: 2px solid var(--ink); transition: transform .2s var(--ease);
+}
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); }
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.15); }
+.ticks { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--ink-3); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  appearance: none; cursor: pointer; font: 500 13px/1 var(--body);
+  color: var(--ink); background: transparent; border: 1.5px solid var(--ink);
+  border-radius: 999px; padding: 9px 14px; transition: background .25s var(--ease), color .25s;
+}
+.chip:hover, .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+.toggles { display: grid; gap: 10px; }
+.tog { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center; cursor: pointer; }
+.tog .t { font-weight: 600; }
+.tog .d { grid-column: 1; font-size: 13px; color: var(--ink-2); }
+.tog input { position: absolute; opacity: 0; pointer-events: none; }
+.sw { grid-column: 2; grid-row: 1 / span 2; width: 44px; height: 26px; border-radius: 999px; border: 1.5px solid var(--ink); position: relative; transition: background .3s var(--ease); }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: var(--ink); transition: transform .3s var(--ease), background .3s; }
+.tog input:checked + .sw { background: var(--ink); }
+.tog input:checked + .sw::after { transform: translateX(18px); background: var(--paper); }
+
+.devs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.devs .row { min-width: 0; }
+select {
+  width: 100%; font: 14px var(--body); color: var(--ink); background: var(--paper);
+  border: 1.5px solid var(--ink); border-radius: 4px; padding: 10px 12px; min-width: 0;
+}
+
+.rec { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  appearance: none; cursor: pointer; font: 600 14px/1 var(--body);
+  background: var(--ink); color: var(--paper); border: 1.5px solid var(--ink);
+  border-radius: 999px; padding: 12px 18px; display: inline-flex; gap: 8px; align-items: center;
+  transition: transform .2s var(--ease), opacity .2s;
+}
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn:not(:disabled):active { transform: scale(.97); }
+.progress { flex: 1 1 160px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; min-width: 120px; }
+.progress i { display: block; height: 100%; width: 100%; background: var(--hot); transform-origin: left; transform: scaleX(0); }
+
+.blocked {
+  border: 1.5px solid var(--hot); border-radius: 4px; padding: 14px; display: grid; gap: 10px;
+  background: color-mix(in srgb, var(--hot) 8%, var(--paper));
+}
+.blocked strong { color: var(--hot); }
+
+.notes { display: grid; gap: 8px; color: var(--ink-2); font-size: 13px; max-width: 64ch; }
+.notes b { color: var(--ink); font-weight: 600; }
+
+.fade { animation: rise .6s var(--ease) both; }
+.fade:nth-child(2) { animation-delay: .05s; } .fade:nth-child(3) { animation-delay: .1s; } .fade:nth-child(4) { animation-delay: .15s; }
+@keyframes rise { from { transform: translateY(8px); } to { transform: none; } }
+
+@media (max-width: 520px) {
+  .lat { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .deck { padding: 14px; }
+  .go { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="fade">
+    <h1>Sidetone Bench</h1>
+    <p class="lede">Hear your own mic in your headphones, live. Tune how loud it is, add lag to feel what latency does, and record a clip to hear what the other end gets.</p>
+  </header>
+
+  <div class="warn fade" role="note">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="3" y="13" width="4" height="7" rx="1.5" fill="currentColor"/><rect x="17" y="13" width="4" height="7" rx="1.5" fill="currentColor"/></svg>
+    <p><strong>Headphones on first.</strong> With speakers, your mic hears itself and you get a howl that will clear the room. Start with the volume low and bring it up.</p>
+  </div>
+
+  <div id="blocked" class="blocked" hidden>
+    <p><strong id="blockedTitle">The mic is blocked here.</strong> <span id="blockedText">This preview window doesn't let pages use a microphone. Save the page and open the file in Chrome or Edge, and it'll ask for your mic like a normal site.</span></p>
+    <div><button id="saveBtn" class="btn" type="button" hidden>Save page as HTML</button></div>
+    <p id="saveMsg" class="small muted" hidden></p>
+  </div>
+
+  <section class="deck fade" aria-label="Monitor">
+    <div class="deck-top">
+      <button id="go" class="go" type="button" aria-pressed="false"><span class="dot"></span><span id="goLabel">Start monitoring</span></button>
+      <div class="status" aria-live="polite">
+        <span id="s1" class="s1">Mic off</span>
+        <span id="s2" class="s2">Press start and allow the microphone</span>
+      </div>
+    </div>
+
+    <div class="big-lat">
+      <span id="bigLat" class="bl-v">–</span><span class="bl-u">ms</span>
+      <span class="bl-k">estimated lag, mic to ears</span>
+    </div>
+    <p class="small hw">Browsers always add a few milliseconds. For true zero-lag sidetone, use your headset's or audio interface's own hardware monitoring.</p>
+
+    <div class="lat" aria-label="Latency">
+      <div><span class="k">Audio engine</span><span id="lBase" class="v">–<small>ms</small></span></div>
+      <div><span class="k">Output</span><span id="lOut" class="v">–<small>ms</small></span></div>
+      <div><span class="k">Added delay</span><span id="lAdd" class="v">0<small>ms</small></span></div>
+      <div class="total"><span class="k">Est. total</span><span id="lTot" class="v">–<small>ms</small></span></div>
+    </div>
+
+    <div class="meter-box">
+      <div class="meter-head">
+        <span class="k">Input level</span>
+        <span class="v"><span id="rms">–∞</span> dBFS avg · <span id="pk">–∞</span> peak <span id="clip" class="clip">CLIP</span></span>
+      </div>
+      <div class="meter" aria-hidden="true"><div id="bar" class="bar"></div><div class="mask"></div><div id="peak" class="peak"></div></div>
+      <div class="scale" aria-hidden="true">
+        <span style="left:0%">−60</span><span style="left:25%">−45</span><span style="left:50%">−30</span><span style="left:66.67%">−20</span><span style="left:83.33%">−10</span><span style="left:100%">0</span>
+      </div>
+      <canvas id="scope" class="scope" aria-hidden="true"></canvas>
+    </div>
+  </section>
+
+  <section class="bay" aria-labelledby="h-tune">
+    <h2 id="h-tune">Tune</h2>
+    <div class="row">
+      <div class="row-head"><label for="vol">Monitor volume</label><span id="volOut" class="readout">40%</span></div>
+      <input id="vol" type="range" min="0" max="200" step="1" value="40">
+      <div class="ticks"><span>0</span><span>50</span><span>100%</span><span>150</span><span>200</span></div>
+      <p id="volNote" class="zone">Quiet, like the sidetone on a decent call-center headset.</p>
+    </div>
+    <div class="row">
+      <div class="row-head"><label for="dly">Added delay</label><span id="dlyOut" class="readout">0 ms</span></div>
+      <input id="dly" type="range" min="0" max="500" step="5" value="0">
+      <div class="ticks"><span>0</span><span>125</span><span>250</span><span>375</span><span>500 ms</span></div>
+      <p id="dlyNote" class="zone">No extra lag. You only hear what your gear adds on its own.</p>
+    </div>
+    <div class="presets" role="group" aria-label="Presets">
+      <button class="chip" type="button" data-v="35" data-d="0">Headset sidetone</button>
+      <button class="chip" type="button" data-v="100" data-d="0">Full monitor</button>
+      <button class="chip" type="button" data-v="100" data-d="120">Bad VoIP echo</button>
+      <button class="chip" type="button" data-v="100" data-d="200">Tongue twister</button>
+    </div>
+  </section>
+
+  <section class="bay" aria-labelledby="h-proc">
+    <h2 id="h-proc">Mic processing</h2>
+    <p class="small muted">Real sidetone is the raw mic, so these start off. Turn them on to hear what your browser does to your voice before anyone else gets it.</p>
+    <div class="toggles">
+      <label class="tog"><span class="t">Echo cancellation</span><input id="ec" type="checkbox"><span class="sw" aria-hidden="true"></span><span class="d">Tries to remove sound coming back from your speakers. Often guts your own monitor.</span></label>
+      <label class="tog"><span class="t">Noise suppression</span><input id="ns" type="checkbox"><span class="sw" aria-hidden="true"></span><span class="d">Cuts fans, keyboards and the coworker in the next cubicle.</span></label>
+      <label class="tog"><span class="t">Auto gain</span><input id="agc" type="checkbox"><span class="sw" aria-hidden="true"></span><span class="d">Rides your level up and down so quiet and loud moments even out.</span></label>
+    </div>
+  </section>
+
+  <section class="bay" aria-labelledby="h-dev">
+    <h2 id="h-dev">Devices</h2>
+    <div class="devs">
+      <div class="row">
+        <label for="inDev">Microphone</label>
+        <select id="inDev"><option value="">System default</option></select>
+      </div>
+      <div class="row" id="outRow">
+        <label for="outDev">Headphones</label>
+        <select id="outDev"><option value="">System default</option></select>
+      </div>
+    </div>
+    <p id="devNote" class="small muted">Device names show up after you allow the mic.</p>
+  </section>
+
+  <section class="bay" aria-labelledby="h-rec">
+    <h2 id="h-rec">Record and compare</h2>
+    <p class="small muted">Records 5 seconds of your mic with the processing above, then plays it back. Your live monitor goes quiet during playback so you only hear the clip.</p>
+    <div class="rec">
+      <button id="recBtn" class="btn" type="button" disabled>Record 5 seconds</button>
+      <button id="playBtn" class="btn ghost" type="button" disabled>Play it back</button>
+      <div class="progress" aria-hidden="true"><i id="recBar"></i></div>
+    </div>
+    <p id="recMsg" class="small muted">Start monitoring to record.</p>
+  </section>
+
+  <section class="bay notes" aria-labelledby="h-notes">
+    <h2 id="h-notes">Reading the numbers</h2>
+    <p><b>Under about 10 ms</b> of total lag, your monitor blends with the voice you hear through your own skull. That's the target for good sidetone.</p>
+    <p><b>Around 20 to 50 ms</b> it stops sounding like you and starts sounding like a slapback echo.</p>
+    <p><b>Around 150 to 250 ms</b> is the zone of delayed auditory feedback, where most people start tripping over their words. Try reading a ticket note out loud on the Tongue twister preset.</p>
+    <p><b>Est. total</b> adds the browser's audio engine, output and mic figures to your added delay. Bluetooth headsets add a lot the browser can't see, often 100 ms or more, which is why wired or USB headsets sound so much better for this.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const BOOT_HTML = document.documentElement.outerHTML;
+  const $ = (id) => document.getElementById(id);
+  const S = { ctx: null, stream: null, src: null, delay: null, gain: null, an: null, running: false, raf: 0, peakHold: -Infinity, peakT: 0, ducked: false, clipUrl: null, rec: null, latTimer: 0 };
+  const inArtifact = !!(window.claude && typeof window.claude.use === "function");
+
+  // ---- slider fill + notes
+  const fill = (el) => el.style.setProperty("--fill", ((el.value - el.min) / (el.max - el.min) * 100) + "%");
+  const vol = $("vol"), dly = $("dly");
+  function volNote(v) {
+    if (v === 0) return "Muted. You won't hear yourself at all.";
+    if (v <= 25) return "A whisper of yourself. Some headsets ship this low.";
+    if (v <= 55) return "Quiet, like the sidetone on a decent call-center headset.";
+    if (v <= 110) return "Roughly your real voice level. Good for checking mic quality.";
+    if (v <= 150) return "Louder than life. Handy for hunting hiss and hum.";
+    return "Boosted past 100%. Watch for distortion and keep your ears happy.";
+  }
+  function dlyNote(d) {
+    if (d === 0) return "No extra lag. You only hear what your gear adds on its own.";
+    if (d < 15) return "Barely there. Still feels like your own voice.";
+    if (d < 60) return "Slapback echo territory. This is what a laggy headset feels like.";
+    if (d < 150) return "Clear echo, like a bad VoIP line bouncing you back.";
+    if (d <= 260) return "Delayed feedback zone. Try talking normally. Good luck.";
+    return "Full canyon echo. You'll hear each word land after you say it.";
+  }
+  function syncVol() {
+    fill(vol); const v = +vol.value;
+    $("volOut").textContent = v + "%"; $("volNote").textContent = volNote(v);
+    if (S.gain && !S.ducked) S.gain.gain.setTargetAtTime(v / 100, S.ctx.currentTime, 0.02);
+    markPreset();
+  }
+  function syncDly() {
+    fill(dly); const d = +dly.value;
+    $("dlyOut").textContent = d + " ms"; $("dlyNote").textContent = dlyNote(d);
+    $("lAdd").innerHTML = d + "<small>ms</small>";
+    if (S.delay) S.delay.delayTime.setTargetAtTime(d / 1000, S.ctx.currentTime, 0.03);
+    route();
+    showLatency(); markPreset();
+  }
+  vol.addEventListener("input", syncVol);
+  dly.addEventListener("input", syncDly);
+  const chips = [...document.querySelectorAll(".chip")];
+  chips.forEach((c) => c.addEventListener("click", () => {
+    vol.value = c.dataset.v; dly.value = c.dataset.d; syncVol(); syncDly();
+  }));
+  function markPreset() {
+    chips.forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.v === vol.value && c.dataset.d === dly.value)));
+  }
+
+  // ---- status helpers
+  function status(a, b) { $("s1").textContent = a; $("s2").textContent = b || ""; }
+  const fmt = (s) => (s == null || isNaN(s)) ? null : s * 1000;
+  function setV(id, ms) { $(id).innerHTML = (ms == null ? "–" : ms.toFixed(ms < 10 ? 1 : 0)) + "<small>ms</small>"; }
+  function showLatency() {
+    if (!S.ctx) { setV("lBase", null); setV("lOut", null); setV("lTot", null); $("bigLat").textContent = "–"; delete $("bigLat").dataset.zone; return; }
+    const base = fmt(S.ctx.baseLatency), out = fmt(S.ctx.outputLatency);
+    let mic = null;
+    try { const t = S.stream && S.stream.getAudioTracks()[0]; const l = t && t.getSettings().latency; if (typeof l === "number") mic = l * 1000; } catch (e) {}
+    setV("lBase", base); setV("lOut", out && out > 0 ? out : null);
+    const tot = (base || 0) + (out || 0) + (mic || 0) + (+dly.value);
+    setV("lTot", tot);
+    $("bigLat").textContent = tot.toFixed(tot < 10 ? 1 : 0);
+    $("bigLat").dataset.zone = tot < 12 ? "ok" : tot < 40 ? "warm" : "hot";
+  }
+
+  // ---- blocked / save fallback
+  async function showBlocked(title, text, offerSave) {
+    $("blocked").hidden = false; $("blockedTitle").textContent = title; $("blockedText").textContent = text;
+    if (!offerSave || !inArtifact) return;
+    const dl = await window.claude.use("downloads").catch(() => null);
+    if (!dl) return;
+    const btn = $("saveBtn"); btn.hidden = false;
+    btn.onclick = async () => {
+      let html = null;
+      try { const r = await fetch("sidetone-bench.html", { cache: "no-store" }); if (r.ok) html = await r.text(); } catch (e) {}
+      if (!html) html = "<!doctype html>\n" + BOOT_HTML;
+      const msg = $("saveMsg"); msg.hidden = false;
+      try {
+        await dl.save({ filename: "sidetone-bench.html", data: html });
+        msg.textContent = "Saved. Open sidetone-bench.html from your Downloads in Chrome or Edge and press start.";
+      } catch (e) {
+        msg.textContent = e && e.code === "declined" ? "Save cancelled." : "Saving isn't available here. Grab the file from the Claude Duet thread instead.";
+      }
+    };
+  }
+
+  // ---- devices
+  const canSink = typeof AudioContext !== "undefined" && "setSinkId" in AudioContext.prototype;
+  if (!canSink) { $("outRow").hidden = true; }
+  async function listDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const fillSel = (sel, kind) => {
+      const keep = sel.value;
+      sel.innerHTML = '<option value="">System default</option>';
+      devs.filter((d) => d.kind === kind && d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications").forEach((d, i) => {
+        const o = document.createElement("option"); o.value = d.deviceId; o.textContent = d.label || (kind === "audioinput" ? "Microphone " : "Output ") + (i + 1); sel.appendChild(o);
+      });
+      if ([...sel.options].some((o) => o.value === keep)) sel.value = keep;
+    };
+    fillSel($("inDev"), "audioinput");
+    if (canSink) fillSel($("outDev"), "audiooutput");
+    const named = devs.some((d) => d.label);
+    $("devNote").textContent = named ? (canSink ? "Switch either one while it's running." : "This browser can't pick an output from a page, so it uses your system default output.") : "Device names show up after you allow the mic.";
+  }
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener("devicechange", listDevices);
+
+  // ---- audio graph
+  function constraints() {
+    const id = $("inDev").value;
+    return { audio: {
+      deviceId: id ? { exact: id } : undefined,
+      echoCancellation: $("ec").checked, noiseSuppression: $("ns").checked, autoGainControl: $("agc").checked,
+      channelCount: { ideal: 1 }
+    } };
+  }
+  // Straight wire mic -> gain -> output when delay is 0; the delay node only joins the path when you ask for lag.
+  function route() {
+    if (!S.src) return;
+    const want = +dly.value > 0 ? "delay" : "direct";
+    if (S.route === want) return;
+    try { S.src.disconnect(S.gain); } catch (e) {}
+    try { S.src.disconnect(S.delay); } catch (e) {}
+    S.src.connect(want === "delay" ? S.delay : S.gain);
+    S.route = want;
+  }
+  async function openMic() {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints());
+    if (S.src) { try { S.src.disconnect(); } catch (e) {} }
+    if (S.stream) S.stream.getTracks().forEach((t) => t.stop());
+    S.stream = stream;
+    S.src = S.ctx.createMediaStreamSource(stream);
+    S.src.connect(S.an); S.route = null; route();
+    const t = stream.getAudioTracks()[0];
+    status("Live", (t && t.label ? t.label : "Microphone") + " → headphones");
+    t && t.addEventListener("ended", () => { if (S.running) { stop(); status("Mic disconnected", "Plug it back in and press start"); } });
+  }
+  async function start() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showBlocked("The mic is blocked here.", inArtifact ? "This preview window doesn't let pages use a microphone. Save the page and open the file in Chrome or Edge, and it'll ask for your mic like a normal site." : "This browser won't give the page a microphone. Open it in Chrome, Edge or Firefox.", true);
+      status("Mic unavailable", "See the note above"); return;
+    }
+    status("Starting…", "Allow the microphone if your browser asks");
+    try {
+      if (!S.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        try { S.ctx = new AC({ latencyHint: 0 }); } catch (e) { S.ctx = new AC({ latencyHint: "interactive" }); }
+        S.an = S.ctx.createAnalyser(); S.an.fftSize = 2048; S.an.smoothingTimeConstant = 0;
+        S.delay = S.ctx.createDelay(1.0); S.delay.delayTime.value = +dly.value / 1000;
+        S.gain = S.ctx.createGain(); S.gain.gain.value = 0;
+        S.delay.connect(S.gain); S.gain.connect(S.ctx.destination);
+        if (canSink && $("outDev").value) { try { await S.ctx.setSinkId($("outDev").value); } catch (e) {} }
+      }
+      await S.ctx.resume();
+      await openMic();
+      S.gain.gain.setTargetAtTime(+vol.value / 100, S.ctx.currentTime, 0.05);
+      S.running = true; S.ducked = false;
+      $("blocked").hidden = true;
+      $("go").classList.add("live"); $("go").setAttribute("aria-pressed", "true"); $("goLabel").textContent = "Stop";
+      $("recBtn").disabled = false; $("recMsg").textContent = "Ready when you are.";
+      listDevices(); showLatency();
+      clearInterval(S.latTimer); S.latTimer = setInterval(showLatency, 1000);
+      loop();
+    } catch (err) {
+      const n = err && err.name;
+      if (n === "NotAllowedError" || n === "SecurityError") {
+        showBlocked("The mic is blocked here.", inArtifact
+          ? "This preview window doesn't let pages use a microphone. Save the page and open the file in Chrome or Edge, and it'll ask for your mic like a normal site."
+          : "Your browser said no to the mic. Click the lock or mic icon in the address bar, allow the microphone, and press start again.", true);
+        status("Mic blocked", "See the note above");
+      } else if (n === "NotFoundError" || n === "OverconstrainedError") {
+        status("No mic found", "Plug in your headset or pick another microphone");
+      } else if (n === "NotReadableError") {
+        status("Mic is busy", "Another app may be holding it. Close softphones and try again");
+      } else {
+        status("Couldn't start", (err && err.message) || "Something went wrong opening the mic");
+      }
+    }
+  }
+  function stop() {
+    S.running = false;
+    cancelAnimationFrame(S.raf); clearInterval(S.latTimer);
+    if (S.rec && S.rec.state === "recording") S.rec.stop();
+    if (S.gain) S.gain.gain.setTargetAtTime(0, S.ctx.currentTime, 0.02);
+    setTimeout(() => {
+      if (S.running) return;
+      if (S.src) { try { S.src.disconnect(); } catch (e) {} S.src = null; }
+      if (S.stream) { S.stream.getTracks().forEach((t) => t.stop()); S.stream = null; }
+    }, 120);
+    $("go").classList.remove("live"); $("go").setAttribute("aria-pressed", "false"); $("goLabel").textContent = "Start monitoring";
+    $("recBtn").disabled = true; $("recMsg").textContent = S.clipUrl ? "Your last clip is still here to play." : "Start monitoring to record.";
+    status("Mic off", "Press start to listen again");
+    resetMeter();
+  }
+  $("go").addEventListener("click", () => (S.running ? stop() : start()));
+
+  async function restartMic() {
+    if (!S.running) return;
+    try { await openMic(); showLatency(); } catch (e) { stop(); status("Couldn't switch", (e && e.message) || "Try another device"); }
+  }
+  ["ec", "ns", "agc"].forEach((id) => $(id).addEventListener("change", restartMic));
+  $("inDev").addEventListener("change", restartMic);
+  $("outDev").addEventListener("change", async () => {
+    const id = $("outDev").value;
+    if (S.ctx && canSink) { try { await S.ctx.setSinkId(id); showLatency(); } catch (e) { status("Couldn't switch output", e.message || ""); } }
+  });
+
+  // ---- meter + scope
+  const bar = $("bar"), peak = $("peak"), cv = $("scope"), g = cv.getContext("2d");
+  let buf = null;
+  const pos = (db) => Math.max(0, Math.min(1, (db + 60) / 60));
+  function sizeCanvas() {
+    const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+  }
+  function ink() { return getComputedStyle(document.documentElement).getPropertyValue("--on-ink").trim() || "#F2ECDF"; }
+  function drawIdle() {
+    sizeCanvas(); g.clearRect(0, 0, cv.width, cv.height);
+    g.strokeStyle = ink(); g.globalAlpha = 0.25; g.lineWidth = Math.max(1, cv.height / 64);
+    g.beginPath(); g.moveTo(0, cv.height / 2); g.lineTo(cv.width, cv.height / 2); g.stroke(); g.globalAlpha = 1;
+  }
+  function resetMeter() {
+    bar.style.transform = "scaleX(0)"; peak.style.transform = "translateX(0)";
+    $("rms").textContent = "–∞"; $("pk").textContent = "–∞"; $("clip").classList.remove("on");
+    S.peakHold = -Infinity; drawIdle();
+  }
+  let lastText = 0, color = ink();
+  function loop() {
+    if (!S.running) return;
+    if (!buf || buf.length !== S.an.fftSize) buf = new Float32Array(S.an.fftSize);
+    S.an.getFloatTimeDomainData(buf);
+    let sum = 0, pk = 0;
+    for (let i = 0; i < buf.length; i++) { const v = buf[i]; sum += v * v; const a = v < 0 ? -v : v; if (a > pk) pk = a; }
+    const rmsDb = 20 * Math.log10(Math.sqrt(sum / buf.length) || 1e-9);
+    const pkDb = 20 * Math.log10(pk || 1e-9);
+    const now = performance.now();
+    if (pkDb >= S.peakHold || now - S.peakT > 1200) { S.peakHold = pkDb; S.peakT = now; }
+    bar.style.transform = "scaleX(" + pos(rmsDb + 6).toFixed(4) + ")";
+    const w = bar.parentElement.clientWidth;
+    peak.style.transform = "translateX(" + (pos(S.peakHold) * (w - 2)).toFixed(1) + "px)";
+    if (now - lastText > 120) {
+      lastText = now; color = ink();
+      $("rms").textContent = rmsDb < -90 ? "–∞" : rmsDb.toFixed(1);
+      $("pk").textContent = S.peakHold < -90 ? "–∞" : S.peakHold.toFixed(1);
+      $("clip").classList.toggle("on", S.peakHold > -1);
+    }
+    if (cv.width !== Math.round(cv.getBoundingClientRect().width * (window.devicePixelRatio || 1))) sizeCanvas();
+    const W = cv.width, H = cv.height, mid = H / 2;
+    g.clearRect(0, 0, W, H); g.strokeStyle = color; g.lineWidth = Math.max(1.25, H / 48); g.lineJoin = "round";
+    g.beginPath();
+    const step = buf.length / W;
+    for (let x = 0; x < W; x++) { const y = mid - buf[Math.floor(x * step)] * mid * 0.95; x ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+    S.raf = requestAnimationFrame(loop);
+  }
+  window.addEventListener("resize", () => { if (!S.running) drawIdle(); });
+
+  // ---- record & play back
+  const recBtn = $("recBtn"), playBtn = $("playBtn"), recBar = $("recBar"), recMsg = $("recMsg");
+  const player = new Audio();
+  function duck(on) {
+    S.ducked = on;
+    if (S.gain) S.gain.gain.setTargetAtTime(on ? 0 : +vol.value / 100, S.ctx.currentTime, 0.03);
+  }
+  recBtn.addEventListener("click", () => {
+    if (!S.stream || typeof MediaRecorder === "undefined") { recMsg.textContent = "This browser can't record from the page."; return; }
+    const chunks = [];
+    let rec;
+    try { rec = new MediaRecorder(S.stream); } catch (e) { recMsg.textContent = "Couldn't start recording: " + e.message; return; }
+    S.rec = rec;
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      recBtn.disabled = !S.running; recBtn.textContent = "Record again";
+      recBar.style.transition = "none"; recBar.style.transform = "scaleX(0)";
+      if (!chunks.length) { recMsg.textContent = "Nothing was recorded. Try again."; return; }
+      if (S.clipUrl) URL.revokeObjectURL(S.clipUrl);
+      S.clipUrl = URL.createObjectURL(new Blob(chunks, { type: rec.mimeType || "audio/webm" }));
+      playBtn.disabled = false; play();
+    };
+    rec.start();
+    recBtn.disabled = true; playBtn.disabled = true; recMsg.textContent = "Recording. Say something you'd say on a call.";
+    recBar.style.transition = "none"; recBar.style.transform = "scaleX(0)";
+    requestAnimationFrame(() => requestAnimationFrame(() => { recBar.style.transition = "transform 5s linear"; recBar.style.transform = "scaleX(1)"; }));
+    setTimeout(() => { if (rec.state === "recording") rec.stop(); }, 5000);
+  });
+  async function play() {
+    if (!S.clipUrl) return;
+    player.src = S.clipUrl;
+    if (canSink && player.setSinkId && $("outDev").value) { try { await player.setSinkId($("outDev").value); } catch (e) {} }
+    duck(true); recMsg.textContent = "Playing back. This is close to what the other end hears.";
+    try { await player.play(); } catch (e) { duck(false); recMsg.textContent = "Couldn't play the clip."; }
+  }
+  player.addEventListener("ended", () => { duck(false); recMsg.textContent = S.running ? "Done. Live monitor is back on." : "Done."; });
+  playBtn.addEventListener("click", play);
+
+  // ---- boot
+  syncVol(); syncDly(); resetMeter(); showLatency();
+})();
+</script>
+
+</body>
+</html>
