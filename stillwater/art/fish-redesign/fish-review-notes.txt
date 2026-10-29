@@ -1,0 +1,44 @@
+Stillwater fish redesign — 20 October 2026
+
+Six fish rebuilt as continuous procedural meshes with toon materials, restrained
+outlines, embedded eyes, species-specific silhouettes, fins, tails and expressions.
+Pout: sleepy eyes, downturned mouth and rounded fan tail.
+Molar Perch: narrow tall body, striped flank, spiny dorsal, curved gums/tooth plates.
+Widow's Wig: elongated body, pointed tail and tapered underside barbels.
+Peeping Tom: narrow tall disc body with seven embedded eyes.
+Soggy Harold: broad low head, hooded eyes, barbels and broad fins.
+The Below: dark body, mouth cup, irregular teeth, heavier lower lip and luminous lure.
+
+Independent critic /root/fish_critic:
+6.4 -> 7.2 -> 7.6 / 10. Target 8.5 NOT MET. Three reviews exhausted.
+Critic confirmed improved silhouettes, tooth attachment, differentiated fins/tails,
+underside barbel roots, Pout expression; no obvious body gaps or floating eyes.
+Remaining weaknesses:
+- Below's lower mouth rim still looks attached rather than a true chin/jaw.
+- Flat fin membranes and contrasting root folds need more integrated construction.
+- Tom/Harold markings are too subdued at actual display size.
+- Repeated eye/gill/mouth construction remains apparent.
+- Widow's fringe remains somewhat repetitive.
+
+Validation:
+JavaScript syntax passed. All six models passed finite vertex/index/bounds checks
+and 400 animation samples each. These establish numerical validity, not art quality.
+Actual desktop field guide inspected for final build. 390x844 mobile field guide
+verified for revision 2; final revision 3 mobile was not separately captured.
+No browser errors observed in live inspection.
+Continuous animation quality, full catch presentation, hidden surfaces and
+physical-device performance were not independently assessed.
+Existing save discoveries were not edited for inspection.
+The preceding water/dock cast validation is preserved.
+
+Blender MCP was attempted, but localhost:9876 closed the connection (WinError10054).
+No new .blend export or image-generated texture is claimed for this pass.
+Surface colours and markings are generated directly in the meshes.
+
+Source: work/fish-redesign.js; work/integrate-fish.py.
+Integrator replaces makeFish in outputs/index.html and produces fish-review.html.
+Run scripts from the task workspace. work/test-fish.cjs uses local three-test.cjs.
+work/integrate-toon.py now calls the casting fix and fish integrator at the end.
+Backup: work/before-fish-redesign.html.
+Evidence: outputs/fish-v1-*, fish-v2-*, fish-v3-* and fish-redesign-sheet.png.
+Inspection sheet is separate from gameplay and does not unlock fish or save progress.

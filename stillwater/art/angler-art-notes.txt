@@ -1,0 +1,32 @@
+STILLWATER KEEPER — v4.6.0
+
+Base: Quaternius Universal Base Characters, Standard free pack.
+https://quaternius.com/packs/universalbasecharacters.html
+https://quaternius.itch.io/universal-base-characters
+License: CC0 1.0. See quaternius-character-license.txt.
+The free archive contains Superhero_Male and Superhero_Female, not the paid Regular bodies. This keeper uses the female base's modeled face, hands, humanoid rig, eyes, eyebrows and SimpleParted hair, with custom practical clothing and a relaxed pose. No paid source assets were used.
+
+Blender MCP performed import, rig posing, face/brow adjustments, garment construction, UV mapping, mesh cleanup and export. A separate background Blender process saved the standalone .blend, preserving the unrelated open project. The .blend includes an editable source collection and the clean posed runtime mesh collection. Garments are static meshes; full skeletal garment animation is not implemented. The runtime has a slightly asymmetric wardrobe pose, separate from the fishing pose.
+
+Image generation: built-in ImageGen, not CLI. Original generated PNGs are included. In the HTML they are encoded as WebP and embedded, with UV mapping and tint-compatible materials. Eye image comes from the CC0 base pack. Geometry is indexed in the HTML. The game remains self-contained.
+
+Files:
+angler-reference.png — modeling reference only, not an in-game screenshot.
+angler-canvas-albedo.png — generated waxed-canvas color map.
+angler-knit-albedo.png — generated knitted-wool color map; also used for subtle bump shading.
+angler-meshes.json — posed geometry with positions, normals, UVs and material/group assignments.
+stillwater-angler.blend — editable source and posed mesh collections.
+stillwater-angler.glb — intermediate model export with source rig.
+
+FINAL IMAGEGEN PROMPTS
+
+Reference:
+Use case: stylized-concept. Create a production character modeling reference sheet for Stillwater, a calmingly eerie pond fishing game. One appealing grounded adult pond keeper, gender-neutral presentation, natural adult proportions about seven heads tall, medium warm skin, short tousled brown hair, modest inset almond eyes with actual eyelids, small muted irises, readable eyebrows, defined nose and cheek planes, restrained gentle expression. NOT chibi, NOT toddler, no huge glossy eyes, no rosy circular cheek spots. Charming through silhouette and worn clothing: moss-green waxed canvas raincoat with collar, seams, two useful pockets and toggles, cream knitted scarf, simple dark bucket fishing hat, tapered charcoal trousers and muddy brown rubber boots. Show same character in front, side, rear orthographic relaxed A-pose plus a larger three-quarter face detail. Full feet visible, hands anatomically coherent. Stylized low-poly-friendly shapes, softly hand-painted material quality, muted natural palette. Plain warm grey background, even neutral lighting, no dramatic shadows, no text or labels. Reference should be practical to rebuild with a regular adult humanoid base in Blender, appealing to adults rather than a preschool toy.
+
+Canvas:
+Production game texture: square seamless tileable albedo map of weathered fine waxed cotton canvas for an adult pond keeper raincoat in a stylized calming eerie fishing game. Neutral warm medium grey, very low saturation so runtime tinting can make it moss green, honey, rain blue or plum. Subtle fine irregular woven fibers, softly mottled wax finish, delicate small worn flecks. Uniform overhead orthographic surface across entire image. Restrained hand-painted tactile detail; no large stains, no seams, no buttons, no garments, no objects, no folds, no shadows, no directional illumination, no highlights, no border, no lettering. All four edges must seamlessly tile. Flat diffuse base color, not a rendered material sphere.
+
+Knit:
+Square seamless tileable game albedo texture of soft fine knitted wool in light warm ivory. Entire image filled with evenly sized small vertical knit stitches, subtle fuzzy fibers and gently hand-painted tactile relief. Color stays pale ecru so it can be tinted in a game. Orthographic flat material surface, no garment shape, no borders, no folds, no directional lighting or cast shadows, no text, no objects. Subtle ambient stitch definition only, perfectly repeating edges.
+
+Validation: JavaScript syntax check; live desktop wardrobe and pond views; 390x844 mobile viewport; complexion, coat, hat and glasses switching; saved choices after reload; empty browser error logs. Physical-phone performance and complete fishing animation were not assessed in this character pass.

@@ -1,0 +1,10 @@
+Stillwater v4.7.0 - toon keeper pass
+
+Implemented: shorter adult proportions; Blender-built curled grip geometry; articulated sleeves with two-bone positioning; right hand grips rod, left hand tracks reel crank; casting and reeling poses; line starts at actual rod tip; toon materials and screen-space outlines on environment, keeper, all six fish and regenerated thumbnails. Existing generated canvas/knit/eye textures reused. Customization colours remain linked to materials.
+
+Validation: node syntax check; 605 pose endpoint checks (max wrist gap 2.31e-16); desktop and390x844 live preview; customization; complete cast/hook/reel/lift/catch/release sequence; caught The Pout with100% steady line and2 timed gives; browser error log empty at inspection.
+Independent critic: /root/stillwater_critic. New loop target8.5, max3 reviews. Scores8.0 ->8.5, target met after2 reviews. First review identified buried tailoring, facial outline marks and missing fish toon treatment. All fixed. Remaining: upright stance, independent critic did not watch continuous motion, physical phone performance not tested. Final mobile custom-look capture exists.
+
+Blender: initial body/grip built through MCP. Final editable .blend export was attempted through MCP (connection timed out) and installed background Blender (EXCEPTION_ACCESS_VIOLATION). No successful new .blend export claimed. Geometry JSON and runtime/build scripts are preserved; previous .blend remains unchanged. Runtime pose JSON can be imported using save-toon-source.py after Blender is repaired. Saved runtime pose currently includes base colour/UV geometry; it is not an animated rig or a complete recreation of browser shaders.
+
+Sources: existing Quaternius CC0 base and prior project generated textures; no new external model or newly generated image in this pass.

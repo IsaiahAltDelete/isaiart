@@ -1,0 +1,15 @@
+Stillwater v4.8.0 - STRICT ANATOMY REVIEW
+
+User explicitly rejected prior8.5 as too generous. NEW contract: anatomy-first, no environment/progress credit; any major anatomy defect caps score6. Require unaccessorized front/profile/quarter, maxcast, closegrips and opposing crank positions. Target8.5; maximum3 completed independent reviews.
+
+Reviewer /root/stillwater_critic. Scores5.8 ->7.0 ->6.0. TARGET NOT MET. Three-review limit reached. Do not present this character as finished or professionally approved.
+
+Implemented: rebuilt procedural head with shaped facial rings, short tapered neck/collar, continuous deforming sleeves with structured control points, individually curled grips, wrist/cuff alignment, wardrobe angle/pose/hand-close-up controls, mobile control layout. Existing gameplay,customization,generated fabric textures and toon environment retained.
+
+Final blockers: both hands share unmirrored anatomical construction (opposingthumbs require true mirroredleft/right structures); fingers read as identical loops around ovalpalm with weakthumbweb; headprofile remainscrude/triangular nose with planarfacebands; sleeves lackconvincing shoulder/elbowgarmentstructure. Neck/collar and equalhand size accepted; noobviouswristseparation in evidence. Finalcloseups revealeddefects hidden bywholebody views, explaininglowerlastscore.
+
+Validation: node --check work/toon-check.js passed. node work/test-anatomy.cjs sampled605poses, sleeve-endcenter towrist gap1.59e-8, allverticesfinite. These tests ONLY establishgeometrycontinuity, notanatomicalquality. Live desktop and390x844 mobilepreview inspected; no browsererrors. Physicalphoneperformance and independentcontinuousmotion review notassessed.
+
+Authoritative build source: work/toon-runtime.js and work/integrate-toon.py in taskworkspace. outputs/index.html matches actual repository index.html. Static assembled geometry exported by test to outputs/toon-runtime-pose.json. No new Blender .blend export in this pass. Prior Blender connection/startup failures unresolved; runtime geometry/source remain available.
+
+Preserved previous build: work/before-anatomy.html. Original scarf selection Berry restored after noscarf checks. Preview left available for direct review, including Hands zoom, Front/Side/threequarter and Rest/Cast/Reel controls.

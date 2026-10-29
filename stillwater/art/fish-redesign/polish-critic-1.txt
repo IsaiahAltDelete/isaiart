@@ -1,0 +1,27 @@
+POLISH CRITIC - Fresh cycle, attempt 1 of 3
+Verdict: PASS for the inspected static creature art and field-guide presentation.
+Score: 8.53/10. Target: 8.5. Previous cycle final: 8.33.
+
+Weighted rubric:
+Silhouette/anatomy and attachments: 8.6 x 40% = 3.44
+Appealing/eerie species identity: 8.5 x 30% = 2.55
+Toon shading/detail consistency: 8.4 x 20% = 1.68
+Readable in-game fit: 8.6 x 10% = 0.86
+Total: 8.53. No geometry-test, scenery, or effort credit.
+
+Inspected all twelve polish-v1-quarter images and all twelve polish-v1-front images, plus desktop and mobile game-fixture captures for Molar Perch, Widow's Wig, and Candlefin (six additional images).
+
+Confirmed corrections:
+Candlefin's cream stripe now has a smooth, coherent boundary in close quarter view and in the supplied desktop/mobile guide captures. The earlier conspicuous sawtooth boundary is resolved.
+Widow's appendages have fewer, staggered roots and varied sweeps. The light skin transition joins them more convincingly to the underside. The earlier conspicuous repeated squared attachment bars are no longer the dominant impression at the supplied scale.
+Molar Perch's teeth now have varied rounded crowns rather than identical rectangular blocks; they still meet the mouth edge. Their silhouette reads more deliberately in front view and actual guide presentation.
+The narrower Needle eyes, varied lid depths, and thinner mouth treatments reduce the previous uniform face construction. Existing successful silhouettes, Below's continuous jaw, Paper Skate's folds, and fin attachment repairs remain intact.
+
+Remaining non-blocking polish:
+Several fish now share similarly sleepy lids. Expressions could vary more, especially between Bell Carp, Candlefin, and Reed Crown; the roster's silhouettes and colors currently carry most of their individual identity.
+Molar Perch's rounded teeth can still read as a necklace of individual ivory pieces at close range. More nuanced gums and crown forms would improve a premium close-up, but the current stylized guide-scale image is coherent.
+Widow's pale trailing strands are faint against the mobile specimen background. A small value adjustment would improve their readability without thickening them.
+Tom and Candlefin retain some irregular belly-shading patches. These are residual finish weaknesses rather than conspicuous attachment or stripe defects.
+
+Scope and limits:
+This passes the 8.5 bar for the supplied static model inspection and field-guide images. It is not an approval of continuous animation, full catch presentation, hidden rear/underside surfaces, all-species mobile presentation, or physical-device performance, which were not reviewed. No new blocker is visible in the supplied material. The loop can stop on this pass; further polishing is optional rather than necessary to meet this review target.

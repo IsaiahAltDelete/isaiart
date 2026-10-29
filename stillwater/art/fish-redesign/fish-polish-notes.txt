@@ -1,0 +1,14 @@
+Fish polish - 20 October 2026
+Fresh strict critic cycle, attempt 1: 8.53/10 PASS (target8.5).
+Previous cycle finished8.33; this new user-authorized cycle reached8.53.
+Authoritative verdict: polish-critic-1.txt.
+Changes: smooth Candlefin stripe, six staggered skin-blended Widow strands,
+rounded asymmetric Molar teeth, thinner mouth edges, varied lids/eye shapes.
+All12 mesh geometry/bounds and400 animation samples each pass; syntax passes;
+roster/encounter/save tests pass. No runtime browser errors observed.
+Reviewed24 front/quarter renders, plus Molar/Widow/Candlefin in actual game
+field-guide rendering in an isolated QA fixture at desktop and390x844.
+Continuous motion art, completed catches, hidden surfaces, all12 onmobile,
+and physical-device performance not assessed. No new Blender export claimed.
+Nonblocking: sleepy expressions, beadlike teeth closeup, faint Widow strands
+onmobile, some belly shading patches. No model changes after passing score.

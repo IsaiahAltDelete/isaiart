@@ -1,0 +1,17 @@
+STILLWATER CHARACTER CRITIC LOOP
+Independent reviewer: /root/stillwater_critic
+Target: 8.5/10. Maximum: three completed build-and-review attempts.
+
+Attempt 1: 7.0/10. Adult face succeeds; pocket-side protrusions, mannequin shoulders/pose, tiny mobile portrait, dark unfinished trousers/boots, stern expression.
+Attempt 2: 7.8/10. Pockets and lower outfit fixed; mobile face readable. Remaining sleeve artifacts, shoulder bumps, stiff hovering hands, clipped beanie and caption overlap.
+Attempt 3: 8.3/10. Visible mesh artifacts, shoulder bumps, crop and caption overlap fixed. Adult expression improved. Asymmetric arms help, but square shoulders, symmetrical planted legs and hovering hands still read as a display pose.
+
+Final verdict: Improved, below the 8.5 target. Three-review cap reached; no additional unscored visual changes were made after the final verdict.
+Highest-value remaining refinement: one resting arm and a subtle weight shift, with natural hand contact on the fishing rod.
+
+What works: adult proportions and restrained eyes; cohesive generated canvas and knit textures; practical coat/boots; customization; clean garment presentation; useful mobile portrait.
+Not assessed: full fishing animation or hand-to-rod contact in motion, physical-phone performance, every accessory combination, independent rig integrity.
+
+Final evidence: keeper-final-desktop.png, keeper-final-bucket.png, keeper-final-mobile.png.
+Actual game: index.html v4.6.0.
+Validation by builder: JavaScript syntax check, live desktop and mobile viewport previews, customization switches, reload persistence, empty console error logs.

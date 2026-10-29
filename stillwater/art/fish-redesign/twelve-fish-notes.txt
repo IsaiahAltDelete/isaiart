@@ -1,0 +1,45 @@
+Stillwater fish expansion - 20 October 2026
+
+12 species. Existing IDs 0-5 preserved. New IDs:
+6 Bell Carp / dock / uncommon
+7 Paper Skate / dock / rare
+8 Glass Needle / lilies / uncommon
+9 Candlefin / lilies / rare
+10 Ribbon Sleeper / deep / rare
+11 Reed Crown / deep / legendary
+
+Each has encounter weight, behavior, weight range, description and letter.
+Discovery counters and completion use all 12; existing six-species saves retain
+records. First-catch onboarding remains Pout. Four residents per fishing zone.
+
+Below jaw now formed by the body loft; recessed mouth follows its contour.
+Fins have buried thick roots, tapered membranes and curved rays.
+Skate uses one continuous planar diamond body. Crown rays no longer cross.
+Vertex-color markings distinguish Bell Carp, Candlefin and Tom.
+
+Fresh independent critic cycle: 7.7 -> 8.0 -> 8.33/10.
+Target 8.5 NOT MET after three reviews. Full verdict: twelve-final-critic.txt.
+Remaining: Candlefin stripe edge, Widow strand roots, schematic face details,
+some belly color transitions. No further model changes after final review.
+Only diagnostic source label and initial 0/12 counter text corrected afterward.
+
+Validation:
+- JS syntax passes.
+- 12 fish finite geometry/indices/bounds and 400 animation samples each pass.
+- All species reachable in 1000 selections/zone; behaviors/letters valid.
+- Six- and twelve-species save-load cases pass.
+- Cast guard passes 133320 landing samples, including dock and land rejection.
+- Live browser: 12 front and quarter renders. Below and Skate inspected in
+  actual game guide rendering through an isolated QA fixture, desktop and
+  390x844 mobile. No browser errors observed.
+- Continuous motion art quality, completed catches for each new fish, other
+  ten mobile specimens and physical-device performance were not assessed.
+
+Assets are procedural Three.js geometry/vertex colors. No successful new
+Blender MCP export or image-generated texture is claimed for this pass.
+
+Rebuild workspace flow: outputs/index.html is the generated game.
+Run work/integrate-fish.py (calls expand-fish.py), then fish-fixture.py for QA.
+fish-redesign.js is the authoritative mesh source. integrate-toon.py also
+calls integrate-fish.py, preserving the fish work when rebuilding the scene.
+QA fixture is separate and uses sessionStorage; never deploy it as index.html.
