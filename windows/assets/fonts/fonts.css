@@ -1,0 +1,19 @@
+/* ---------------------------------------------------------------------------
+   Local font pack.
+
+   On Windows the desktop picks up the genuine Segoe UI Variable faces through
+   local() first. Everywhere else it falls back to the bundled Inter / JetBrains
+   Mono web fonts in this folder, which keeps metrics stable offline. Both
+   bundled families are SIL Open Font License 1.1 — see the LICENSE files.
+   --------------------------------------------------------------------------- */
+
+@font-face { font-family: "Win UI"; font-weight: 400; font-display: swap;
+  src: local("Segoe UI Variable Text"), local("SegoeUIVariable-Text"), local("Segoe UI"), local("SegoeUI"), url("inter-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Win UI"; font-weight: 500; font-display: swap;
+  src: local("Segoe UI Variable Text Semibold"), local("Segoe UI Semibold"), local("SegoeUI-Semibold"), url("inter-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Win UI"; font-weight: 600; font-display: swap;
+  src: local("Segoe UI Variable Display Semibold"), local("Segoe UI Semibold"), local("SegoeUI-Semibold"), url("inter-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Win UI"; font-weight: 700; font-display: swap;
+  src: local("Segoe UI Variable Display Bold"), local("Segoe UI Bold"), local("SegoeUI-Bold"), url("inter-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Win Mono"; font-weight: 400; font-display: swap;
+  src: local("Cascadia Mono"), local("CascadiaMono-Regular"), local("Consolas"), url("jetbrains-mono-latin-400-normal.woff2") format("woff2"); }

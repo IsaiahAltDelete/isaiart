@@ -185,15 +185,15 @@
       Mac.$('#login-actions').innerHTML = s.showPowerButtons ? this.powerActions(['sleep', 'restart', 'shutdown']) : '';
 
       const users = s.guestUser
-        ? [{ name: account.name, initials: account.initials, id: 'alex' }, { name: 'Guest User', initials: 'G', id: 'guest' }]
-        : [{ name: account.name, initials: account.initials, id: 'alex' }];
+        ? [{ name: account.name, initials: account.initials, id: 'isaiah' }, { name: 'Guest User', initials: 'G', id: 'guest' }]
+        : [{ name: account.name, initials: account.initials, id: 'isaiah' }];
 
       if (s.loginWindowShows === 'Name and password') {
         Mac.$('#login-body').innerHTML = `<div class="auth-card centered">
           ${UI.avatar(account.name, { initials: account.initials })}
           <h1>Log in to ${esc(s.computerName)}</h1>
           <form class="auth-form" id="login-form" style="width:250px;margin-bottom:8px">
-            <input id="login-user" value="alex" aria-label="User name" autocomplete="off"></form>
+            <input id="login-user" value="isaiah" aria-label="User name" autocomplete="off"></form>
           <form class="auth-form" id="login-form-password">
             <input id="login-password" type="password" placeholder="Password" aria-label="Password" autocomplete="off">
             <button type="submit" aria-label="Log in">${glyph('forward', { size: 13 })}</button></form>
@@ -203,11 +203,11 @@
       }
 
       Mac.$('#login-body').innerHTML = `<div style="display:grid;gap:26px;justify-items:center">
-        <div class="user-list">${users.map(user => `<button class="user-choice ${user.id === (Mac.session.loginUser || 'alex') ? 'on' : ''}"
+        <div class="user-list">${users.map(user => `<button class="user-choice ${user.id === (Mac.session.loginUser || 'isaiah') ? 'on' : ''}"
           data-command="login-user" data-arg="${user.id}">
           ${UI.avatar(user.name, { initials: user.initials })}<span>${esc(user.name)}</span></button>`).join('')}</div>
         <div class="auth-card centered">
-          ${(Mac.session.loginUser || 'alex') === 'guest'
+          ${(Mac.session.loginUser || 'isaiah') === 'guest'
             ? '<form class="auth-form" id="login-form"><input value="No password required" disabled aria-label="Guest"><button type="submit" aria-label="Log in">→</button></form>'
             : `<form class="auth-form" id="login-form">
                 <input id="login-password" type="password" placeholder="Enter Password" aria-label="Password" autocomplete="off">
@@ -311,7 +311,7 @@
 
       if (type === 'logout') {
         this.closeEverything();
-        Mac.session.loginUser = 'alex';
+        Mac.session.loginUser = 'isaiah';
         Screens.show('login-screen');
         return;
       }

@@ -173,7 +173,7 @@
       const people = [
         { name: 'Dana Whitfield', role: 'Tier 3 Support', email: 'dana@support.example', phone: '+1 (407) 555-0148' },
         { name: 'Service Desk', role: 'Shared mailbox', email: 'servicedesk@support.example', phone: '+1 (407) 555-0100' },
-        { name: 'Milo Rivera', role: 'Family', email: 'milo.rivera@icloud.example', phone: '+1 (407) 555-0193' },
+        { name: 'Milo Souf', role: 'Family', email: 'milo.souf@icloud.example', phone: '+1 (407) 555-0193' },
         { name: 'Bench Tools', role: 'Vendor', email: 'news@benchtools.example', phone: '+1 (800) 555-0111' },
       ];
       const person = people[win.state.selected] || people[0];

@@ -1,0 +1,145 @@
+{
+  "spectrumtv": {
+    "file": "spectrumtv.png",
+    "source_page": "https://apps.apple.com/us/app/spectrum-tv/id420455839",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/93/72/b7/9372b76e-657b-6107-0365-7373102b9665/AppIcon-SpecTV-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "8bc893e82f6a63cb8149373030a186a127538617fb588fe8a7ce68811e8e7914",
+    "retrieved": "2026-10-29"
+  },
+  "myspectrum": {
+    "file": "myspectrum.png",
+    "source_page": "https://apps.apple.com/us/app/my-spectrum/id942608209",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/b5/16/64/b5166422-8e1c-e125-b817-ca3601257af8/AppIcon-0-1x_U007emarketing-0-8-0-85-220-0.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "89fa18eeb1ebd067f904ef25ca18eadae724313cdbd26f7d9c282129c50eb65c",
+    "retrieved": "2026-10-29"
+  },
+  "netflix": {
+    "file": "netflix.png",
+    "source_page": "https://apps.apple.com/us/app/netflix/id363590051",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/49/40/c4/4940c495-d5d5-00ac-0d3b-65945eb7e4a2/AppIcon-0-0-1x_U007epad-0-1-0-sRGB-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "6a0d05afe1a2841b95d8213cb22a1a4b5cd9f10f4c80da357f72c5b9c59d59d5",
+    "retrieved": "2026-10-29"
+  },
+  "disney": {
+    "file": "disney.png",
+    "source_page": "https://apps.apple.com/us/app/disney/id1446075923",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/fa/74/2f/fa742f2d-ce8d-f1ab-18b4-c7a775d5ba94/AppIcon-0-0-1x_U007emarketing-0-8-0-0-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "8fdc937ad235c2a5433124f0b9b2cb6d6612d7cb23a2362d364b14c53e9df527",
+    "retrieved": "2026-10-29"
+  },
+  "max": {
+    "file": "max.png",
+    "source_page": "https://apps.apple.com/us/app/hbo-max-stream-movies-tv/id1666653815",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/88/b3/cb/88b3cb65-9dd7-8801-bb47-affd72805a82/AppIcon-0-0-1x_U007epad-0-1-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "ff56920119335d9be10483b597321b5a33b4771f49e512ccd7214025f0b937da",
+    "retrieved": "2026-10-29"
+  },
+  "paramount": {
+    "file": "paramount.png",
+    "source_page": "https://apps.apple.com/us/app/paramount/id530168168",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/3f/8b/f6/3f8bf654-12ad-3d7f-239f-de856b2050cb/P_U002bAppIcon-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "410a3e844dc37809e5d21ffd5a6689fb43666f8db6f4cd10546c260eb671c271",
+    "retrieved": "2026-10-29"
+  },
+  "peacock": {
+    "file": "peacock.png",
+    "source_page": "https://apps.apple.com/us/app/peacock-tv-stream-tv-movies/id1508186374",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/02/50/8f/02508fc6-59f4-fa16-893a-98d93f74af0a/AppIcon-0-0-1x_U007epad-0-1-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "1be2edf3046dbb6a6a16ed1bb604f7c8a0918f5851ca284cd8244918f8ee6bf7",
+    "retrieved": "2026-10-29"
+  },
+  "hulu": {
+    "file": "hulu.png",
+    "source_page": "https://apps.apple.com/us/app/hulu-stream-tv-shows-movies/id376510438",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/d8/fa/27/d8fa27eb-7f32-fe16-8853-992a057248ce/HuluAppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "550be75769cdf368497618ea064784b1b1f76fad415e3937e215a79ecbe792a1",
+    "retrieved": "2026-10-29"
+  },
+  "prime": {
+    "file": "prime.png",
+    "source_page": "https://apps.apple.com/us/app/amazon-prime-video/id545519333",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/1b/66/ff/1b66ffd8-2f43-9f46-f4ad-f308ad3dcb13/AppIcon-0-0-1x_U007epad-0-1-0-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "0e9c31bef0e7c8444d51098ff6c03255d1dad43f965794bf5137f5e3b96bcf58",
+    "retrieved": "2026-10-29"
+  },
+  "appletv": {
+    "file": "appletv.png",
+    "source_page": "https://apps.apple.com/us/app/apple-tv/id1174078549",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/a2/74/61/a274610a-1537-0429-df1b-afacfad5a478/tvCalistoga-0-0-1x_U007epad-0-1-0-sRGB-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "05d9edd317cd2d9e419ff6487ca601725471638af46cdb5739c2c63696d9e110",
+    "retrieved": "2026-10-29"
+  },
+  "youtubetv": {
+    "file": "youtubetv.png",
+    "source_page": "https://apps.apple.com/us/app/youtube-tv/id1193350206",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/45/ed/6c/45ed6c2f-6060-caf6-ec21-b2808eb12ebd/logo_youtube_television_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "3d1fd62b62645b09bc16e785d5992fddcfc152d787ab73599a292a0bfc7b0ed4",
+    "retrieved": "2026-10-29"
+  },
+  "espn": {
+    "file": "espn.png",
+    "source_page": "https://apps.apple.com/us/app/espn-live-sports-scores/id317469184",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/60/58/04/605804f9-e80d-323f-16b0-241a07d7bba8/AppIcon-0-0-1x_U007epad-0-1-0-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "ef5a095c7beb69bfed0183373e48b10fb0e8f4cbb39c708d6fea0976d3417ed3",
+    "retrieved": "2026-10-29"
+  },
+  "discovery": {
+    "file": "discovery.png",
+    "source_page": "https://apps.apple.com/us/app/discovery-stream-tv-shows/id1498327873",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/d6/da/40/d6da408b-9d7f-ab04-6c08-766c62854ef9/AppIcon-0-0-1x_U007epad-0-1-85-220.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "f707c2f864e65411f3ffb41fd4c2152c26210d1a1812b14db97fd9e2c5394377",
+    "retrieved": "2026-10-29"
+  }
+}

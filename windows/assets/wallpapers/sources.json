@@ -1,0 +1,32 @@
+{
+  "bloom-light": {
+    "file": "bloom-light.jpg",
+    "source_path": "C:/Windows/Web/Wallpaper/Windows/img0.jpg",
+    "dimensions": [
+      3840,
+      2400
+    ],
+    "sha256": "a37491a5e479e191cfe547b484426037455ce8aacff7ab15f91925330c24864f",
+    "retrieved": "2026-10-29"
+  },
+  "bloom-dark": {
+    "file": "bloom-dark.jpg",
+    "source_path": "C:/Windows/Web/Wallpaper/Windows/img19.jpg",
+    "dimensions": [
+      3840,
+      2400
+    ],
+    "sha256": "d54262032574b15ccf541e40fa13475ffb39d8682c19383e917f3ed5e8bbca71",
+    "retrieved": "2026-10-29"
+  },
+  "lock": {
+    "file": "lock.jpg",
+    "source_path": "C:/Windows/Web/Screen/img100.jpg",
+    "dimensions": [
+      3840,
+      2160
+    ],
+    "sha256": "61643221d2f14be9e180e507d98abea29eebfb7472797342ec3e25073b7e4cad",
+    "retrieved": "2026-10-29"
+  }
+}

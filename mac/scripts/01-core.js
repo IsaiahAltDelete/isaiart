@@ -26,14 +26,14 @@ window.Mac = window.Mac || {};
    * variable through it would read worse and gain nothing.
    */
   Mac.PERSONA = {
-    name: 'Alex Rivera',
-    first: 'Alex',
-    initials: 'AR',
-    shortName: 'alex',          // the Unix account, and the home folder
-    personal: 'alex.rivera@icloud.example',
-    work: 'alex.rivera@support.example',
-    computer: "Alex's MacBook Pro",
-    phone: "Alex's iPhone",
+    name: 'Isaiah Souf',
+    first: 'Isaiah',
+    initials: 'IS',
+    shortName: 'isaiah',        // the Unix account, and the home folder
+    personal: 'isaiah.souf@icloud.example',
+    work: 'isaiah.souf@support.example',
+    computer: "Isaiah's MacBook Pro",
+    phone: "Isaiah's iPhone",
   };
 
   Mac.VERSION = '8.0';
@@ -174,6 +174,15 @@ window.Mac = window.Mac || {};
     return saved === undefined ? defaults : saved;
   }
 
+  /* The persona was renamed from Alex Rivera; saved desktops carry the old
+     name in seeded mail, contacts and the account, so rewrite it on load. */
+  function migratePersona(raw) {
+    if (!/Alex|Rivera/.test(raw)) return raw;
+    return raw.replace(/\\nAlex\b/g, '\\nIsaiah').replace(/\bAlex\b/g, 'Isaiah').replace(/\balex\b/g, 'isaiah')
+      .replace(/\bALEX-/g, 'ISAIAH-').replace(/\bRivera\b/g, 'Souf').replace(/\brivera@/g, 'souf@')
+      .replace(/"initials":"AR"/g, '"initials":"IS"').replace(/"initials":"MR"/g, '"initials":"MS"');
+  }
+
   Mac.Store = {
     available: true,
     /** Set when localStorage is unavailable, so the UI can explain why. */
@@ -184,7 +193,7 @@ window.Mac = window.Mac || {};
         Mac.RETIRED_KEYS.forEach(key => localStorage.removeItem(key));
         const raw = localStorage.getItem(Mac.STORAGE_KEY);
         if (!raw) return Mac.clone(Mac.DefaultState);
-        const saved = JSON.parse(raw);
+        const saved = JSON.parse(migratePersona(raw));
         if (saved?.schema !== Mac.DefaultState.schema) return Mac.clone(Mac.DefaultState);
         return mergeDefaults(Mac.DefaultState, saved);
       } catch (error) {

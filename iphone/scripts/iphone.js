@@ -17,7 +17,7 @@ const DEFAULTS = {
     airplane:false, wifi:true, wifiName:'SPECTRUM-5G', bluetooth:true, cellular:true, network:'online',
     dnd:false, lowpower:false, rotationLock:false, autoLock:'2 Minutes', touchCursor:true, touchCursorRevision:1,
     searchEngine:'Google', blockPopups:true, preventTracking:true, faceid:true,
-    name:"Isaiah's iPhone", appleID:'isaiah.s@icloud.com',
+    name:"Isaiah's iPhone", appleID:'isaiah.souf@icloud.com',
     autoUpdates:true, cellDownloads:false, offloadUnused:false, hapticFeedback:true, appleIntelligence:true,
     ringer:75, mailPreview:2, mailSignature:'Sent from my iPhone', mailThread:true
   },
@@ -40,12 +40,21 @@ function load(){
   try{
     let raw = localStorage.getItem(SAVE_KEY);
     if(!raw) return structuredClone(DEFAULTS);
-    const s = JSON.parse(raw);
+    const s = JSON.parse(migratePeople(raw));
     const restoreCursor=s.settings?.touchCursorRevision!==1;
     s.settings = Object.assign(structuredClone(DEFAULTS.settings), s.settings||{});
     if(restoreCursor){s.settings.touchCursor=true;s.settings.touchCursorRevision=1;}
     return Object.assign(structuredClone(DEFAULTS), s);
   }catch(e){ return structuredClone(DEFAULTS); }
+}
+/* Saved phones predate the rename to Isaiah Souf and the Karma contact becoming Mom. */
+function migratePeople(raw){
+  if(!/Karma|Isaiah S\.|isaiah\.s@|💙/.test(raw)) return raw;
+  return raw.split('"first":"Karma","last":"S"').join('"first":"Mom","last":""')
+    .split('\\n\\n— Karma').join('\\n\\nLove,\\nMom').split('it’s Karma.').join('it’s Mom.')
+    .split('Karma S').join('Mom').split('"Karma"').join('"Mom"')
+    .split('karma.s@gmail.com').join('mom.souf@gmail.com').split(' 💙').join('')
+    .split('Isaiah S.').join('Isaiah Souf').split('isaiah.s@icloud.com').join('isaiah.souf@icloud.com');
 }
 let saveTimer;
 function save(){ clearTimeout(saveTimer);if(eraseInProgress)return;saveTimer=setTimeout(()=>{
@@ -58,7 +67,7 @@ function factoryReset(){eraseInProgress=true;clearTimeout(saveTimer);localStorag
 function ACC(){
   if(!State.accounts) State.accounts={
     signedIn:1,
-    list:[{id:1,name:'Isaiah S.',email:'isaiah.s@icloud.com',initials:'IS',
+    list:[{id:1,name:'Isaiah Souf',email:'isaiah.souf@icloud.com',initials:'IS',
            color:'linear-gradient(135deg,#5e5ce6,#0a84ff)',storage:47.2,plan:'200 GB'}]
   };
   return State.accounts;
@@ -688,7 +697,7 @@ $('#bMute').onclick=()=>{setSilentMode(!State.settings.silent);
 let LOCK_NOTIFS=[
   {app:'mail',   title:'Spectrum',  body:'Your July statement is ready — $189.98 due August 12', when:'2m ago'},
   {app:'appstore',title:'App Store',body:'2 apps have updates available', when:'18m ago'},
-  {app:'messages',title:'Karma',    body:'Call me when you get a chance 💙', when:'1h ago'}
+  {app:'messages',title:'Mom',    body:'Call me when you get a chance', when:'1h ago'}
 ];
 function pushNotification(app,title,body,{thread=null}={}){
   LOCK_NOTIFS.unshift({app,title,body,when:'now',thread});
@@ -806,7 +815,7 @@ function ringTone(on){
     beep(); ringTimer=setInterval(beep,2600);
   }catch(e){}
 }
-function incomingCall(name='Karma S',number='mobile'){
+function incomingCall(name='Mom',number='mobile'){
   if(Call.state!=='idle') return toast('A call is already in progress');
   Object.assign(Call,{state:'incoming',name,number,started:0,mute:false,speaker:false,hold:false});
   showCallUI(); ringTone(true);
@@ -1429,7 +1438,7 @@ function settingsRoot(){
 
     group(content,{rows:[
       {label:'Game Center', icon:'🎮', iconBg:'#5e5ce6', onClick:()=>nav.push(infoListView('Game Center','',
-        ['Apple Account — isaiah.s@icloud.com','Nickname — isaiah_s','Friends — 12','Nearby Players'],''))},
+        ['Apple Account — isaiah.souf@icloud.com','Nickname — isaiah_souf','Friends — 12','Nearby Players'],''))},
       {label:'iCloud', icon:'☁️', iconBg:'#0a84ff', value:'47.2 GB of 200 GB', onClick:()=>nav.push(icloudView())},
       {label:'Wallet & Apple Pay', icon:'💳', iconBg:'#1c1c1e', onClick:()=>nav.push(infoListView('Wallet & Apple Pay','Payment Cards',
         ['Add Card','Express Transit Card','Double-Click Side Button','Allow Payments on Mac'],'Payment features are disabled in the simulator.'))}
@@ -1536,7 +1545,7 @@ function phoneSettingsView(){
       {label:'Live Voicemail',toggle:()=>true,onToggle:()=>{}},
       {label:'Call Blocking & Identification',onClick:()=>toast('Simulated')}]});
     group(b,{rows:[{label:'Simulate an Incoming Call',cls:'blue center',onClick:()=>{
-      goHome(); setTimeout(()=>incomingCall('Karma S','mobile'),400); }}]});
+      goHome(); setTimeout(()=>incomingCall('Mom','mobile'),400); }}]});
   }};
 }
 
@@ -1619,7 +1628,7 @@ function appleIDView(){
 function personalInfoView(){
   return {title:'Personal Information', shortTitle:'Personal', build(b,nav){
     group(b,{rows:[
-      {label:'Name',value:'Isaiah S.',onClick:()=>toast('Name changes are simulated')},
+      {label:'Name',value:'Isaiah Souf',onClick:()=>toast('Name changes are simulated')},
       {label:'Date of Birth',value:'••/••/••••',onClick:()=>toast('Hidden in the simulator')}]});
     group(b,{header:'Reachable At',rows:[
       {label:State.settings.appleID,sub:'Apple Account & contact email',chevron:false},
@@ -1654,7 +1663,7 @@ function paymentView(){
       {label:'Apple Card •••• 4417',sub:'Daily Cash 2%',icon:'💳',iconBg:'#5e5ce6',onClick:()=>toast('Card details are simulated')},
       {label:'Add Payment Method…',cls:'blue',onClick:()=>toast('The simulator can’t take payment details')}]});
     group(b,{header:'Shipping Address',rows:[
-      {labelHTML:'Isaiah S.<br><span class="muted" style="font-size:14px">1200 Lakefront Ave<br>Orlando, FL 32801</span>',chevron:false}]});
+      {labelHTML:'Isaiah Souf<br><span class="muted" style="font-size:14px">1200 Lakefront Ave<br>Orlando, FL 32801</span>',chevron:false}]});
   }};
 }
 function mediaPurchasesView(){
@@ -1682,7 +1691,7 @@ function findMyView(){
   }};
 }
 function familyView(){
-  const members=[['Isaiah S.','Organiser','IS','#0a84ff'],['Karma S','Parent/Guardian','KS','#bf5af2'],
+  const members=[['Isaiah Souf','Organiser','IS','#0a84ff'],['Mom','Parent/Guardian','M','#bf5af2'],
     ['Dad','Adult','D','#30d158'],['Jordan Reyes','Adult','JR','#ff9f0a']];
   return {title:'Family', build(b,nav){
     group(b,{rows:members.map(([n,role,init,color])=>({
@@ -2862,9 +2871,9 @@ function appStoreSettingsView(){
   }};
 }
 function passwordsView(){
-  const items=[['spectrum.net','isaiah.s@icloud.com'],['netflix.com','isaiah.s@icloud.com'],
-    ['disneyplus.com','isaiah.s'],['max.com','isaiah.s@icloud.com'],['peacocktv.com','isaiah.s'],
-    ['paramountplus.com','isaiah.s@icloud.com']];
+  const items=[['spectrum.net','isaiah.souf@icloud.com'],['netflix.com','isaiah.souf@icloud.com'],
+    ['disneyplus.com','isaiah.souf'],['max.com','isaiah.souf@icloud.com'],['peacocktv.com','isaiah.souf'],
+    ['paramountplus.com','isaiah.souf@icloud.com']];
   return {title:'Passwords', build(b,nav){
     b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
     group(b,{rows:items.map(([site,user])=>({
@@ -3126,6 +3135,10 @@ const STORE=[
    desc:`Clear every brick without dropping the ball.\n\n• Drag or use arrow keys to move the paddle\n• Ball angle depends where it hits\n• Three lives, rising speed`,
    whatsnew:`• New level layouts\n• Paddle physics tuned`,shots:['Play','Levels','Scores','Skins'],game:true}
 ];
+/* App Store listing artwork, stored locally. See assets/icons/store/sources.json. */
+const STORE_ART_IDS=['spectrumtv','myspectrum','netflix','disney','max','paramount','peacock','hulu','prime','appletv','youtubetv','espn','discovery'];
+STORE.forEach(a=>{ if(STORE_ART_IDS.includes(a.id))
+  a.icon=`<img class="app-icon-art" src="assets/icons/store/${a.id}.png" alt="" aria-hidden="true" draggable="false">`; });
 const byId = id => STORE.find(a=>a.id===id);
 const installing = new Set();
 
@@ -3503,7 +3516,7 @@ function storeAccountView(){
   return {title:'Account', backLabel:'Done', build(b,nav){
     const head=el('div','pad'); head.style.textAlign='center';
     head.innerHTML=`<div class="avatar" style="width:80px;height:80px;font-size:30px;margin:4px auto 10px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>
-      <div style="font-size:20px;font-weight:600">Isaiah S.</div>
+      <div style="font-size:20px;font-weight:600">Isaiah Souf</div>
       <div class="muted" style="font-size:14px">${esc(State.settings.appleID)}</div>`;
     b.appendChild(head);
     group(b,{rows:[
@@ -4026,13 +4039,13 @@ function seedInbox(acct){
      body:`We're performing network maintenance near your service address on Thursday between 1:00 AM and 5:00 AM.\n\nYou may experience brief interruptions to Internet, TV and Voice service during this window. No action is required.\n\nWe appreciate your patience.`},
     {from:{n:'Paramount+',e:'no-reply@paramountplus.com'},subject:'Your subscription renews soon',date:now-DAYS(4),
      body:`Your Paramount+ with SHOWTIME plan renews on the 19th for $12.99/month.\n\nManage or cancel anytime from Settings > Subscriptions.`},
-    {from:{n:'Karma S',e:'karma.s@gmail.com'},subject:'Sunday dinner?',date:now-DAYS(5),
-     body:`Hey,\n\nAre you coming by Sunday? I'm making the short ribs you like. Bring the projector if you still have it — everyone wants to watch the game outside.\n\n— Karma`},
+    {from:{n:'Mom',e:'mom.souf@gmail.com'},subject:'Sunday dinner?',date:now-DAYS(5),
+     body:`Hey,\n\nAre you coming by Sunday? I'm making the short ribs you like. Bring the projector if you still have it — everyone wants to watch the game outside.\n\nLove,\nMom`},
     {from:{n:'Hulu',e:'hulu@mail.hulu.com'},subject:'We saved your spot',date:now-DAYS(6),
      body:`You're 12 minutes into an episode. Pick up where you left off, or check out three new arrivals we think you'll like.`}
   ];
   const msgs = base.map((b,i)=>mkMsg({...b, to:me, read:i>2, box:'inbox'}));
-  msgs.push(mkMsg({from:{n:acct.name,e:me},to:'karma.s@gmail.com',subject:'Re: Sunday dinner?',box:'sent',read:true,
+  msgs.push(mkMsg({from:{n:acct.name,e:me},to:'mom.souf@gmail.com',subject:'Re: Sunday dinner?',box:'sent',read:true,
     date:now-DAYS(5)+HOURS(2),body:`I'll be there around 4. I'll bring the projector and some drinks.\n\n${State.settings.mailSignature}`}));
   msgs.push(mkMsg({from:{n:acct.name,e:me},to:'',subject:'Cancel cable box',box:'drafts',read:true,date:now-DAYS(1),
     body:`Reminder to myself: call Spectrum about returning the second cable box now that everything is on the app.`}));
@@ -4041,11 +4054,11 @@ function seedInbox(acct){
   return msgs;
 }
 function defaultMail(){
-  const a={id:1,name:'Isaiah S.',address:State.settings.appleID,provider:'gmail',color:'#ea4335',
+  const a={id:1,name:'Isaiah Souf',address:State.settings.appleID,provider:'gmail',color:'#ea4335',
     desc:'Gmail',imap:'imap.gmail.com',smtp:'smtp.gmail.com',type:'IMAP',
     enabled:{mail:true,contacts:true,calendars:true,notes:false}};
   a.messages=seedInbox(a);
-  return {accounts:[a], seq:2, vip:['karma.s@gmail.com']};
+  return {accounts:[a], seq:2, vip:['mom.souf@gmail.com']};
 }
 function ML(){ if(!State.mail) { State.mail=defaultMail(); save(); } return State.mail; }
 function allMessages(){ return ML().accounts.flatMap(a=>a.messages.map(m=>({...m,_acct:a.id}))); }
@@ -4311,7 +4324,7 @@ function composeMail({reply,forward,draft,account,all,subject,body,to,onSent}={}
       d.appendChild(i);
       if(key==='to'){ const p=el('button','','＋'); p.style.color='var(--sysblue)';
         p.onclick=()=>actionSheet('Suggested Contacts',
-          ['karma.s@gmail.com','support@spectrum.net','isaiah.work@outlook.com','billing@charter.net'].map(e=>({
+          ['mom.souf@gmail.com','support@spectrum.net','isaiah.work@outlook.com','billing@charter.net'].map(e=>({
             text:e,onClick:()=>{ i.value=i.value? i.value+', '+e : e; f.to=i.value; }})));
         d.appendChild(p); }
       fields.appendChild(d); return i;
@@ -4376,7 +4389,8 @@ function mailAccountsView(){
       icon:'✉️', iconBg:a.color,
       onClick:()=>nav.push(accountDetailView(a,nav))
     }))});
-    group(b,{rows:[{label:'Add Account',cls:'blue',onClick:()=>nav.push(addAccountView(nav))}]});
+    group(b,{rows:[{label:'Add Account',cls:'blue',onClick:()=>nav.push(addAccountView(nav))},
+      {label:'Add Random Account',cls:'blue',onClick:()=>addRandomAccount(nav)}]});
     group(b,{header:'Fetch New Data',rows:[
       {label:'Push',value:'On',onClick:()=>toast('Simulated')},
       {label:'Fetch',value:'Every 15 Minutes',onClick:()=>toast('Simulated')}]});
@@ -4469,10 +4483,39 @@ function addAccountView(parentNav){
     b.appendChild(el('div','grp-f','Pick a provider for a quick sign-in, or choose <b>Other</b> to configure an IMAP or POP mail server by hand.'));
   }};
 }
+/* One tap: a ready-made "Other" IMAP account with a random person and ISP address. */
+const RANDOM_FIRST=['Maria','James','Aaliyah','Carlos','Priya','Devon','Grace','Marcus','Sofia','Tyrell','Hannah','Luis','Keisha','Owen','Nadia','Andre','Bianca','Wesley'];
+const RANDOM_LAST=['Lopez','Carter','Nguyen','Patel','Brooks','Hayes','Ortiz','Bennett','Coleman','Price','Ramos','Foster','Kim','Ward','Jenkins','Silva'];
+const RANDOM_ISPS=[
+  ['comcast.net','imap.comcast.net','smtp.comcast.net'],['cox.net','imap.cox.net','smtp.cox.net'],
+  ['att.net','imap.mail.att.net','smtp.mail.att.net'],['sbcglobal.net','imap.mail.att.net','smtp.mail.att.net'],
+  ['verizon.net','imap.aol.com','smtp.verizon.net'],['earthlink.net','imap.earthlink.net','smtpauth.earthlink.net'],
+  ['charter.net','mobile.charter.net','mobile.charter.net'],['optonline.net','mail.optonline.net','mail.optonline.net'],
+  ['frontier.com','imap.frontier.com','smtp.frontier.com'],['windstream.net','imap.windstream.net','smtp.windstream.net']
+];
+function addRandomAccount(nav,{back}={}){
+  const m=ML(), pick=a=>a[Math.floor(Math.random()*a.length)];
+  let first,last,isp,address;
+  do{
+    first=pick(RANDOM_FIRST); last=pick(RANDOM_LAST); isp=pick(RANDOM_ISPS);
+    const f=first.toLowerCase(), l=last.toLowerCase(), n=10+Math.floor(Math.random()*90);
+    address=pick([`${f}.${l}`,`${f}${l}${n}`,`${f[0]}${l}`,`${f}_${l}${n}`,`${l}.${f}${n}`])+'@'+isp[0];
+  }while(m.accounts.some(a=>a.address===address));
+  const a={id:m.seq++, name:`${first} ${last}`, address, provider:'other', color:colorFor(address),
+    desc:isp[0], imap:isp[1], smtp:isp[2], type:'IMAP', enabled:{mail:true,contacts:false,calendars:false,notes:false}};
+  a.messages=seedInbox(a);
+  m.accounts.push(a); save(); syncMailBadge();
+  island('✉️','#0a84ff','Mail',address+' added',2600);
+  if(back) nav.popTo('Accounts');
+  nav.refresh();
+  const inst=openApps.get('mail'); if(inst && inst.nav!==nav){ inst.nav.popToRoot(); inst.nav.refresh(); }
+  const si=openApps.get('settings'); if(si && si.nav!==nav) si.nav.refresh();
+}
 function otherAccountView(){
   return {title:'Add Account', shortTitle:'Other', build(b,nav){
     group(b,{header:'Mail',rows:[
-      {label:'Add Mail Account',onClick:()=>nav.push(newMailAccountView())}]});
+      {label:'Add Mail Account',onClick:()=>nav.push(newMailAccountView())},
+      {label:'Add Random Mail Account',cls:'blue',onClick:()=>addRandomAccount(nav,{back:true})}]});
     group(b,{header:'Contacts',rows:[
       {label:'Add LDAP Account',onClick:()=>nav.push(genericServerView('LDAP','ldap.example.com'))},
       {label:'Add CardDAV Account',onClick:()=>nav.push(genericServerView('CardDAV','contacts.example.com'))}]});
@@ -5521,7 +5564,7 @@ function gameShell(app,win){
    PHONE — Favourites / Recents / Contacts / Keypad / Voicemail
    ========================================================================= */
 const CONTACTS=[
-  {first:'Karma',last:'S',fav:true,phones:[['mobile','(407) 555-0118'],['home','(407) 555-0192']],email:'karma.s@gmail.com',note:'Sunday dinner at 4'},
+  {first:'Mom',last:'',fav:true,phones:[['mobile','(407) 555-0118'],['home','(407) 555-0192']],email:'mom.souf@gmail.com',note:'Sunday dinner at 4'},
   {first:'Jordan',last:'Reyes',fav:true,phones:[['iPhone','(407) 555-0143']],email:'jordan@example.com'},
   {first:'Spectrum',last:'Support',org:'Charter Communications',fav:true,phones:[['main','(855) 707-7328'],['billing','(833) 267-6094']]},
   {first:'Dad',last:'',nick:'Dad',fav:true,phones:[['mobile','(407) 555-0177']],email:'m.s@example.com'},
@@ -5542,11 +5585,11 @@ const contactBy=n=>CONTACTS.find(c=>contactName(c)===n||c.nick===n);
 function defaultRecents(){
   const now=Date.now(), M=60000;
   return [
-    {who:'Karma S',        type:'missed',   label:'mobile', at:now-14*M},
+    {who:'Mom',        type:'missed',   label:'mobile', at:now-14*M},
     {who:'Jordan Reyes',   type:'outgoing', label:'iPhone', at:now-92*M, dur:'4:12'},
     {who:'Spectrum Support',type:'incoming',label:'main',   at:now-5*60*M, dur:'11:38'},
     {who:'(407) 555-0164', type:'outgoing', label:'mobile', at:now-8*60*M, dur:'0:44'},
-    {who:'Karma S',        type:'incoming', label:'mobile', at:now-26*60*M, dur:'19:02'},
+    {who:'Mom',        type:'incoming', label:'mobile', at:now-26*60*M, dur:'19:02'},
     {who:'Unknown',        type:'missed',   label:'',       at:now-31*60*M},
     {who:'Dad',            type:'outgoing', label:'mobile', at:now-2*1440*M, dur:'2:35'},
     {who:'Pizza Roma',     type:'outgoing', label:'main',   at:now-3*1440*M, dur:'1:07'},
@@ -5557,8 +5600,8 @@ function defaultRecents(){
 function defaultVoicemails(){
   const now=Date.now(), M=60000;
   return [
-    {who:'Karma S',at:now-14*M,dur:'0:24',unheard:true,
-     text:'Hey, it’s Karma. Just checking that you’re still coming Sunday — call me back when you get a minute.'},
+    {who:'Mom',at:now-14*M,dur:'0:24',unheard:true,
+     text:'Hey, it’s Mom. Just checking that you’re still coming Sunday — call me back when you get a minute.'},
     {who:'Spectrum Support',at:now-2*1440*M,dur:'0:41',unheard:true,
      text:'This is a courtesy call from Spectrum regarding scheduled maintenance in your area on Thursday between 1 and 5 AM. No action is needed.'},
     {who:'Dr. Whitfield',at:now-9*1440*M,dur:'0:18',unheard:false,
@@ -5688,10 +5731,10 @@ function contactsView(picking){
       b.appendChild(sf2);
       const me=el('div','grp');
       const meRow=el('div','wf-row');
-      meRow.innerHTML=`${avatarFor('Isaiah S.')}
-        <div class="wf-name">Isaiah S.<div class="sub">My Card</div></div>
+      meRow.innerHTML=`${avatarFor('Isaiah Souf')}
+        <div class="wf-name">Isaiah Souf<div class="sub">My Card</div></div>
         <div class="chev">${SVG.chev}</div>`;
-      meRow.onclick=()=>nav.push(contactDetailView('Isaiah S.'));
+      meRow.onclick=()=>nav.push(contactDetailView('Isaiah Souf'));
       me.appendChild(meRow);
       b.appendChild(me);
       const holder=el('div'); b.appendChild(holder);
@@ -5724,7 +5767,7 @@ function contactDetailView(name){
   return {title:'', backLabel:'Back', shortTitle:'Contact',
     right:[{text:'Edit',onClick:()=>toast('Editing contacts is simulated')}],
     build(b,nav){
-      const me = name==='Isaiah S.';
+      const me = name==='Isaiah Souf';
       const c = contactBy(name);
       const phones = c? c.phones : (me? [['mobile','(407) 555-0142']] : [['mobile',numberFor(name)||name]]);
       const head=el('div'); head.style.cssText='text-align:center;padding:4px 20px 18px';
@@ -5919,7 +5962,7 @@ function voicemailView(){
 
 
 function defaultThreads(){ return [
-  {n:'Karma',msgs:[['in','Call me when you get a chance 💙',1],['out','Just got out of work — calling now',0]]},
+  {n:'Mom',msgs:[['in','Call me when you get a chance',1],['out','Just got out of work — calling now',0]]},
   {n:'Spectrum',msgs:[['in','Your appointment is confirmed for Thu 8–10 AM. Reply C to cancel.',1]]},
   {n:'Jordan',msgs:[['in','you get Max working on the tv?',1],['out','yeah installed it on my phone too',0],['in','clutch. game night sunday?',1]]},
   {n:'Delivery',msgs:[['in','Your package was delivered to the front door.',1]]}
@@ -6803,7 +6846,7 @@ const Sim={
   },
   ring(name){
     if(locked) { /* incoming calls also wake a locked phone */ }
-    incomingCall(name||'Karma S','mobile'); this.log('Incoming call from '+(name||'Karma S'));
+    incomingCall(name||'Mom','mobile'); this.log('Incoming call from '+(name||'Mom'));
   },
   answer(){ answerCall(); this.log('Call answered'); },
   end(){ if(Call.state==='idle') return this.log('No active call'); endCall(); this.log('Call ended'); },
@@ -6892,7 +6935,7 @@ function renderPanel(){
 
     <h4>Calls</h4>
     <div class="pbtns">
-      <button class="pbtn green wide" data-a="ring">📞 Incoming call — Karma</button>
+      <button class="pbtn green wide" data-a="ring">📞 Incoming call — Mom</button>
       <button class="pbtn" data-a="ringspectrum">Call: Spectrum</button>
       <button class="pbtn" data-a="answer">Answer</button>
       <button class="pbtn red wide" data-a="end">End call${Call.state==='active'?' · '+callDuration():''}</button>
@@ -6951,7 +6994,7 @@ function renderPanel(){
   p.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.a;
     ({lock:()=>Sim.lock(), home:()=>{goHome();Sim.log('Home');}, reboot:()=>Sim.reboot(),
-      ring:()=>Sim.ring('Karma S'), ringspectrum:()=>Sim.ring('Spectrum Support'), answer:()=>Sim.answer(), end:()=>Sim.end(),
+      ring:()=>Sim.ring('Mom'), ringspectrum:()=>Sim.ring('Spectrum Support'), answer:()=>Sim.answer(), end:()=>Sim.end(),
       cantconnect:()=>Sim.cantConnect(), newmail:()=>Sim.newMail(), addemail:()=>Sim.addEmail(), addother:()=>Sim.addEmailOther(),
       verify:()=>Sim.verify(), openmsgs:()=>Sim.openMessages(),
       low:()=>Sim.battery(.15), full:()=>Sim.battery(1), charge:()=>Sim.charge(), silent:()=>Sim.silent(),

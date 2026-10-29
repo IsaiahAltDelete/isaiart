@@ -708,7 +708,7 @@
         icon: 'printer',
         body: printer.queue
           ? UI.group(...Array.from({ length: printer.queue }, (_, index) =>
-              UI.info(`Document ${index + 1}`, 'Printing…', 'Submitted by alex')))
+              UI.info(`Document ${index + 1}`, 'Printing…', 'Submitted by isaiah')))
           : UI.empty('No jobs in the queue', 'Print from Preview or TextEdit to add a job.', { icon: 'printer' }),
         buttons: [
           { label: 'Done', primary: true },

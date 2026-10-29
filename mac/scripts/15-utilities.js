@@ -197,7 +197,7 @@
     size: [760, 470],
     min: [380, 240],
     initialState: () => ({ output: Terminal.banner(), history: [], historyIndex: -1, input: '' }),
-    titleFor: () => 'alex — -zsh',
+    titleFor: () => 'isaiah — -zsh',
     menus: () => ({
       Shell: [
         { label: 'New Window', command: 'new-window', shortcut: '⌘N' },
@@ -868,7 +868,7 @@
           ['Router', Mac.state.wifi.current ? Mac.state.wifi.router : '--'], ['DNS', Mac.state.wifi.dns.join(', ') || 'None']],
         Software: [['System Version', `macOS ${Mac.OS.version()}`], ['Kernel Version', 'Darwin 27.0.1.0'],
           ['Boot Volume', 'Macintosh HD'], ['Boot Mode', Mac.session.safeMode ? 'Safe' : 'Normal'],
-          ['Computer Name', Mac.state.settings.computerName], ['User Name', `${Mac.state.account.name} (alex)`],
+          ['Computer Name', Mac.state.settings.computerName], ['User Name', `${Mac.state.account.name} (isaiah)`],
           ['Secure Virtual Memory', 'Enabled'], ['FileVault', Mac.state.settings.fileVault ? 'Enabled' : 'Disabled']],
         Storage: Mac.state.volumes.map(volume => [volume.name,
           `${Mac.bytes(volume.totalBytes - volume.usedBytes)} free of ${Mac.bytes(volume.totalBytes)}`]),

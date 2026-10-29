@@ -1,0 +1,90 @@
+/* ===========================================================================
+   Window frames, Snap preview and Snap Layouts.
+   =========================================================================== */
+
+#windows { position: absolute; inset: 0; pointer-events: none; }
+.win {
+  position: absolute; display: flex; flex-direction: column; pointer-events: auto;
+  background: var(--mica); color: var(--text); border-radius: var(--r);
+  box-shadow: var(--shadow-win-inactive); overflow: hidden; min-width: 0;
+  transition: box-shadow .15s;
+}
+.win.active { box-shadow: var(--shadow-win); }
+.win:focus-visible { outline: none; }
+.win.maximized, .win.snapped { border-radius: 0; }
+.win.maximized { box-shadow: none; }
+.win.minimized { visibility: hidden; opacity: 0; transform: translateY(40px) scale(.9); transition: opacity .16s, transform .2s var(--ease), visibility 0s .2s; pointer-events: none; }
+.win.opening { animation: win-open .2s var(--ease); }
+.win.closing { animation: win-close .15s forwards; pointer-events: none; }
+@keyframes win-open { from { opacity: 0; transform: scale(.94) translateY(10px); } }
+@keyframes win-close { to { opacity: 0; transform: scale(.96); } }
+.no-animations .win, .no-animations .win * { animation: none !important; transition: none !important; }
+
+.win-titlebar { display: flex; align-items: stretch; height: 32px; flex: none; position: relative; z-index: 2; }
+.win-titlebar.custom { height: 40px; }
+.win-title-content { flex: 1; display: flex; align-items: center; gap: 12px; padding-left: 16px; min-width: 0; font-size: 12px; }
+.win-titlebar.custom .win-title-content { padding-left: 0; }
+.win:not(.active) .win-title-content { color: var(--text-3); }
+.win-ico { display: grid; }
+.win-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-controls { display: flex; flex: none; }
+.win-controls button { width: 46px; border: 0; background: transparent; color: var(--text); display: grid; place-items: center; }
+.win:not(.active) .win-controls button { color: var(--text-3); }
+.win-controls button:hover { background: var(--hover); }
+.win-controls button:active { background: var(--press); }
+.win-controls .wc-close:hover { background: var(--close-hover); color: #fff; }
+.win-controls .wc-close:active { background: color-mix(in srgb, var(--close-hover) 85%, white); color: #fff; }
+.win-body { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; user-select: none; }
+
+/* Resize handles sit just outside the visible frame. */
+.rz { position: absolute; z-index: 5; }
+.rz-n { top: -3px; left: 8px; right: 8px; height: 7px; cursor: ns-resize; }
+.rz-s { bottom: -3px; left: 8px; right: 8px; height: 7px; cursor: ns-resize; }
+.rz-e { right: -3px; top: 8px; bottom: 8px; width: 7px; cursor: ew-resize; }
+.rz-w { left: -3px; top: 8px; bottom: 8px; width: 7px; cursor: ew-resize; }
+.rz-ne { top: -3px; right: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.rz-sw { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.rz-nw { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.rz-se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.win.maximized .rz { display: none; }
+.win { overflow: visible; }
+.win > .win-titlebar { border-radius: var(--r) var(--r) 0 0; }
+.win > .win-body { border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
+.win.maximized > .win-titlebar, .win.maximized > .win-body, .win.snapped > .win-titlebar, .win.snapped > .win-body { border-radius: 0; }
+
+#snap-preview {
+  position: absolute; z-index: 99990; pointer-events: none; opacity: 0; border-radius: var(--r);
+  background: color-mix(in srgb, var(--accent-base) 22%, rgba(255,255,255,.25));
+  border: 1px solid rgba(255, 255, 255, .5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  transition: opacity .15s, left .18s var(--ease), top .18s var(--ease), width .18s var(--ease), height .18s var(--ease);
+}
+#snap-preview.show { opacity: 1; }
+
+.snap-fly {
+  position: fixed; z-index: 99995; display: grid; grid-template-columns: repeat(3, 76px); gap: 12px; padding: 12px;
+  background: var(--flyout); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); color: var(--text);
+  border: 1px solid var(--stroke-2); border-radius: var(--r); box-shadow: var(--shadow-lg); animation: menu-in .16s var(--ease);
+}
+.snap-layout { display: flex; gap: 2px; height: 48px; padding: 2px; border-radius: 6px; flex-wrap: wrap; }
+.snap-layout .cell, .snap-layout .cell-col { border: 0; padding: 0; }
+.snap-layout .cell { background: var(--ctl-strong); opacity: .45; border-radius: 3px; height: 100%; }
+.snap-layout .cell:hover { background: var(--accent); opacity: 1; }
+.snap-layout .cell-col { display: flex; flex-direction: column; gap: 2px; height: 100%; }
+.snap-layout .cell-col .cell { height: auto; flex: 1; }
+.snap-layout .w50 { width: calc(50% - 1px); }
+.snap-layout .w33 { width: calc(33.3% - 1.4px); }
+.snap-layout .w66 { width: calc(66.6% - 1px); }
+.snap-layout .q { width: calc(50% - 1px); height: calc(50% - 1px); }
+
+/* Common app scaffolding: a command bar and a scrolling content area. */
+.app-toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; flex: none; min-height: 44px; border-bottom: 1px solid var(--divider); }
+.app-toolbar .sep { width: 1px; height: 24px; background: var(--divider); margin: 0 4px; }
+.app-toolbar .tb-btn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); }
+.app-toolbar .tb-btn:hover { background: var(--hover); }
+.app-toolbar .tb-btn:disabled { color: var(--text-dis); background: transparent; }
+.app-content { flex: 1; min-height: 0; overflow: auto; }
+.app-statusbar { flex: none; display: flex; align-items: center; gap: 16px; height: 28px; padding: 0 12px; font-size: 12px; color: var(--text-2); border-top: 1px solid var(--divider); }
+.app-surface { background: var(--surface); }
+
+/* Dialog-style frames (Run, About Windows). */
+.win.fixed .wc-min, .win.fixed .wc-max, .win.fixed .rz { display: none; }

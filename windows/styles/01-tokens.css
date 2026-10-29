@@ -1,0 +1,129 @@
+/* ===========================================================================
+   Design tokens. `.t-light` / `.t-dark` are applied separately to system
+   surfaces (taskbar, Start, flyouts) and to app windows, mirroring Windows'
+   separate "Windows mode" and "App mode" choices. Accent values are written by
+   JavaScript from the chosen accent colour.
+   =========================================================================== */
+
+:root {
+  --font: "Win UI", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Win Mono", "Cascadia Mono", Consolas, monospace;
+  --r-sm: 4px;
+  --r: 8px;
+  --r-lg: 12px;
+  --ease: cubic-bezier(.1, .9, .2, 1);
+  --accent-base: #0067c0;
+  --accent-light: #4cc2ff;
+  --accent-dark: #005fb8;
+  --taskbar-h: 48px;
+}
+
+.t-light {
+  color-scheme: light;
+  --accent: var(--accent-dark);
+  --accent-hover: color-mix(in srgb, var(--accent-dark) 90%, white);
+  --accent-text: #ffffff;
+  --accent-fg: var(--accent-dark);
+  --mica: #f3f3f3;
+  --mica-alt: #eeeeee;
+  --surface: #fbfbfb;
+  --surface-solid: #ffffff;
+  --card: rgba(255, 255, 255, .7);
+  --card-hover: rgba(249, 249, 249, .5);
+  --card-press: rgba(249, 249, 249, .3);
+  --layer: rgba(255, 255, 255, .5);
+  --text: #1a1a1a;
+  --text-2: #5f5f5f;
+  --text-3: #8b8b8b;
+  --text-dis: #a0a0a0;
+  --stroke: rgba(0, 0, 0, .0578);
+  --stroke-2: rgba(0, 0, 0, .1);
+  --stroke-ctl: rgba(0, 0, 0, .1622);
+  --divider: rgba(0, 0, 0, .0803);
+  --hover: rgba(0, 0, 0, .0373);
+  --press: rgba(0, 0, 0, .0241);
+  --sel: rgba(0, 0, 0, .06);
+  --ctl: rgba(255, 255, 255, .7);
+  --ctl-hover: rgba(249, 249, 249, .5);
+  --ctl-press: rgba(249, 249, 249, .3);
+  --ctl-strong: rgba(0, 0, 0, .4458);
+  --input: rgba(255, 255, 255, .7);
+  --input-focus: #ffffff;
+  --acrylic: rgba(240, 242, 246, .87);
+  --acrylic-solid: #eeeeee;
+  --flyout: rgba(249, 249, 249, .86);
+  --flyout-solid: #f9f9f9;
+  --taskbar: rgba(238, 238, 238, .82);
+  --taskbar-solid: #eeeeee;
+  --shadow: 0 8px 16px rgba(0, 0, 0, .14);
+  --shadow-lg: 0 32px 64px rgba(0, 0, 0, .1876), 0 2px 21px rgba(0, 0, 0, .1474);
+  --shadow-win: 0 0 0 1px rgba(0, 0, 0, .1), 0 12px 32px rgba(0, 0, 0, .22);
+  --shadow-win-inactive: 0 0 0 1px rgba(0, 0, 0, .08), 0 4px 14px rgba(0, 0, 0, .14);
+  --success: #0f7b0f;
+  --caution: #9d5d00;
+  --critical: #c42b1c;
+  --info-bg: #f6f6f6;
+  --success-bg: #dff6dd;
+  --caution-bg: #fff4ce;
+  --critical-bg: #fde7e9;
+  --glyph-knock: #ffffff;
+  --scroll: rgba(0, 0, 0, .45);
+  --close-hover: #c42b1c;
+}
+
+.t-dark {
+  color-scheme: dark;
+  --accent: var(--accent-light);
+  --accent-hover: color-mix(in srgb, var(--accent-light) 90%, black);
+  --accent-text: #000000;
+  --accent-fg: var(--accent-light);
+  --mica: #202020;
+  --mica-alt: #1c1c1c;
+  --surface: #2b2b2b;
+  --surface-solid: #2c2c2c;
+  --card: rgba(255, 255, 255, .0512);
+  --card-hover: rgba(255, 255, 255, .0837);
+  --card-press: rgba(255, 255, 255, .0326);
+  --layer: rgba(58, 58, 58, .3);
+  --text: #ffffff;
+  --text-2: #cfcfcf;
+  --text-3: #9e9e9e;
+  --text-dis: #717171;
+  --stroke: rgba(255, 255, 255, .0698);
+  --stroke-2: rgba(255, 255, 255, .093);
+  --stroke-ctl: rgba(255, 255, 255, .1);
+  --divider: rgba(255, 255, 255, .0837);
+  --hover: rgba(255, 255, 255, .0605);
+  --press: rgba(255, 255, 255, .0419);
+  --sel: rgba(255, 255, 255, .0837);
+  --ctl: rgba(255, 255, 255, .0605);
+  --ctl-hover: rgba(255, 255, 255, .0837);
+  --ctl-press: rgba(255, 255, 255, .0326);
+  --ctl-strong: rgba(255, 255, 255, .5442);
+  --input: rgba(255, 255, 255, .0605);
+  --input-focus: #1f1f1f;
+  --acrylic: rgba(36, 36, 38, .93);
+  --acrylic-solid: #202020;
+  --flyout: rgba(40, 40, 40, .9);
+  --flyout-solid: #2c2c2c;
+  --taskbar: rgba(28, 28, 28, .84);
+  --taskbar-solid: #1c1c1c;
+  --shadow: 0 8px 16px rgba(0, 0, 0, .26);
+  --shadow-lg: 0 32px 64px rgba(0, 0, 0, .56), 0 2px 21px rgba(0, 0, 0, .55);
+  --shadow-win: 0 0 0 1px rgba(255, 255, 255, .1), 0 12px 32px rgba(0, 0, 0, .5);
+  --shadow-win-inactive: 0 0 0 1px rgba(255, 255, 255, .07), 0 4px 14px rgba(0, 0, 0, .35);
+  --success: #6ccb5f;
+  --caution: #fce100;
+  --critical: #ff99a4;
+  --info-bg: #2b2b2b;
+  --success-bg: #393d1b;
+  --caution-bg: #433519;
+  --critical-bg: #442726;
+  --glyph-knock: #000000;
+  --scroll: rgba(255, 255, 255, .5);
+  --close-hover: #c42b1c;
+}
+
+/* Transparency effects off → solid materials. */
+.no-transparency .t-light, .no-transparency.t-light { --acrylic: var(--acrylic-solid); --flyout: var(--flyout-solid); --taskbar: var(--taskbar-solid); }
+.no-transparency .t-dark, .no-transparency.t-dark { --acrylic: var(--acrylic-solid); --flyout: var(--flyout-solid); --taskbar: var(--taskbar-solid); }

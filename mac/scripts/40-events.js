@@ -720,7 +720,7 @@
           body: UI.group(
             UI.info('Account type', 'Administrator'),
             UI.info('Short name', Mac.PERSONA.shortName),
-            UI.info('Home folder', '/Users/alex'),
+            UI.info('Home folder', '/Users/isaiah'),
             UI.action('Change Password…', 'change-password', ``),
           ),
           buttons: [{ label: 'Done', primary: true }],
@@ -1133,7 +1133,7 @@
     const form = event.target;
 
     if (form.id === 'login-form' || form.id === 'login-form-password') {
-      const guest = (Mac.session.loginUser || 'alex') === 'guest';
+      const guest = (Mac.session.loginUser || 'isaiah') === 'guest';
       Mac.Screens.login(Mac.$('#login-password')?.value || '', { guest });
       return;
     }

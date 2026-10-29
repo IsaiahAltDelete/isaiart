@@ -1,0 +1,942 @@
+{
+  "calculator": {
+    "file": "calculator.png",
+    "label": "Calculator",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsCalculator_11.2607.0.0_x64__8wekyb3d8bbwe\\Assets\\CalculatorAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "47d531d0f1916c021015943a3c12738b2ca00c46968a4a47496fed3d16e65389",
+    "retrieved": "2026-10-29"
+  },
+  "clock": {
+    "file": "clock.png",
+    "label": "Clock",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsAlarms_11.2607.6.0_x64__8wekyb3d8bbwe\\Assets\\AlarmsAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "9ad6f9ac0e06df7ade40988a37847d12a4caa6c67fb7b8c6e62c9ac7509cdf4e",
+    "retrieved": "2026-10-29"
+  },
+  "cmd": {
+    "file": "cmd.png",
+    "label": "Command Prompt",
+    "source_path": "C:\\Windows\\System32\\cmd.exe",
+    "source_resource": "RT_GROUP_ICON IDI_APPICON, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "cmd.exe application icon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "416bfd9ea83f3245ac7fe4938f42215df1c87456a683fd44061310f2c75ff259",
+    "retrieved": "2026-10-29"
+  },
+  "controlpanel": {
+    "file": "controlpanel.png",
+    "label": "Control Panel",
+    "source_path": "C:\\Windows\\System32\\control.exe",
+    "source_resource": "RT_GROUP_ICON 101, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "control.exe application icon; same art as imageres.dll,-27 (Control Panel CLSID DefaultIcon)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "bb0ad29fd66bec3ae40c6df77e9d797a756b4072c65099334e116b2578c934fd",
+    "retrieved": "2026-10-29"
+  },
+  "copilot": {
+    "file": "copilot.png",
+    "label": "Microsoft Copilot",
+    "source_page": "https://apps.microsoft.com/detail/9NHT9RB2F4HD",
+    "source_asset": "https://store-images.s-microsoft.com/image/apps.44413.13623743226081137.44717f35-32c5-4d9e-ab80-390d1fdf3f60.6275dbfa-3261-417d-b5f0-7da8763cfb61",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing iconUrl. The Copilot app is not installed on the source PC; the only local Copilot image (MicrosoftWindows.Client.CBS Assets\\copilot.png) is 48 px and an older logo.",
+    "dimensions": [
+      100,
+      100
+    ],
+    "sha256": "7dad35dd4406937adee3a730be6abe5a2f3425704d72b5bcd30f9c0227658c62",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/adapter": {
+    "file": "cpl/adapter.png",
+    "label": "Network Connections: adapter",
+    "source_path": "C:\\Windows\\SystemResources\\netshell.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1916, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Network Connections adapter base (two monitors); layered under the overlays below",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "1282ff474f0e6e0d9eb89a384683e225156b12f7b0ca748f8939e47e9e1e4fbc",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/adapter-bluetooth": {
+    "file": "cpl/adapter-bluetooth.png",
+    "label": "Network Connections: Bluetooth overlay",
+    "source_path": "C:\\Windows\\SystemResources\\netshell.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1922, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Bluetooth overlay for Bluetooth Network Connection",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "1f17795d1e9e4c2353dd0601cbda54f4039d3b979aee8dbe97fe9e99124cdfc9",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/adapter-disabled": {
+    "file": "cpl/adapter-disabled.png",
+    "label": "Network Connections: disabled adapter",
+    "source_path": "C:\\Windows\\SystemResources\\netshell.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1915, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Network Connections adapter base, disabled (grey)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "a756c95ed980dca3c770ffee9d221fc469511cccaee447997bca34835c8208e5",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/adapter-wifi": {
+    "file": "cpl/adapter-wifi.png",
+    "label": "Network Connections: Wi-Fi overlay",
+    "source_path": "C:\\Windows\\SystemResources\\netshell.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1913, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Wi-Fi signal-bars overlay, drawn over the adapter base",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "5bdad471a6344b8bad74149e0a4270308adf75f007e72d38598b9f96f1884fb8",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/adapter-wifi-off": {
+    "file": "cpl/adapter-wifi-off.png",
+    "label": "Network Connections: Wi-Fi overlay (no signal)",
+    "source_path": "C:\\Windows\\SystemResources\\netshell.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1950, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "grey Wi-Fi bars overlay for a disconnected or disabled adapter",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "57dad2dc68384f592505f8f3d57978ffde02f69a3dfea2852cd462c00bd755c0",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/adapter-x": {
+    "file": "cpl/adapter-x.png",
+    "label": "Network Connections: disconnected overlay",
+    "source_path": "C:\\Windows\\SystemResources\\netshell.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1920, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "red X overlay for a disconnected adapter",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "bf798fad82b92606ef08e7d5691ae32d0eb692b31e990840be09088831b0882d",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/appearance": {
+    "file": "cpl/appearance.png",
+    "label": "Control Panel: Appearance and Personalization",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 197, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-197",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "dfffcda12eb06e6a45ef511e1387d78e98574fb3923749399c37e85017d00fbb",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/clock-region": {
+    "file": "cpl/clock-region.png",
+    "label": "Control Panel: Clock and Region",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 144, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-144",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "9a0e50c39ae2f8ca2475213cc24285f98ab8cae6270b791b1d0c913912ae57e8",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/ease-of-access": {
+    "file": "cpl/ease-of-access.png",
+    "label": "Control Panel: Ease of Access",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 86, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-86",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "67492e4936c8a555ecb929fe2dcb6b46e55f6b8c20ed1d48171e69d8c20bba88",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/hardware-sound": {
+    "file": "cpl/hardware-sound.png",
+    "label": "Control Panel: Hardware and Sound",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 196, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-196",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "d023f0a9964e330aebc3150c928c935b2946bd562858bbfc754181d6292b65d9",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/network-internet": {
+    "file": "cpl/network-internet.png",
+    "label": "Control Panel: Network and Internet",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 120, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-120",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "004abb7f5e9367c121a84766e3604dc0d619d44069eef8c02e8eea6fc6e1bc34",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/programs": {
+    "file": "cpl/programs.png",
+    "label": "Control Panel: Programs",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 87, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-87",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "b58183757c7b583a463dcee4fe80f1e883a38f2c729a45c0083650de536acaa8",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/signal-1": {
+    "file": "cpl/signal-1.png",
+    "label": "Network and Sharing Center: signal 2 of 5 bars",
+    "source_path": "C:\\Windows\\SystemResources\\netcenter.dll.mun",
+    "source_resource": "RT_GROUP_ICON 16, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Wi-Fi signal-strength icon shown beside the connection link",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "2a9348397b8620f38fad254aa054614ff125a34f0cf708781e3faa0fa118b368",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/signal-2": {
+    "file": "cpl/signal-2.png",
+    "label": "Network and Sharing Center: signal 3 of 5 bars",
+    "source_path": "C:\\Windows\\SystemResources\\netcenter.dll.mun",
+    "source_resource": "RT_GROUP_ICON 17, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Wi-Fi signal-strength icon shown beside the connection link",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "06ffe4975357f864a073ebc81361d8aeebb084c3865717a0b6af64891945af37",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/signal-3": {
+    "file": "cpl/signal-3.png",
+    "label": "Network and Sharing Center: signal 4 of 5 bars",
+    "source_path": "C:\\Windows\\SystemResources\\netcenter.dll.mun",
+    "source_resource": "RT_GROUP_ICON 18, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Wi-Fi signal-strength icon shown beside the connection link",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "89daa1e149966a20d7518eff8a4556835e29bdcdc8f3a215413143c58898dfa7",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/signal-4": {
+    "file": "cpl/signal-4.png",
+    "label": "Network and Sharing Center: signal 5 of 5 bars",
+    "source_path": "C:\\Windows\\SystemResources\\netcenter.dll.mun",
+    "source_resource": "RT_GROUP_ICON 19, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Wi-Fi signal-strength icon shown beside the connection link",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "54fe3bf077f033fe23b44615fe9f04781bfd43c3e8828afd4f675b8aca249b7f",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/system-security": {
+    "file": "cpl/system-security.png",
+    "label": "Control Panel: System and Security",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 195, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-195",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "c016adf772c925a5a9c4a94eccfb8ad9cd9b564db78a5cee1f2314b5203d81c1",
+    "retrieved": "2026-10-29"
+  },
+  "cpl/user-accounts": {
+    "file": "cpl/user-accounts.png",
+    "label": "Control Panel: User Accounts",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 88, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Control Panel category icon; the category shell item reports imageres.dll,-88",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "0627c30186796d240cc2545406588aee1e9b22bb24a3e64b2397e7c2d1d39980",
+    "retrieved": "2026-10-29"
+  },
+  "drive": {
+    "file": "drive.png",
+    "label": "Local Disk",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 32, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-32: SHGetStockIconInfo(SIID_DRIVEFIXED)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "881a2d25f11de1a349d397de84d1bddb57826686ab1d62465a2e35b2249867f0",
+    "retrieved": "2026-10-29"
+  },
+  "edge": {
+    "file": "edge.png",
+    "label": "Microsoft Edge",
+    "source_path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "source_resource": "RT_GROUP_ICON IDR_MAINFRAME, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "msedge.exe 156.0.4314.50 application icon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "e387d8ead2ee578b87069d37661b8d6a17649738300f172309a5f77310facd12",
+    "retrieved": "2026-10-29"
+  },
+  "explorer": {
+    "file": "explorer.png",
+    "label": "File Explorer",
+    "source_path": "C:\\Windows\\explorer.exe",
+    "source_resource": "RT_GROUP_ICON ICO_MYCOMPUTER, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "explorer.exe application icon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "b5c9a831d840b001ca96b3dfe052608b1f561afe74b238573c710ad292e5cac6",
+    "retrieved": "2026-10-29"
+  },
+  "folder": {
+    "file": "folder.png",
+    "label": "Folder",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 3, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-3: SHGetStockIconInfo(SIID_FOLDER)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "8c8f108d08fed97ec4fdf39bf418beac42166ee04e4f9d7d37d81ad87acae9da",
+    "retrieved": "2026-10-29"
+  },
+  "gallery": {
+    "file": "gallery.png",
+    "label": "Gallery",
+    "source_path": "C:\\Windows\\SystemResources\\shell32.dll.mun",
+    "source_resource": "RT_GROUP_ICON 51586, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "shell32.dll,-51586: Gallery CLSID DefaultIcon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "f3d87bbfbb33a802aa23c31e8403699d68415f2ac88c074d4d06da9ddeb77c23",
+    "retrieved": "2026-10-29"
+  },
+  "hpsmart": {
+    "file": "hpsmart.png",
+    "label": "HP Smart",
+    "source_page": "https://apps.microsoft.com/detail/9WZDNCRFHWLH",
+    "source_asset": "https://store-images.s-microsoft.com/image/apps.9432.9007199266246824.74da7f90-1d72-48aa-bf4a-f5d684d4813f.5a1c1fda-6139-4d53-a907-0f2c913878f1",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing 71 px plated tile (the larger tiles add an \"HP SMART\" caption). HP Smart is not installed on the source PC. Artwork belongs to HP Inc.",
+    "dimensions": [
+      71,
+      71
+    ],
+    "sha256": "d824e279784372d3327f4146f2dd27066ce7335c0854afc17e434518c1b01252",
+    "retrieved": "2026-10-29"
+  },
+  "intelgcc": {
+    "file": "intelgcc.png",
+    "label": "Intel Graphics Command Center",
+    "source_path": "C:\\Program Files\\WindowsApps\\AppUp.IntelGraphicsExperience_1.100.5688.0_x64__8j3eq9eme6ctt\\Assets\\Square44x44Logo.altform-unplated_targetsize-256.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "note": "Used for igfxCUIService.exe, which has no icon resource. Artwork belongs to Intel Corporation.",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "b571b1646faef5f6cc646d3ca62b607d7f16f25211971f31a76934c376e4ecc4",
+    "retrieved": "2026-10-29"
+  },
+  "mail": {
+    "file": "mail.png",
+    "label": "Outlook",
+    "source_page": "https://apps.microsoft.com/detail/9NRX63209R7B",
+    "source_asset": "https://store-images.s-microsoft.com/image/apps.48677.14374512070697751.25968c71-506c-4ac6-a02b-fe78a2531693.f9d2f800-68e5-43b1-b22c-d1d094d5ce47",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing iconUrl. Used instead of the locally installed Microsoft.OutlookForWindows 1.2024.214.400 package, whose icon still carries the 2024 \"NEW\" badge.",
+    "dimensions": [
+      300,
+      300
+    ],
+    "sha256": "25bef483a8c2db83be2a0784c0da7f7d02a9b086988794a79f8340171a2d96b6",
+    "retrieved": "2026-10-29"
+  },
+  "network": {
+    "file": "network.png",
+    "label": "Network",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 25, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-25: Network CLSID DefaultIcon / SIID_MYNETWORK",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "21dc067fb6445348611a4d3c4baeb8935f558a1dc23436a186ef8db041e3b58d",
+    "retrieved": "2026-10-29"
+  },
+  "notepad": {
+    "file": "notepad.png",
+    "label": "Notepad",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Assets\\NotepadAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "f974969ed293477b6d878d96500802ca679c841da1039e8c994e04171b61c646",
+    "retrieved": "2026-10-29"
+  },
+  "onedrive": {
+    "file": "onedrive.png",
+    "label": "OneDrive",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 1043, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-1043: OneDrive cloud icon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "7585f6e36130fdc36e72b796d7e96e0c3c6ce7f3b122b2bc37c60c0622088178",
+    "retrieved": "2026-10-29"
+  },
+  "paint": {
+    "file": "paint.png",
+    "label": "Paint",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.Paint_11.2605.81.0_x64__8wekyb3d8bbwe\\Assets\\PaintAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "18e46f81f7baaf8c012fdc448c0712d46188b307c96199ca650ddd79148cf37d",
+    "retrieved": "2026-10-29"
+  },
+  "phonelink": {
+    "file": "phonelink.png",
+    "label": "Phone Link",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.YourPhone_1.26092.119.0_x64__8wekyb3d8bbwe\\Assets\\AppTiles\\AppIcon.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "9f1107d37156658c18bd8044e818ba4c11f3c031c00bb8ebd9963a3d2d48e77c",
+    "retrieved": "2026-10-29"
+  },
+  "photos": {
+    "file": "photos.png",
+    "label": "Photos",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.Windows.Photos_2026.11090.22001.0_x64__8wekyb3d8bbwe\\Assets\\Retail\\PhotosAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "35201f511580f1e116dfb42d757d4aaa9f695d77c43a803cf7ea69a390f88162",
+    "retrieved": "2026-10-29"
+  },
+  "powershell": {
+    "file": "powershell.png",
+    "label": "Windows PowerShell",
+    "source_path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "source_resource": "RT_GROUP_ICON MSH_MAIN, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "powershell.exe application icon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "272a4147f0953b4a350915379b324db309d27b318d718ab12a56629b7687270c",
+    "retrieved": "2026-10-29"
+  },
+  "process": {
+    "file": "process.png",
+    "label": "Generic process",
+    "source_path": "C:\\Windows\\SystemResources\\Taskmgr.exe.mun",
+    "source_resource": "RT_GROUP_ICON 30655, largest frame (24 px)",
+    "source_kind": "icon resource frame (32-bit DIB frame converted to PNG with System.Drawing; pixels unaltered)",
+    "note": "Task Manager's default icon for processes whose image has no icon (csrss.exe, dwm.exe, RuntimeBroker.exe and similar).",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      24,
+      24
+    ],
+    "sha256": "ec803c48e42193b77e02c3b5bdf29ad874853dd48d3c5c2e91a6aa6f0fd254ba",
+    "retrieved": "2026-10-29"
+  },
+  "realtek": {
+    "file": "realtek.png",
+    "label": "Realtek Audio Console",
+    "source_page": "https://apps.microsoft.com/detail/9P2B8MCSVPLN",
+    "source_asset": "https://store-images.s-microsoft.com/image/apps.11032.14565325549522547.1f48cb9f-9dfc-45ec-a7f4-26988697ab46.66a9b346-4464-4b06-9443-97aef0b6eaa7",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing logo for Realtek Audio Control. RtkAudUService64.exe in the driver store has no icon resource. Artwork belongs to Realtek Semiconductor Corp.",
+    "dimensions": [
+      50,
+      50
+    ],
+    "sha256": "182b8b9e95cf7bcd60be0213755f9397eff0bb73d95f78a8b45dbc4c0700d60d",
+    "retrieved": "2026-10-29"
+  },
+  "recycle": {
+    "file": "recycle.png",
+    "label": "Recycle Bin (empty)",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 55, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-55: Recycle Bin CLSID DefaultIcon \"Empty\"",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "46679b24d5dc2c1bc72fc7e974cb34341dd5f490d12b9380253e41add46fe486",
+    "retrieved": "2026-10-29"
+  },
+  "recyclefull": {
+    "file": "recyclefull.png",
+    "label": "Recycle Bin (full)",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 54, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-54: Recycle Bin CLSID DefaultIcon \"Full\"",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "667c3b0682947f6e187f3e0a2fc704e632a6b343da36ee266420f36bd06297d5",
+    "retrieved": "2026-10-29"
+  },
+  "search": {
+    "file": "search.png",
+    "label": "Search",
+    "source_path": "C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\Cortana.UI\\Assets\\App\\Square44x44Logo.scale-200.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "note": "Square44x44Logo of the SearchHost.exe app entry (CortanaUI) in MicrosoftWindows.Client.CBS.",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      88,
+      88
+    ],
+    "sha256": "4454bc71158318043f57d9d6f2267d796a1e57a61e6b9f33372fe371d39d4a95",
+    "retrieved": "2026-10-29"
+  },
+  "searchindexer": {
+    "file": "searchindexer.png",
+    "label": "Microsoft Windows Search Indexer",
+    "source_path": "C:\\Windows\\SystemResources\\SearchIndexer.exe.mun",
+    "source_resource": "RT_GROUP_ICON 1, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "a88ec496f3553001fe9fe6fb9ddaa26bd759fbb40a88287425b6cfd8cb9e44be",
+    "retrieved": "2026-10-29"
+  },
+  "security": {
+    "file": "security.png",
+    "label": "Windows Security notification icon",
+    "source_path": "C:\\Windows\\System32\\SecurityHealthSystray.exe",
+    "source_resource": "RT_GROUP_ICON IDI_DEFENDERSHELLICON, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Also used for MsMpEng.exe, which has no icon resource of its own.",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "45451711b30e288b80b8e5d2de3b91a4d0f24fc6a4adb207772c61c2df4fd244",
+    "retrieved": "2026-10-29"
+  },
+  "servicehost": {
+    "file": "servicehost.png",
+    "label": "Service Host",
+    "source_path": "C:\\Windows\\SystemResources\\Taskmgr.exe.mun",
+    "source_resource": "RT_GROUP_ICON 30653, largest frame (24 px)",
+    "source_kind": "icon resource frame (32-bit DIB frame converted to PNG with System.Drawing; pixels unaltered)",
+    "note": "Task Manager's own icon for Service Host groups and services (svchost.exe has no icon resource).",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      24,
+      24
+    ],
+    "sha256": "b81e8c50d58485be77f970cc567f603af9dcf1c45b24c9d934b5d3d83f9371ff",
+    "retrieved": "2026-10-29"
+  },
+  "settings": {
+    "file": "settings.png",
+    "label": "Settings",
+    "source_path": "C:\\Windows\\ImmersiveControlPanel\\images\\logo.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "e9759755b8c8ed399c21d32526e2eb8d761b67ae6ec62fac3662c23f6f5b486f",
+    "retrieved": "2026-10-29"
+  },
+  "snip": {
+    "file": "snip.png",
+    "label": "Snipping Tool",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2608.41.0_x64__8wekyb3d8bbwe\\Assets\\SnippingToolAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "124c2b21fb173552d224d4b55c3f54702fdbe64206986f1c0b224810b4d4fec3",
+    "retrieved": "2026-10-29"
+  },
+  "spooler": {
+    "file": "spooler.png",
+    "label": "Spooler SubSystem App",
+    "source_path": "C:\\Windows\\System32\\spoolsv.exe",
+    "source_resource": "RT_GROUP_ICON 1, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "3af4f7edaa58df06324ba7a737b7b657b6ba68c28fb67f69ebe0b36b60e6ae8f",
+    "retrieved": "2026-10-29"
+  },
+  "spotify": {
+    "file": "spotify.png",
+    "label": "Spotify",
+    "source_path": "C:\\Users\\<user>\\AppData\\Roaming\\Spotify\\Spotify.exe",
+    "source_resource": "RT_GROUP_ICON 32512, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Spotify.exe application icon. Artwork belongs to Spotify AB.",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "46d544e253469558cd3d746ec6b98de591ee2a6b54d4a59cc617dcdda16208b0",
+    "retrieved": "2026-10-29"
+  },
+  "steam": {
+    "file": "steam.png",
+    "label": "Steam",
+    "source_path": "C:\\Program Files (x86)\\Steam\\steam.exe",
+    "source_resource": "RT_GROUP_ICON 101, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "steam.exe application icon. Artwork belongs to Valve Corporation.",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "c9ea553f8efcd2ffb43f305d29f4c843a85e0c944c72d49f2c18a630d2585805",
+    "retrieved": "2026-10-29"
+  },
+  "store": {
+    "file": "store.png",
+    "label": "Microsoft Store",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsStore_22609.1401.6.0_x64__8wekyb3d8bbwe\\Assets\\AppTiles\\StoreAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "f08b6733611c336e5f86b38bfd849d329a2f0856c29c6dd6d406f4ca1aadc31f",
+    "retrieved": "2026-10-29"
+  },
+  "taskmgr": {
+    "file": "taskmgr.png",
+    "label": "Task Manager",
+    "source_path": "C:\\Windows\\SystemResources\\Taskmgr.exe.mun",
+    "source_resource": "RT_GROUP_ICON 30651, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "Taskmgr.exe application icon (resources in Taskmgr.exe.mun)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "89fcdd90a9b65eaf154476d45364ef1a1605b1d55ed2eca061c2e5fcd177fe85",
+    "retrieved": "2026-10-29"
+  },
+  "teams": {
+    "file": "teams.png",
+    "label": "Microsoft Teams",
+    "source_page": "https://apps.microsoft.com/detail/XP8BT8DW290MPQ",
+    "source_asset": "https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHHFT949fUipzkiFOBH3fAiZZUCdYojwUyX2aTonS1aIwMrx6NUIsHfUHSLzjGJFxxi87FXbfaqfqVR.HAnzNbchdxTrX6oTHYnKJYGjY.uNRLC1xtHwTCnBNHfwM.TY69WKyCTG.bjYnwWsp6KkJsEM-&format=png&w=256&h=256",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing logo (2160 px source), requested from the image service at 256 px. Used instead of the locally installed MSTeams 23306.3315.2560.6525 package, whose icon still carries the 2023 \"NEW\" badge.",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "e17a99e9e0a5700e04c083d502936c76cd259ea1583701cb63e4f96409f3943c",
+    "retrieved": "2026-10-29"
+  },
+  "terminal": {
+    "file": "terminal.png",
+    "label": "Windows Terminal",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsTerminal_1.24.12741.0_x64__8wekyb3d8bbwe\\Images\\Square44x44Logo.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "c4b38aa70967f629c51d9b567dd8ca4417bf44887ad3b51d877966fba2d21d97",
+    "retrieved": "2026-10-29"
+  },
+  "thispc": {
+    "file": "thispc.png",
+    "label": "This PC",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 109, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-109: This PC CLSID DefaultIcon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "cec8797a0c516bfeff3bcff66487fb014b777bcc834596cc4d5d7c65dee68fb6",
+    "retrieved": "2026-10-29"
+  },
+  "usb": {
+    "file": "usb.png",
+    "label": "Removable drive",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 35, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-35: SHGetStockIconInfo(SIID_DRIVEREMOVE)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "881a2d25f11de1a349d397de84d1bddb57826686ab1d62465a2e35b2249867f0",
+    "retrieved": "2026-10-29"
+  },
+  "user": {
+    "file": "user.png",
+    "label": "User profile folder",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 123, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-123: user files folder CLSID DefaultIcon",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "a7b3f4a1162801bd5d7f048666546f7eea8404ca2bb7e08e960025990b28fc3f",
+    "retrieved": "2026-10-29"
+  },
+  "vlc": {
+    "file": "vlc.png",
+    "label": "VLC media player",
+    "source_page": "https://apps.microsoft.com/detail/9NBLGGH4VVNH",
+    "source_asset": "https://store-images.s-microsoft.com/image/apps.7158.13510798887505848.fc2d057b-4821-4d58-a0ac-1200841e88d9.2a7465f2-585f-44e3-92ed-3b1e4b486732",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing logo (VLC UWP). VLC is not installed on the source PC. Artwork belongs to VideoLAN.",
+    "dimensions": [
+      100,
+      100
+    ],
+    "sha256": "f61b0d21278131e6efde663036668d7f258b0ac5e50229fd26dc7086d466cf49",
+    "retrieved": "2026-10-29"
+  },
+  "weather": {
+    "file": "weather.png",
+    "label": "Weather",
+    "source_path": "C:\\Program Files\\WindowsApps\\Microsoft.BingWeather_4.54.63045.0_x64__8wekyb3d8bbwe\\Assets\\AppTiles\\WeatherAppList.targetsize-256_altform-unplated.png",
+    "source_kind": "installed app package asset (copied byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "1b68de70db789065abe89da29216393e3ac7fd058232a6413a86bc1b37292e39",
+    "retrieved": "2026-10-29"
+  },
+  "webview2": {
+    "file": "webview2.png",
+    "label": "Microsoft Edge WebView2",
+    "source_path": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\155.0.4283.62\\msedgewebview2.exe",
+    "source_resource": "RT_GROUP_ICON IDR_MAINFRAME, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "838b3b4164983d3fe5d3607876619df7d49b4713ae95444b532e66f546f515cd",
+    "retrieved": "2026-10-29"
+  },
+  "widgets": {
+    "file": "widgets.svg",
+    "label": "Widgets",
+    "source_path": "C:\\Program Files\\WindowsApps\\MicrosoftWindows.Client.WebExperience_526.21100.40.0_x64__cw5n1h2txyewy\\Assets\\WidgetBoardIcon.svg",
+    "source_kind": "installed app package asset (SVG copied byte-for-byte)",
+    "note": "Widgets.exe has no icon resource and the package PNG logos are placeholders; this is the Widgets board icon from the same package.",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      20,
+      20
+    ],
+    "sha256": "ffdea0abac29ea303441f71e4e0f269ebddb7ed7346f1f8042a9d517d2efac86",
+    "retrieved": "2026-10-29"
+  },
+  "windows": {
+    "file": "windows.png",
+    "label": "Windows logo",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 5308, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-5308: Windows logo",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "e3faf3304da1b0df3d34bfa1184a8cfe212d8459c9d0e80659a53d9185f15877",
+    "retrieved": "2026-10-29"
+  },
+  "windrive": {
+    "file": "windrive.png",
+    "label": "Windows (C:) drive",
+    "source_path": "C:\\Windows\\SystemResources\\imageres.dll.mun",
+    "source_resource": "RT_GROUP_ICON 36, largest frame",
+    "source_kind": "icon resource frame (embedded PNG written out byte-for-byte)",
+    "note": "imageres.dll,-36: fixed drive with Windows logo (system drive)",
+    "source_os": "Windows 11 build 26300",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "f489be0fd4a8271b41633d7de49ae110cdda4f8f6dbb0579115ed5c763158909",
+    "retrieved": "2026-10-29"
+  },
+  "zoom": {
+    "file": "zoom.png",
+    "label": "Zoom Workplace",
+    "source_page": "https://apps.microsoft.com/detail/XP99J3KP4XZ4VV",
+    "source_asset": "https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBfLf9EetALaWlLDJdgfp14FAtJl7mHqbui.GtMR8.6yyQL7UbLxCNSp1wsDDsGUUFjMsqHN0Qxr8_ApNmb7EhpI-&format=png&w=256&h=256",
+    "source_kind": "Microsoft Store listing image (downloaded unaltered)",
+    "note": "Store listing logo (2160 px source), requested from the image service at 256 px. Zoom is not installed on the source PC. Artwork belongs to Zoom Communications, Inc.",
+    "dimensions": [
+      256,
+      256
+    ],
+    "sha256": "18c90456aa689fd53c1a8576d2f09a1c773c2e8f2e97a0a0f750c038b196ea87",
+    "retrieved": "2026-10-29"
+  }
+}

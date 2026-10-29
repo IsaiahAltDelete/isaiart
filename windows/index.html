@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="An interactive browser recreation of the Windows 11 desktop.">
+<title>Windows 11</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cg fill='%230a7ce0'%3E%3Crect x='4' y='4' width='19' height='19' rx='1'/%3E%3Crect x='25' y='4' width='19' height='19' rx='1'/%3E%3Crect x='4' y='25' width='19' height='19' rx='1'/%3E%3Crect x='25' y='25' width='19' height='19' rx='1'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="styles/01-tokens.css?v=win-e">
+<link rel="stylesheet" href="styles/02-controls.css?v=win-e">
+<link rel="stylesheet" href="styles/03-shell.css?v=win-e">
+<link rel="stylesheet" href="styles/04-windows.css?v=win-e">
+<link rel="stylesheet" href="styles/20-files.css?v=win-e">
+<link rel="stylesheet" href="styles/30-settings.css?v=win-e">
+<link rel="stylesheet" href="styles/40-apps.css?v=win-e">
+<link rel="stylesheet" href="styles/50-misc.css?v=win-e">
+</head>
+<body class="t-light">
+
+  <!-- ------------------------------------------------------------ desktop -->
+  <main id="desktop" aria-label="Desktop">
+    <div id="wallpaper" aria-hidden="true"></div>
+    <div id="desktop-icons" role="listbox" aria-label="Desktop" aria-multiselectable="true"></div>
+    <div id="marquee" class="hidden" aria-hidden="true"></div>
+    <div id="windows" class="t-light"></div>
+    <div id="snap-preview" aria-hidden="true"></div>
+  </main>
+
+  <nav id="taskbar" aria-label="Taskbar"></nav>
+  <div id="flyouts"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="overlay-layer" class="t-light"></div>
+
+  <!-- Display filters sit above everything except system screens. -->
+  <div id="night-light" aria-hidden="true"></div>
+  <div id="dimmer" aria-hidden="true"></div>
+
+  <!-- ------------------------------------------------------ system screens -->
+  <section id="lock-screen" class="system-screen hidden" aria-label="Lock screen"></section>
+  <section id="boot-screen" class="system-screen hidden" aria-label="Starting Windows"></section>
+  <section id="off-screen" class="system-screen hidden" aria-label="Powered off"></section>
+
+  <script src="scripts/01-core.js?v=win-e"></script>
+  <script src="scripts/02-icons.js?v=win-e"></script>
+  <script src="scripts/03-state.js?v=win-e"></script>
+  <script src="scripts/04-network.js?v=win-e"></script>
+  <script src="scripts/05-ui.js?v=win-e"></script>
+  <script src="scripts/06-wm.js?v=win-e"></script>
+  <script src="scripts/07-wallpapers.js?v=win-e"></script>
+  <script src="scripts/08-taskbar.js?v=win-e"></script>
+  <script src="scripts/09-start.js?v=win-e"></script>
+  <script src="scripts/10-flyouts.js?v=win-e"></script>
+  <script src="scripts/11-desktop.js?v=win-e"></script>
+  <script src="scripts/12-session.js?v=win-e"></script>
+  <script src="scripts/20-explorer.js?v=win-e"></script>
+  <script src="scripts/21-notepad.js?v=win-e"></script>
+  <script src="scripts/22-photos.js?v=win-e"></script>
+  <script src="scripts/23-paint.js?v=win-e"></script>
+  <script src="scripts/30-settings.js?v=win-e"></script>
+  <script src="scripts/40-edge.js?v=win-e"></script>
+  <script src="scripts/41-terminal.js?v=win-e"></script>
+  <script src="scripts/42-taskmgr.js?v=win-e"></script>
+  <script src="scripts/43-calculator.js?v=win-e"></script>
+  <script src="scripts/44-clock.js?v=win-e"></script>
+  <script src="scripts/50-misc.js?v=win-e"></script>
+  <script src="scripts/99-boot.js?v=win-e"></script>
+</body>
+</html>
