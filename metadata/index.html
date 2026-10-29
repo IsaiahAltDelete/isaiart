@@ -3,497 +3,709 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#07080b" />
+  <meta name="theme-color" content="#ffffff" />
   <title>Metadata Viewer | ISAIART</title>
   <meta name="description" content="Inspect image metadata, decode ComfyUI and A1111 generation data, or strip it in bulk. Everything runs in your browser." />
-
-  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/kit.css?v=1">
-  <script src="../assets/kit.js?v=1"></script>
-  <script src="../assets/sky.js?v=1" defer></script>
-
-  <!-- the results are built from many small icons created in script, so the icon font stays -->
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>" />
 
   <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-  <style>
-    /* Metadata on the kit: three tools under one header, a picture or input on
-       the left, what was found on the right. Periwinkle marks state; the
-       alert tone is kept for findings worth worrying about (GPS, AI tags). */
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block" rel="stylesheet" />
 
+  <script>
+    // Theme: 'light' | 'dark' | 'system' (default). Resolved onto html[data-mode]
+    // before first paint so there is no flash.
+    (function () {
+      var pref = 'system';
+      try { pref = localStorage.getItem('metadata.theme') || 'system'; } catch (e) {}
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      function apply() {
+        var dark = pref === 'dark' || (pref === 'system' && mq.matches);
+        document.documentElement.dataset.mode = dark ? 'dark' : 'light';
+        document.documentElement.dataset.theme = pref;
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.content = dark ? '#171a21' : '#ffffff';
+      }
+      apply();
+      mq.addEventListener ? mq.addEventListener('change', function () { if (pref === 'system') apply(); }) : mq.addListener(function () { if (pref === 'system') apply(); });
+      window.setTheme = function (p) { pref = p; try { localStorage.setItem('metadata.theme', p); } catch (e) {} apply(); };
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f3f4f6;
+      --panel:     #ffffff;
+      --raise:     #f9fafb;
+      --raise-hi:  #f3f4f6;
+      --line:      #e5e7eb;
+      --line-hi:   #d1d5db;
+      --text:      #1f2937;
+      --off:       #4b5563;
+      --dim:       #6b7280;
+      --accent:    #dc2626;
+      --accent-hi: #b91c1c;
+      --accent-bg: #fef2f2;
+      --accent-line: #fecaca;
+      --ok:        #16a34a;
+      --ok-hi:     #15803d;
+      --ok-bg:     #f0fdf4;
+      --ok-line:   #bbf7d0;
+      --warn:      #b45309;
+      --info:      #2563eb;
+      --r:         14px;
+      --r-sm:      10px;
+      --top-h:     56px;
+      --nav-h:     0px;
+      --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+      --shadow:    0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.05);
+      --shadow-hi: 0 2px 4px rgba(17, 24, 39, 0.05), 0 10px 26px rgba(17, 24, 39, 0.09);
+      --safe-b:    env(safe-area-inset-bottom, 0px);
+      --faint:     #9ca3af;
+      --stage-hover: #fffafa;
+      --output:    #fcfcfd;
+      --sk1:       #f1f2f4;
+      --sk2:       #e6e8eb;
+      --accent-text: #b91c1c;
+      --accent-soft: #f87171;
+      --banner-text: #991b1b;
+      --body:      #374151;
+      --glass:     rgba(255,255,255,0.92);
+      --info-bg:   #eff6ff;
+      --info-line: #bfdbfe;
+      --scroll:    #c4c8cf;
+      --bg-a:      #f9fafb;
+      --bg-b:      #eceef1;
+      color-scheme: light;
+    }
+    /* Dark: html[data-mode] is resolved in <head> from the saved choice or the
+       browser's preference, so this is the only dark block. */
+    :root[data-mode="dark"] {
+      --bg:        #0f1115;
+      --panel:     #171a21;
+      --raise:     #1c2029;
+      --raise-hi:  #232834;
+      --line:      #2a2f3a;
+      --line-hi:   #3a4150;
+      --text:      #e7e9ee;
+      --off:       #b4bac6;
+      --dim:       #8f97a6;
+      --faint:     #6b7383;
+      --accent:    #ef4444;
+      --accent-hi: #dc2626;
+      --accent-bg: rgba(239, 68, 68, 0.12);
+      --accent-line: rgba(239, 68, 68, 0.32);
+      --accent-text: #f87171;
+      --accent-soft: #f87171;
+      --banner-text: #fca5a5;
+      --ok:        #22c55e;
+      --ok-hi:     #16a34a;
+      --ok-bg:     rgba(34, 197, 94, 0.12);
+      --ok-line:   rgba(34, 197, 94, 0.32);
+      --warn:      #f59e0b;
+      --info:      #60a5fa;
+      --info-bg:   rgba(96, 165, 250, 0.12);
+      --info-line: rgba(96, 165, 250, 0.32);
+      --body:      #d4d8e0;
+      --output:    #13161c;
+      --stage-hover: #1d1719;
+      --sk1:       #1d2129;
+      --sk2:       #282d38;
+      --glass:     rgba(23, 26, 33, 0.92);
+      --scroll:    #3a4150;
+      --bg-a:      #12151b;
+      --bg-b:      #0b0d11;
+      --shadow:    0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+      --shadow-hi: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 26px rgba(0, 0, 0, 0.4);
+      color-scheme: dark;
+    }
+    :root[data-mode="dark"] .custom-toast { background: #2a2f3a; border: 1px solid #3a4150; }
+    :root[data-mode="dark"] .badge { background: rgba(0, 0, 0, 0.7); }
+    :root[data-mode="dark"] svg [fill="#ffffff"] { fill: var(--raise); }
+    :root[data-mode="dark"] svg [stroke="#d1d5db"], :root[data-mode="dark"] svg [stroke="#e5e7eb"], :root[data-mode="dark"] svg [stroke="#9ca3af"] { stroke: var(--line-hi); }
+    :root[data-mode="dark"] svg [fill="#e5e7eb"] { fill: var(--line-hi); }
+    :root[data-mode="dark"] svg [fill="#fee2e2"] { fill: rgba(239, 68, 68, 0.2); }
+    :root[data-mode="dark"] svg [fill="#dcfce7"] { fill: rgba(34, 197, 94, 0.16); }
+    body, .panel, .topbar, .tabs, .stage, .kv-list, .prompt pre, .param, .raw, .stat, .name-toggle, .output { transition-property: background-color, border-color, color, box-shadow, transform; }
+
+    /* theme switch */
+    .theme-seg { position: relative; display: flex; padding: 3px; border-radius: 999px; background: var(--raise-hi); border: 1px solid var(--line); flex-shrink: 0; }
+    .theme-seg button { position: relative; z-index: 1; width: 30px; height: 26px; border-radius: 999px; display: grid; place-items: center; color: var(--dim); transition: color 0.2s; }
+    .theme-seg button:hover { color: var(--text); }
+    .theme-seg button.on { color: var(--accent); }
+    .theme-seg .material-symbols-outlined { font-size: 17px; }
+    .theme-seg .knob { position: absolute; z-index: 0; top: 3px; width: 30px; height: 26px; border-radius: 999px; background: var(--panel); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.15); transition: transform 0.3s var(--ease); }
+
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: linear-gradient(160deg, var(--bg-a) 0%, var(--bg-b) 100%) fixed;
+      color: var(--text);
+      font-family: 'Poppins', system-ui, sans-serif;
+      font-size: 14.5px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { background: none; border: 0; cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
     .hidden { display: none !important; }
-    button { font: inherit; color: inherit; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
     .material-symbols-outlined {
-      font-size: 18px; line-height: 1; vertical-align: middle;
-      text-transform: none; letter-spacing: normal;
-      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+      font-size: 20px; line-height: 1; vertical-align: middle;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
       user-select: none; flex-shrink: 0;
     }
-    .spin { animation: spin 0.9s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    kbd { font-size: 11.5px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+    ::selection { background: var(--accent-line); }
 
-    /* ── Header ───────────────────────────────────────────────── */
-    .tabs { position: relative; }
-    .tabs .tab-btn { position: relative; z-index: 1; }
-    .tabs .tab-btn[aria-selected="true"], .tabs .tab-btn.active { background: none; color: var(--ink); }
-    #tabIndicator {
-      position: absolute; z-index: 0; border-radius: 999px;
-      background: var(--press); box-shadow: inset 0 0 0 1px var(--rule-hi);
-      transition: left .3s var(--ease), width .3s var(--ease), top .3s var(--ease), height .3s var(--ease);
+    .scroll { scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
+    .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+    .scroll::-webkit-scrollbar-track { background: transparent; }
+    .scroll::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+    .scroll::-webkit-scrollbar-thumb:hover { background-color: var(--faint); }
+
+    /* ── App shell ──────────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; min-height: 100dvh; }
+    .topbar {
+      position: sticky; top: 0; z-index: 40;
+      height: var(--top-h);
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 20px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
     }
-    .tab-short { display: none; }
-    .privacy.chip { --c: var(--ok); height: 30px; }
-    .privacy .material-symbols-outlined { font-size: 15px; color: var(--ink-faint); }
+    .brand { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+    .brand-mark { display: grid; place-items: center; color: var(--accent); }
+    .brand-mark .material-symbols-outlined { font-size: 26px; }
+    .brand-name { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; text-transform: uppercase; }
+    .brand-name span { color: var(--dim); font-weight: 500; }
 
-    /* ── Views ────────────────────────────────────────────────── */
-    .views { position: relative; display: flex; flex-direction: column; }
-    .view { display: flex; flex-direction: column; min-height: 0; }
-    .view.enter { animation: view-in .25s ease both; }
+    .tabs {
+      position: fixed; z-index: 45; top: calc((var(--top-h) - 42px) / 2); left: 50%; transform: translateX(-50%);
+      display: flex; gap: 2px; padding: 4px;
+      background: var(--raise-hi);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .tab-btn {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 15px; border-radius: 9px;
+      font-weight: 500; font-size: 14px; color: var(--off);
+      white-space: nowrap;
+      transition: color 0.2s ease, background-color 0.2s ease;
+    }
+    .tab-btn .material-symbols-outlined { font-size: 19px; }
+    .tab-btn:hover:not(.active) { color: var(--accent); }
+    .tab-btn.active { color: var(--accent); font-weight: 600; }
+    .tab-btn.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .tab-short { display: none; }
+    #tabIndicator {
+      position: absolute; z-index: 0; top: 4px; height: calc(100% - 8px);
+      border-radius: 9px; background: var(--panel);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+      transition: left 0.3s var(--ease), width 0.3s var(--ease), top 0.3s var(--ease), height 0.3s var(--ease);
+    }
+    .theme-seg { margin-left: auto; }
+    .privacy {
+      display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+      font-size: 12.5px; font-weight: 500; color: var(--ok);
+      padding: 4px 10px 4px 8px; border-radius: 999px;
+      background: var(--ok-bg); border: 1px solid var(--ok-line);
+    }
+    .privacy .material-symbols-outlined { font-size: 16px; }
+    .privacy .dot { display: none; }
+
+    .views { position: relative; flex: 1; display: flex; flex-direction: column; padding: 18px 20px 20px; min-height: 0; }
+    .view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .view.enter { animation: view-in 0.25s ease both; }
     .view.leave { display: none; }
     @keyframes view-in { from { opacity: 0; } }
 
-    .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .split { flex: 1; display: grid; grid-template-columns: minmax(320px, 40%) 1fr; gap: 18px; min-height: 0; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+    }
     .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
 
-    /* ── Stage: drop zone, then the picture ───────────────────── */
+    /* ── Stage (drop zone + preview) ────────────────────────────── */
     .stage {
-      position: relative; min-height: 260px;
+      position: relative; flex: 1; min-height: 260px;
       display: grid; place-items: center;
-      border: 1px dashed var(--rule-hi); border-radius: var(--r-l);
-      background: linear-gradient(var(--well), var(--well)), var(--panel); color: var(--ink-soft);
-      overflow: hidden; cursor: pointer; isolation: isolate;
-      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-      transition: border-color .2s, background-color .2s, color .2s;
+      border-radius: var(--r); overflow: hidden; cursor: pointer;
+      background: var(--panel);
+      border: 2px dashed var(--line-hi);
+      transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      isolation: isolate;
     }
-    .stage:hover, .stage.dragover {
-      border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-      background: linear-gradient(color-mix(in srgb, var(--accent) 6%, var(--well)), color-mix(in srgb, var(--accent) 6%, var(--well))), var(--panel);
-      color: var(--ink);
-    }
-    .stage:hover .drop-ico, .stage.dragover .drop-ico { border-color: color-mix(in srgb, var(--accent) 50%, transparent); color: var(--accent); }
-    .stage.has-image {
-      cursor: zoom-in; border-style: solid; border-color: var(--rule);
-      background: repeating-conic-gradient(rgb(255 255 255 / 0.035) 0% 25%, transparent 0% 50%) 50% / 18px 18px, var(--well);
-    }
-    :root[data-theme="light"] .stage.has-image { background: repeating-conic-gradient(rgb(20 20 30 / 0.05) 0% 25%, transparent 0% 50%) 50% / 18px 18px, #fff; }
-    .stage.has-image:hover { border-color: var(--rule-hi); }
-    .stage .drop-ico { transition: border-color .2s, color .2s; }
+    .stage:hover { border-color: var(--accent); background: var(--stage-hover); }
+    .stage.dragover { border-color: var(--accent); background: var(--accent-bg); box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12); }
+    .stage.has-image { cursor: zoom-in; border: 1px solid var(--line); background: var(--raise-hi); box-shadow: var(--shadow); }
+    .stage.has-image:hover { border-color: var(--line-hi); }
 
-    .stage-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 24px; gap: 8px; }
-    .stage-empty strong { margin-top: 6px; font-family: var(--f-display); font-size: 20px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
-    .stage-empty p { max-width: 34ch; font-size: 14px; color: var(--ink-faint); margin: 0; }
-    .stage-empty .hint { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-    .stage-empty .btn { margin-top: 10px; }
-    .stage .scanline, .stage .grid-flash, .stage-bg { display: none; }
+    .stage-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px; gap: 4px; }
+    .stage-empty h2 { font-weight: 600; font-size: 19px; margin-top: 10px; color: var(--text); transition: color 0.2s; }
+    .stage:hover .stage-empty h2 { color: var(--accent-hi); }
+    .stage-empty p { color: var(--dim); font-size: 13.5px; }
+    .stage-empty .hint { color: var(--faint); font-size: 12.5px; margin-top: 8px; display: flex; align-items: center; gap: 5px; }
+    .kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line-hi); border-bottom-width: 2px; color: var(--off); background: var(--panel); }
+    .stage-empty .btn { margin-top: 14px; }
+
+    .hero { width: 200px; height: 130px; position: relative; transition: transform 0.3s var(--ease); }
+    .stage:hover .hero { transform: translateY(-3px); }
+    .hero svg { width: 100%; height: 100%; overflow: visible; }
+    .tag { display: none; }
 
     #imagePreview {
       position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: contain; padding: 12px;
-      animation: img-in .35s ease both;
+      object-fit: contain; padding: 10px;
+      animation: img-in 0.35s ease both;
     }
     @keyframes img-in { from { opacity: 0; } }
+    .stage .scanline, .stage .grid-flash { display: none; }
 
     .badge {
       position: absolute; z-index: 3; bottom: 12px; right: 12px;
-      padding: 3px 10px; border-radius: 999px;
-      font-family: var(--f-mono); font-size: 11.5px; color: var(--ink);
-      background: color-mix(in srgb, var(--panel-solid) 82%, transparent);
-      border: 1px solid var(--rule);
-      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+      padding: 3px 8px; border-radius: 7px;
+      background: rgba(17, 24, 39, 0.72); color: #fff;
     }
-    .zoom-hint { left: 12px; right: auto; display: flex; align-items: center; gap: 5px; font-family: var(--f-text); opacity: 0; transition: opacity .2s; }
+    .zoom-hint { left: 12px; right: auto; display: flex; align-items: center; gap: 4px; opacity: 0; transition: opacity 0.2s; }
     .stage:hover .zoom-hint { opacity: 1; }
     .zoom-hint .material-symbols-outlined { font-size: 15px; }
 
-    .file-card.panel { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-m); }
+    .file-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
     .file-card .ext {
-      width: 42px; height: 42px; border-radius: var(--r-s); flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
       display: grid; place-items: center;
-      font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .1em;
-      background: var(--well); color: var(--ink-soft); border: 1px solid var(--rule);
+      font-weight: 700; font-size: 11.5px; letter-spacing: 0.04em;
+      background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-line);
     }
-    .file-card .fname { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .file-card .fsub { color: var(--ink-faint); font-size: 13px; }
+    .file-card .fname { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-card .fsub { color: var(--dim); font-size: 12.5px; }
     .file-card > div:nth-child(2) { min-width: 0; flex: 1; }
 
-    /* ── Buttons on the kit ───────────────────────────────────── */
+    /* ── Buttons ───────────────────────────────────────────────── */
     .actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .actions .btn { flex: 1 1 0; }
-    .actions:not(:has(.btn:not(.hidden))) { display: none; }
-    .btn .material-symbols-outlined { font-size: 18px; margin-left: -2px; }
-    .btn .lbl { font: inherit; color: inherit; letter-spacing: inherit; }
+    .btn {
+      position: relative;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 44px; padding: 0 18px; border-radius: 10px;
+      font-weight: 600; font-size: 14px; white-space: nowrap;
+      transition: transform 0.15s ease, background-color 0.2s, box-shadow 0.2s, border-color 0.2s, color 0.2s;
+      user-select: none;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+    .btn:disabled { cursor: not-allowed; background: var(--raise-hi); color: var(--faint); box-shadow: none; border: 1px solid var(--line); }
     .btn.busy { cursor: progress; }
-    .btn.icon-only, .actions .btn.icon-only { flex: 0 0 42px; width: 42px; padding: 0; }
-    .btn.icon-only .material-symbols-outlined { margin: 0; }
-    .btn.sm.icon-only { flex-basis: 34px; width: 34px; }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25); }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hi); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.28); }
+    .btn-ok { background: var(--ok); color: #fff; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25); }
+    .btn-ok:hover:not(:disabled) { background: var(--ok-hi); box-shadow: 0 6px 16px rgba(22, 163, 74, 0.28); }
+    .btn-ghost { background: var(--panel); border: 1px solid var(--line-hi); color: var(--text); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); box-shadow: var(--shadow); }
+    .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 8px; gap: 6px; }
+    .btn-sm .material-symbols-outlined { font-size: 17px; }
+    .btn-icon { min-height: 34px; width: 34px; padding: 0; border-radius: 9px; }
+    .btn .ripple { display: none; }
+    .spin { animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Results panel ────────────────────────────────────────── */
-    .results-panel.panel, .paste-panel.panel { padding: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-    .results-head, .paste-head {
+    /* ── Results panel ─────────────────────────────────────────── */
+    .results-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .results-head {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      min-height: 60px; padding: 12px 14px 12px 22px; border-bottom: 1px solid var(--rule);
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
     }
-    .results-title {
-      display: flex; align-items: center; gap: 10px; margin-right: auto; min-width: 0;
-      font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--ink);
+    .results-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15.5px; margin-right: auto; }
+    .results-title .material-symbols-outlined { color: var(--accent); font-size: 21px; }
+    .source-chip {
+      font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px;
+      background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-line);
     }
-    .results-title::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .5; flex: none; }
-    .source-chip.chip { margin-left: 4px; font-family: var(--f-text); text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink-soft); }
-    .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+    .source-chip.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+    .tools { display: flex; gap: 6px; }
+    .search { position: relative; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .search .material-symbols-outlined { position: absolute; left: 25px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 18px; pointer-events: none; }
+    .search input {
+      width: 100%; height: 38px; padding: 0 36px 0 38px; border-radius: 9px;
+      background: var(--raise); border: 1px solid var(--line); font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .search input::placeholder { color: var(--faint); }
+    .search input:hover { border-color: var(--line-hi); }
+    .search input:focus { outline: none; border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); background: var(--panel); }
+    .search .clear { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); color: var(--faint); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; }
+    .search .clear .material-symbols-outlined { position: static; transform: none; }
+    .search .clear:hover { color: var(--text); background: var(--raise-hi); }
 
-    .search { position: relative; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
-    .search > .material-symbols-outlined { position: absolute; left: 29px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); pointer-events: none; }
-    .search input { height: 40px; padding: 0 40px 0 40px; font-size: 14.5px; -webkit-appearance: none; appearance: none; }
-    .search input::-webkit-search-cancel-button { display: none; }
-    .search .clear { position: absolute; right: 22px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--ink-faint); cursor: pointer; }
-    .search .clear:hover { color: var(--ink); background: var(--hover); }
+    .output { flex: 1; overflow-y: auto; padding: 16px; min-height: 0; overscroll-behavior: contain; background: var(--output); border-radius: 0 0 var(--r) var(--r); }
+    .stack > * + * { margin-top: 18px; }
 
-    .output { flex: 1; overflow-y: auto; padding: 20px 22px 24px; min-height: 0; overscroll-behavior: contain; }
-    .stack > * + * { margin-top: 20px; }
-
-    .empty { height: 100%; min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 24px; }
-    .empty h3 { margin: 6px 0 0; font-family: var(--f-display); font-size: 18px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
-    .empty p { margin: 0; font-size: 14px; max-width: 40ch; color: var(--ink-soft); }
-    .empty > .material-symbols-outlined { font-size: 30px; color: var(--ink-faint); }
-    .empty-art { width: 116px; height: 86px; }
-    .empty-art .fr { fill: var(--well); stroke: var(--rule-hi); }
-    .empty-art .ky { fill: var(--accent); opacity: .45; }
-    .empty-art .ky.b { opacity: .25; }
-    .empty-art .vl { fill: var(--rule-hi); }
-
+    .empty { height: 100%; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 20px; color: var(--off); }
+    .empty h3 { font-weight: 600; font-size: 16px; color: var(--text); }
+    .empty p { font-size: 13.5px; max-width: 340px; color: var(--dim); }
+    .empty-art { width: 110px; height: 82px; margin-bottom: 8px; }
     .skeleton { display: flex; flex-direction: column; gap: 12px; }
     .skeleton .sk-line { height: 14px; border-radius: 6px; }
-    .skeleton .sk-block { height: 70px; border-radius: var(--r-m); }
-    .skeleton > *:not(.decoding) { background: linear-gradient(90deg, var(--well) 20%, var(--press) 40%, var(--well) 60%) 0 0 / 300% 100%; animation: shimmer 1.3s linear infinite; }
+    .skeleton .sk-block { height: 70px; border-radius: 10px; }
+    .skeleton > *:not(.decoding) {
+      background: linear-gradient(90deg, var(--sk1) 20%, var(--sk2) 40%, var(--sk1) 60%) 0 0 / 300% 100%;
+      animation: shimmer 1.3s linear infinite;
+    }
     @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -50% 0; } }
-    .decoding { display: flex; align-items: center; gap: 8px; color: var(--ink-faint); font-size: 13.5px; margin-bottom: 4px; }
+    .decoding { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; margin-bottom: 4px; }
     .decoding .bar { display: none; }
 
-    .anim-in { animation: card-in .3s ease both; }
+    /* result blocks */
+    .anim-in { animation: card-in 0.3s ease both; }
     @keyframes card-in { from { opacity: 0; transform: translateY(6px); } }
-
     .sec-h {
-      display: flex; align-items: center; gap: 8px; margin: 0 0 10px;
-      font-family: var(--f-display); font-size: 13px; font-weight: 600;
-      letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft);
+      display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
+      font-weight: 600; font-size: 12px;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--off);
     }
-    .sec-h .material-symbols-outlined { font-size: 17px; color: var(--ink-faint); }
-    .sec-h.muted { color: var(--ink-faint); }
-    .sub-h { font-size: 13px; color: var(--ink-faint); margin: 10px 0 6px; }
+    .sec-h .material-symbols-outlined { font-size: 17px; color: var(--accent); }
+    .sec-h.neg, .sec-h.neg .material-symbols-outlined { color: var(--accent-text); }
+    .sec-h.muted, .sec-h.muted .material-symbols-outlined { color: var(--dim); }
+    .sub-h { font-size: 12px; color: var(--dim); margin: 10px 0 6px; font-weight: 500; }
 
-    .kv-list { background: var(--well); border: 1px solid var(--rule); border-radius: var(--r-m); overflow: hidden; }
-    .kv { display: grid; grid-template-columns: minmax(110px, 36%) 1fr; gap: 14px; padding: 9px 14px; font-size: 14px; transition: background-color .15s; }
-    .kv + .kv { border-top: 1px solid var(--rule); }
-    .kv:hover { background: var(--hover); }
-    .kv .k { color: var(--ink-faint); }
-    .kv .v { color: var(--ink); word-break: break-word; overflow-wrap: anywhere; text-align: right; font-family: var(--f-mono); font-size: 12.5px; }
-    .kv .v.err { color: var(--alert); }
-    .kv .v.dim { color: var(--ink-soft); font-family: var(--f-text); }
+    .kv-list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; }
+    .kv { display: grid; grid-template-columns: minmax(110px, 36%) 1fr; gap: 12px; padding: 8px 12px; font-size: 13.5px; transition: background-color 0.15s; }
+    .kv + .kv { border-top: 1px solid var(--line); }
+    .kv:hover { background: var(--raise); }
+    .kv .k { color: var(--dim); font-weight: 500; }
+    .kv .v { color: var(--text); word-break: break-word; overflow-wrap: anywhere; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+    .kv .v.err { color: var(--accent); } .kv .v.dim { color: var(--off); font-family: 'Poppins', sans-serif; }
 
     .prompt { position: relative; }
     .prompt pre {
-      margin: 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;
-      font-family: var(--f-text); font-size: 15px; line-height: 1.6; color: var(--ink);
-      background: var(--well); border: 1px solid var(--rule);
-      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
-      border-radius: var(--r-m); padding: 12px 50px 12px 16px;
+      white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;
+      font-family: 'Poppins', sans-serif; font-size: 14px; line-height: 1.6; color: var(--body);
+      background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+      border-radius: var(--r-sm); padding: 11px 46px 11px 14px;
       max-height: 220px; overflow: auto;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .prompt.neg pre { box-shadow: inset 2px 0 0 var(--ink-faint); color: var(--ink-soft); }
-    .prompt.muted pre { box-shadow: none; color: var(--ink-soft); }
+    .prompt:hover pre { box-shadow: var(--shadow); }
+    .prompt.neg pre { border-left-color: var(--accent-soft); }
+    .prompt.muted pre { border-left-color: var(--line-hi); color: var(--off); }
     .copy-btn {
-      position: absolute; top: 33px; right: 9px; z-index: 2;
-      width: 32px; height: 32px; border-radius: var(--r-s); display: grid; place-items: center;
-      background: color-mix(in srgb, var(--panel-solid) 88%, transparent); border: 1px solid var(--rule); color: var(--ink-faint); cursor: pointer;
-      transition: color .2s, background .2s, border-color .2s;
+      position: absolute; top: 32px; right: 8px; z-index: 2;
+      width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;
+      background: var(--glass); border: 1px solid var(--line); color: var(--faint);
+      transition: color 0.2s, background 0.2s, border-color 0.2s;
     }
     .copy-btn .material-symbols-outlined { font-size: 16px; }
-    .copy-btn:hover { color: var(--ink); border-color: var(--rule-hi); }
-    .copy-btn.copied { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
-    .raw .copy-btn { top: 9px; right: 23px; }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-bg); }
+    .copy-btn.copied { color: var(--ok); border-color: var(--ok-line); background: var(--ok-bg); }
+    .raw .copy-btn { top: 8px; right: 20px; }
 
     .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-items: stretch; grid-auto-flow: row dense; }
     .param {
-      position: relative; padding: 10px 13px; border-radius: var(--r-m);
-      background: var(--well); border: 1px solid var(--rule);
-      transition: border-color .2s, background-color .2s;
+      position: relative; padding: 9px 12px; border-radius: var(--r-sm);
+      background: var(--panel); border: 1px solid var(--line);
+      transition: transform 0.2s var(--ease), border-color 0.2s, box-shadow 0.2s;
       cursor: copy; text-align: left; min-width: 0;
     }
-    .param:hover { border-color: var(--rule-hi); background: color-mix(in srgb, var(--ink) 4%, var(--well)); }
+    .param:hover { transform: translateY(-2px); border-color: var(--accent-line); box-shadow: var(--shadow-hi); }
     .param.wide { grid-column: span 2; }
-    .param.full { grid-column: 1 / -1; }
-    .param .pl { font-family: var(--f-display); font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .param .pl { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-text); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
     .param .pl span { min-width: 0; overflow-wrap: anywhere; }
-    .param .pl .material-symbols-outlined { font-size: 14px; opacity: 0; transition: opacity .2s; }
+    .param.full { grid-column: 1 / -1; }
+    .param .pl .material-symbols-outlined { font-size: 14px; color: var(--faint); opacity: 0; transition: opacity 0.2s; }
     .param:hover .pl .material-symbols-outlined { opacity: 1; }
-    .param .pv { font-family: var(--f-mono); font-size: 13px; color: var(--ink); margin-top: 3px; overflow-wrap: anywhere; }
-    .param.copied { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+    .param .pv { font-family: 'JetBrains Mono', monospace; font-size: 13.5px; color: var(--text); margin-top: 2px; overflow-wrap: anywhere; }
+    .param.copied { border-color: var(--ok); }
     .param.copied .pl .material-symbols-outlined { opacity: 1; color: var(--ok); }
 
     .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-    .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--well); font-size: 13px; color: var(--ink-soft); }
-    .pill .material-symbols-outlined { font-size: 16px; color: var(--ink-faint); }
-    .pill b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 9px; border-radius: 999px;
+      background: var(--panel); border: 1px solid var(--line); font-size: 12.5px; font-weight: 500; color: var(--off);
+      box-shadow: 0 1px 2px rgba(17,24,39,0.04);
+    }
+    .pill .material-symbols-outlined { font-size: 16px; color: var(--accent); }
+    .pill b { color: var(--text); font-weight: 600; }
 
     .banner {
-      display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: var(--r-m);
-      background: color-mix(in srgb, var(--alert) 9%, transparent);
-      border: 1px solid color-mix(in srgb, var(--alert) 36%, transparent);
-      color: var(--ink); font-size: 14px;
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-sm);
+      background: var(--accent-bg); border: 1px solid var(--accent-line); color: var(--banner-text); font-size: 13.5px; font-weight: 500;
     }
-    .banner .material-symbols-outlined { color: var(--alert); font-size: 20px; }
-    .note { padding: 11px 16px; border-radius: var(--r-m); background: var(--well); border: 1px dashed var(--rule-hi); color: var(--ink-soft); font-size: 14px; }
+    .banner .material-symbols-outlined { color: var(--accent); }
+    .note { padding: 10px 14px; border-radius: var(--r-sm); background: var(--raise); border: 1px dashed var(--line-hi); color: var(--off); font-size: 13.5px; }
 
-    .raw, .group { border: 1px solid var(--rule); border-radius: var(--r-m); background: var(--well); }
-    .group { background: transparent; border-style: dashed; border-color: var(--rule-hi); }
-    .raw > summary, .group > summary {
-      list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
-      padding: 11px 14px; font-size: 14px; font-weight: 500; color: var(--ink-soft); border-radius: var(--r-m);
-      transition: background-color .2s, color .2s;
-    }
-    .raw > summary:hover, .group > summary:hover { background: var(--hover); color: var(--ink); }
-    .raw > summary::-webkit-details-marker, .group > summary::-webkit-details-marker { display: none; }
-    .raw > summary .chev, .group > summary .chev { transition: transform .25s ease; color: var(--ink-faint); }
-    .raw[open] > summary .chev, .group[open] > summary .chev { transform: rotate(90deg); }
-    .raw > summary .material-symbols-outlined:not(.chev), .group > summary .material-symbols-outlined:not(.chev) { color: var(--ink-faint); }
-    .raw > summary .size { margin-left: auto; font-family: var(--f-mono); font-size: 11.5px; color: var(--ink-faint); }
-    .raw .raw-body { position: relative; padding: 0 14px 14px; }
+    .raw { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); }
+    .raw > summary { list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; color: var(--off); border-radius: var(--r-sm); transition: background-color 0.2s, color 0.2s; }
+    .raw > summary:hover { background: var(--raise); color: var(--accent); }
+    .raw > summary::-webkit-details-marker { display: none; }
+    .raw > summary .chev { transition: transform 0.25s ease; color: var(--faint); }
+    .raw[open] > summary .chev { transform: rotate(90deg); }
+    .raw > summary .size { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--faint); font-weight: 400; }
+    .raw .raw-body { position: relative; padding: 0 12px 12px; }
     .raw pre {
-      margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--f-mono); font-size: 12px; line-height: 1.6; color: var(--ink-soft);
-      background: color-mix(in srgb, var(--ground) 40%, transparent); border: 1px solid var(--rule); border-radius: var(--r-s); padding: 12px 46px 12px 13px; max-height: 320px; overflow: auto;
+      white-space: pre-wrap; overflow-wrap: anywhere; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: var(--body);
+      background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 12px 44px 12px 12px; max-height: 320px; overflow: auto;
     }
-    .raw pre.sans { font-family: var(--f-text); font-size: 13.5px; }
-    .group > summary .count { margin-left: auto; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-soft); }
-    .group .group-body { padding: 0 14px 14px; }
-    .group .group-body > * + * { margin-top: 14px; }
-    .group .prompt pre { max-height: 140px; font-size: 14px; }
+    .raw pre.sans { font-family: 'Poppins', sans-serif; font-size: 13px; }
 
-    .lora-list { background: var(--well); border: 1px solid var(--rule); border-radius: var(--r-m); padding: 4px 14px; }
-    .lora { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
-    .lora + .lora { border-top: 1px solid var(--rule); }
-    .lora.off { opacity: .45; }
-    .lora .ld { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
-    .lora.off .ld { background: var(--ink-faint); }
-    .lora .ln { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lora .lm { height: 4px; border-radius: 999px; background: var(--rule); margin-top: 7px; overflow: hidden; }
-    .lora .lm > div { height: 100%; width: 0; border-radius: inherit; background: var(--iris); transition: width .6s var(--ease); }
-    .lora .ls { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-soft); width: 44px; text-align: right; flex-shrink: 0; }
+    .group { background: transparent; border: 1px dashed var(--line-hi); border-radius: var(--r-sm); }
+    .group > summary { list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; color: var(--dim); border-radius: var(--r-sm); transition: background-color 0.2s, color 0.2s; }
+    .group > summary::-webkit-details-marker { display: none; }
+    .group > summary:hover { background: var(--raise); color: var(--off); }
+    .group > summary .chev { transition: transform 0.25s ease; }
+    .group[open] > summary .chev { transform: rotate(90deg); }
+    .group > summary .count { margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--raise-hi); border: 1px solid var(--line); }
+    .group .group-body { padding: 0 12px 12px; }
+    .group .group-body > * + * { margin-top: 14px; }
+    .group .prompt pre { max-height: 140px; font-size: 13px; }
+
+    .lora-list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 4px 12px; }
+    .lora { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+    .lora + .lora { border-top: 1px solid var(--line); }
+    .lora.off { opacity: 0.45; }
+    .lora .ld { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+    .lora.off .ld { background: var(--faint); }
+    .lora .ln { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lora .lm { height: 4px; border-radius: 4px; background: var(--raise-hi); margin-top: 6px; overflow: hidden; }
+    .lora .lm > div { height: 100%; width: 0; border-radius: 4px; background: var(--accent); transition: width 0.6s var(--ease); }
+    .lora .ls { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--accent-text); width: 44px; text-align: right; flex-shrink: 0; }
 
     [data-searchable].search-hidden { display: none !important; }
-    .no-match { text-align: center; color: var(--ink-faint); padding: 30px 10px; font-size: 14px; }
+    .no-match { text-align: center; color: var(--dim); padding: 30px 10px; font-size: 14px; }
 
-    .success { min-height: 260px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 28px 8px 8px; }
-    .success svg { width: 68px; height: 68px; margin-bottom: 8px; overflow: visible; }
+    .success { min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 28px !important; text-align: center; gap: 6px; padding: 20px; }
+    .success svg { width: 76px; height: 76px; margin-bottom: 6px; overflow: visible; }
     .success .ring { display: none; }
-    .success .fill { fill: color-mix(in srgb, var(--ok) 14%, transparent); }
-    .success .shield, .success .tick { stroke: var(--ok); }
-    .success h3 { margin: 0; font-family: var(--f-display); font-size: 22px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
-    .success p { margin: 0; color: var(--ink-faint); font-size: 14px; }
-    .removed { width: 100%; max-width: 640px; margin-top: 18px; text-align: left; }
+    .success h3 { font-weight: 600; font-size: 18px; color: var(--ok); }
+    .success p { color: var(--dim); font-size: 13.5px; }
+    .removed { width: 100%; max-width: 640px; margin-top: 16px; text-align: left; }
     .removed .kv .v { text-align: right; }
-    .removed .kv .k { display: flex; align-items: center; gap: 9px; color: var(--ink-soft); }
-    .removed .kv .k .material-symbols-outlined { font-size: 17px; color: var(--ink-faint); }
-    .removed .kv .v.gone { white-space: nowrap; color: var(--ink); font-family: var(--f-text); font-weight: 600; font-size: 13px; }
+    .removed .kv .k { display: flex; align-items: center; gap: 8px; color: var(--off); }
+    .removed .kv .k .material-symbols-outlined { font-size: 17px; color: var(--ok); }
+    .removed .kv .v.gone { white-space: nowrap; color: var(--ok); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 12.5px; }
     .spark { display: none; }
 
-    /* random-name toggle: a kit switch on a quiet row */
-    .name-toggle {
-      display: flex; align-items: center; gap: 14px; padding: 12px 16px;
-      border: 1px solid var(--rule); border-radius: var(--r-m);
-      background: var(--panel); cursor: pointer; user-select: none;
-      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-      transition: border-color .2s;
-    }
-    .name-toggle:hover { border-color: var(--rule-hi); }
-    .name-toggle .nt-text { display: flex; flex-direction: column; min-width: 0; font-size: 14px; line-height: 1.4; }
-    .name-toggle .nt-text b { font-weight: 600; color: var(--ink); }
-    .name-toggle .nt-sub { font-size: 13px; color: var(--ink-faint); overflow-wrap: anywhere; }
-    .name-toggle .nt-sub .mono { font-size: 12px; color: var(--ink-soft); }
+    .stage-bg { display: none; }
 
-    /* ── Paste ────────────────────────────────────────────────── */
+    /* random-name toggle */
+    .name-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--r-sm); background: var(--panel); border: 1px solid var(--line); cursor: pointer; user-select: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .name-toggle:hover { border-color: var(--accent-line); box-shadow: var(--shadow); }
+    .name-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .name-toggle .switch { position: relative; flex-shrink: 0; width: 38px; height: 22px; border-radius: 999px; background: var(--line-hi); transition: background-color 0.2s; }
+    .name-toggle .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(17,24,39,0.25); transition: transform 0.2s var(--ease); }
+    .name-toggle input:checked + .switch { background: var(--accent); }
+    .name-toggle input:checked + .switch::after { transform: translateX(16px); }
+    .name-toggle input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .name-toggle .nt-text { display: flex; flex-direction: column; min-width: 0; font-size: 13.5px; line-height: 1.35; }
+    .name-toggle .nt-text b { font-weight: 600; }
+    .name-toggle .nt-sub { font-size: 12px; color: var(--dim); }
+    .name-toggle .nt-sub .mono { font-size: 11.5px; color: var(--text); }
+    .name-toggle input:not(:checked) ~ .nt-text .nt-sub { opacity: 0.75; }
+
+    /* ── Paste view ─────────────────────────────────────────────── */
+    .paste-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .paste-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
     .paste-toggle { display: none; }
-    .paste-body { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 16px; min-height: 0; }
-    #pasteTextarea { flex: 1; min-height: 220px; resize: none; font-size: 12.5px; line-height: 1.6; }
-    .paste-body .actions { display: grid; grid-template-columns: 1fr 1fr 42px; }
-    .formats { display: flex; flex-wrap: wrap; gap: 6px; }
-    .formats span { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-faint); }
-
-    /* ── Bulk ─────────────────────────────────────────────────── */
-    .bulk-drop { min-height: 168px; }
-    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .stats .stat { flex-direction: row; align-items: baseline; justify-content: space-between;
-      gap: 10px; padding: 10px 14px; border-radius: var(--r-m);
-      background: var(--panel); border: 1px solid var(--rule);
-      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    .paste-body { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px; min-height: 0; }
+    #pasteTextarea {
+      flex: 1; min-height: 180px; width: 100%; resize: none;
+      background: var(--raise); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.6; color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     }
-    .stat .sl { font-family: var(--f-display); font-size: 11.5px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stat .sv { font-family: var(--f-display); font-size: 19px; font-weight: 600; line-height: 1.1; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #pasteTextarea::placeholder { color: var(--faint); }
+    #pasteTextarea:hover { border-color: var(--line-hi); }
+    #pasteTextarea:focus { outline: none; border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); background: var(--panel); }
+    .paste-body .actions { display: grid; grid-template-columns: 1fr 1fr 48px; }
+    #clearPasteBtn { width: 48px; min-height: 44px; }
+    .formats { display: flex; flex-wrap: wrap; gap: 6px; }
+    .formats span { font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: var(--raise-hi); color: var(--dim); }
+
+    /* ── Bulk view ──────────────────────────────────────────────── */
+    .bulk-drop { min-height: 200px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .stat { padding: 9px 12px; border-radius: 11px; background: var(--panel); border: 1px solid var(--line); min-width: 0; box-shadow: var(--shadow); }
+    .stat .sl { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+    .stat .sv { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 500; margin-top: 1px; white-space: nowrap; }
     .stat.good .sv { color: var(--ok); }
     .stat.warn .sv { color: var(--warn); }
-    .progress .pmeta { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ink-faint); margin-bottom: 7px; }
+    .progress .pmeta { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--dim); margin-bottom: 6px; }
     .progress .pmeta span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .progress .track { height: 4px; border-radius: 999px; background: var(--rule); overflow: hidden; }
-    #bulkProgressBar { height: 100%; border-radius: inherit; background: var(--iris); transition: width .35s ease; }
+    .progress .track { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; }
+    #bulkProgressBar { height: 100%; border-radius: 6px; background: var(--accent); transition: width 0.35s ease; }
 
-    .info-card.panel { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; border-radius: var(--r-m); }
-    .info-card.reads-card { display: none; }
-    .reads-card .fine { margin-top: auto; }
-    .info-card .sec-h { margin: 0; }
-    .removes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
-    .removes li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--ink-faint); line-height: 1.4; }
-    .removes li .material-symbols-outlined { color: var(--ink-faint); margin-top: 1px; }
-    .removes li b { display: block; color: var(--ink); font-weight: 600; }
-    .fine { margin: 0; font-size: 12.5px; color: var(--ink-faint); }
+    .info-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .removes { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+    .removes li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--dim); }
+    .removes li .material-symbols-outlined { font-size: 18px; color: var(--accent); margin-top: 1px; }
+    .removes li b { display: block; color: var(--text); font-weight: 600; }
+    .fine { font-size: 12px; color: var(--dim); }
 
-    .queue-head, .bulk-image-item { display: grid; grid-template-columns: 48px minmax(0, 1fr) 96px 110px 110px; gap: 14px; align-items: center; }
-    .queue-head { padding: 9px 20px; font-family: var(--f-display); font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); border-bottom: 1px solid var(--rule); }
+    .queue-head, .bulk-image-item { display: grid; grid-template-columns: 48px minmax(0, 1fr) 96px 110px 120px; gap: 12px; align-items: center; }
+    .queue-head { padding: 8px 16px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); font-weight: 600; border-bottom: 1px solid var(--line); background: var(--raise); }
     .queue-head span:nth-child(n+3) { text-align: center; }
-    #bulkImageList { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; overscroll-behavior: contain; }
-    .bulk-image-item { padding: 8px 12px; border-radius: var(--r-m); transition: background-color .15s; animation: card-in .25s ease both; }
-    .bulk-image-item:hover { background: var(--hover); }
-    .bulk-image-item.removing { animation: row-out .2s ease forwards; }
+    #bulkImageList { flex: 1; overflow-y: auto; padding: 6px; min-height: 0; overscroll-behavior: contain; }
+    .bulk-image-item { padding: 8px 10px; border-radius: 10px; transition: background-color 0.15s; animation: card-in 0.25s ease both; }
+    .bulk-image-item:hover { background: var(--raise); }
+    .bulk-image-item.removing { animation: row-out 0.2s ease forwards; }
     @keyframes row-out { to { opacity: 0; } }
-    .bulk-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: var(--r-s); border: 1px solid var(--rule); cursor: zoom-in; background: var(--well); }
-    .bulk-thumb:hover { border-color: var(--rule-hi); }
-    .bulk-image-item .filename { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bulk-image-item .filesize { font-family: var(--f-mono); font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.4; }
+    .bulk-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; transition: transform 0.2s var(--ease), box-shadow 0.2s; }
+    .bulk-thumb:hover { transform: scale(1.06); box-shadow: var(--shadow-hi); }
+    .bulk-image-item .filename { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bulk-image-item .filesize { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--off); text-align: center; line-height: 1.35; }
     .bulk-image-item .filesize .saved { color: var(--ok); }
     .bulk-image-item .filesize .grew { color: var(--warn); }
     .bulk-image-item .meta { display: contents; }
-    .status-pill { justify-self: center; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; padding: 2px 11px 2px 8px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-soft); white-space: nowrap; }
-    .status-pill .material-symbols-outlined { font-size: 15px; color: var(--ink-faint); }
-    .status-pill.s-stripping .material-symbols-outlined { color: var(--accent); }
-    .status-pill.s-stripped .material-symbols-outlined { color: var(--ok); }
-    .status-pill.s-error { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 35%, transparent); }
-    .status-pill.s-error .material-symbols-outlined { color: var(--alert); }
+    .status-pill { justify-self: center; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 10px 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); background: var(--raise); }
+    .status-pill .material-symbols-outlined { font-size: 15px; }
+    .status-pill.s-stripping { color: var(--info); border-color: var(--info-line); background: var(--info-bg); }
+    .status-pill.s-stripped { color: var(--ok); border-color: var(--ok-line); background: var(--ok-bg); }
+    .status-pill.s-error { color: var(--accent); border-color: var(--accent-line); background: var(--accent-bg); }
     .row-actions { display: flex; align-items: center; justify-content: center; gap: 4px; }
-    .row-actions a, .row-actions button { width: 34px; height: 34px; border: 0; border-radius: var(--r-s); display: grid; place-items: center; background: none; color: var(--ink-faint); cursor: pointer; text-decoration: none; transition: background-color .2s, color .2s; }
-    .row-actions a { color: var(--ink-soft); }
-    .row-actions a:hover, .row-actions button:hover { background: var(--hover); color: var(--ink); }
-    .row-actions .na { width: 34px; text-align: center; color: var(--rule-hi); }
-    .add-row { width: calc(100% - 4px); margin: 8px 2px 2px; min-height: 54px; border: 1px dashed var(--rule-hi); border-radius: var(--r-m); background: none; color: var(--ink-faint); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: color .2s, border-color .2s, background-color .2s; }
-    .add-row:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+    .row-actions a, .row-actions button { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; color: var(--faint); transition: background-color 0.2s, color 0.2s; }
+    .row-actions a { color: var(--ok); }
+    .row-actions a:hover { background: var(--ok-bg); }
+    .row-actions button:hover { background: var(--accent-bg); color: var(--accent); }
+    .row-actions .material-symbols-outlined { font-size: 19px; }
+    .row-actions .na { width: 34px; text-align: center; color: var(--line-hi); }
+    .add-row { width: calc(100% - 4px); margin: 8px 2px 2px; min-height: 54px; border: 1px dashed var(--line-hi); border-radius: 10px; color: var(--dim); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 500; transition: color 0.2s, border-color 0.2s, background-color 0.2s; }
+    .add-row:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
 
-    /* ── Overlays ─────────────────────────────────────────────── */
+    /* ── Overlays ───────────────────────────────────────────────── */
     #globalDropOverlay {
       position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px;
-      background: color-mix(in srgb, var(--ground) 55%, transparent);
-      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-      transition: opacity .2s ease, visibility .2s;
+      background: rgba(220, 38, 38, 0.08); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      transition: opacity 0.2s ease, visibility 0.2s;
     }
     #globalDropOverlay.hidden-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
-    #globalDropOverlay .overlay-card { padding: 36px 52px; border-radius: var(--r-l); text-align: center; background: var(--panel-solid); border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); box-shadow: var(--lift); }
-    #globalDropOverlay .overlay-card .material-symbols-outlined { font-size: 40px; color: var(--accent); }
-    #globalDropOverlay h3 { margin: 8px 0 0; font-family: var(--f-display); font-size: 20px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-    #globalDropOverlay p { margin: 4px 0 0; color: var(--ink-faint); font-size: 14px; }
+    #globalDropOverlay .overlay-card { padding: 34px 48px; border-radius: 18px; text-align: center; background: var(--panel); border: 2px dashed var(--accent-soft); box-shadow: var(--shadow-hi); }
+    #globalDropOverlay .overlay-card .material-symbols-outlined { font-size: 50px; color: var(--accent); }
+    #globalDropOverlay h3 { font-size: 18px; font-weight: 600; margin-top: 6px; }
+    #globalDropOverlay p { color: var(--dim); font-size: 13.5px; margin-top: 2px; }
 
-    #toastStack { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+    #toastStack { position: fixed; left: 50%; bottom: calc(22px + var(--nav-h) + var(--safe-b)); transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
     .custom-toast {
       pointer-events: auto; display: flex; align-items: center; gap: 9px;
-      padding: 9px 18px 9px 13px; border-radius: 999px; font-size: 14px; font-weight: 500;
-      background: var(--panel-solid); color: var(--ink); border: 1px solid var(--rule-hi); box-shadow: var(--lift);
-      animation: toast-in .25s ease both;
+      padding: 10px 16px 10px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 500;
+      background: #1f2937; color: #fff; box-shadow: 0 10px 24px rgba(17,24,39,0.22);
+      animation: toast-in 0.25s ease both;
     }
-    .custom-toast .material-symbols-outlined { font-size: 18px; color: var(--accent); }
-    .custom-toast.t-success .material-symbols-outlined { color: var(--ok); }
-    .custom-toast.t-error .material-symbols-outlined { color: var(--alert); }
-    .custom-toast.t-warning .material-symbols-outlined { color: var(--warn); }
-    .custom-toast.fade-out { animation: toast-out .25s ease forwards; }
+    .custom-toast .material-symbols-outlined { font-size: 19px; color: #93c5fd; }
+    .custom-toast.t-success .material-symbols-outlined { color: #4ade80; }
+    .custom-toast.t-error .material-symbols-outlined { color: #f87171; }
+    .custom-toast.t-warning .material-symbols-outlined { color: #fbbf24; }
+    .custom-toast.fade-out { animation: toast-out 0.25s ease forwards; }
     @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
     @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
 
-    #imageModal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: transparent; transition: background-color .25s ease; }
-    #imageModal.open { background: color-mix(in srgb, var(--ground) 88%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+    #imageModal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; transition: background-color 0.25s ease; background: rgba(17,24,39,0); }
+    #imageModal.open { background: rgba(17,24,39,0.82); }
     #imageModal.hidden { display: none; }
-    #modalImage { max-width: 100%; max-height: calc(100dvh - 48px); object-fit: contain; border-radius: var(--r-m); box-shadow: 0 30px 80px -30px rgb(0 0 0 / .6); opacity: 0; transition: opacity .25s ease; }
+    #modalImage { max-width: 100%; max-height: calc(100dvh - 48px); object-fit: contain; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); transform-origin: 0 0; opacity: 0; transition: opacity 0.25s ease; }
     #imageModal.open #modalImage { opacity: 1; }
-    #closeModalBtn { position: fixed; top: 16px; right: 16px; opacity: 0; transition: opacity .25s, color .15s, border-color .15s; }
+    #closeModalBtn { position: fixed; top: 14px; right: 14px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #1f2937 !important; color: var(--text); box-shadow: var(--shadow-hi); opacity: 0; transition: opacity 0.25s, color 0.2s; }
     #imageModal.open #closeModalBtn { opacity: 1; }
+    #closeModalBtn:hover { color: var(--accent); }
     body.modal-open { overflow: hidden; }
 
-    /* ── Desktop: the app fills the window, panels scroll inside ── */
-    @media (min-width: 1024px) {
-      .split { grid-template-columns: 372px minmax(0, 1fr); gap: 18px; }
-    }
-    @media (min-width: 1024px) and (min-height: 640px) {
-      body { height: 100vh; height: 100dvh; overflow: hidden; }
-      .kit-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding-bottom: 20px; }
-      .kit-page > .top { flex: none; }
-      .views { flex: 1; min-height: 0; }
-      .view { flex: 1; }
-      .split { flex: 1; min-height: 0; }
-      .col { overflow-y: auto; margin-right: -6px; padding-right: 6px; }
-      .col > .stage { flex: 1 0 300px; }
-      /* empty Inspect: a capped drop zone, the name switch, then the reads
-         card growing to the panel line, so the column ends where the
-         results panel does; on short windows the drop zone gives way first */
-      .col > .stage:not(.has-image):not(.bulk-drop) { flex: 4 1 300px; height: auto; min-height: 260px; max-height: 440px; }
-      .col > .reads-card { display: flex; flex: 1 0 auto; }
-      .col:has(> .stage.has-image) > .reads-card { display: none; }
-      .col:has(> .bulk-drop) { gap: 10px; }
-      .col > .bulk-drop { flex: 1 0 168px; }
-      .bulk-drop .stage-empty { padding: 14px 24px; gap: 5px; }
+    /* ── Desktop: fixed viewport app ───────────────────────────── */
+    @media (min-width: 1024px) and (min-height: 600px) {
+      body { height: 100dvh; overflow: hidden; }
+      .app { height: 100dvh; }
+      .bulk-drop { flex: 1 1 auto; }
       .bulk-drop.has-items { flex: 0 0 120px; min-height: 120px; }
-      .bulk-drop.has-items .drop-ico, .bulk-drop.has-items p { display: none; }
-      .bulk-drop.has-items strong { margin-top: 0; }
+      .bulk-drop.has-items .hero, .bulk-drop.has-items p { display: none; }
+      .bulk-drop.has-items h2 { margin-top: 0; }
     }
 
-    /* ── Tablet & phone: one column, the page scrolls ─────────── */
-    @media (max-width: 1023px), (max-height: 639px) {
+    /* ── Tablet & phone: page scroll, single column ─────────────── */
+    @media (max-width: 1023px), (max-height: 599px) {
+      .split { grid-template-columns: 1fr; }
       .output, #bulkImageList { overflow: visible; flex: none; }
-      .results-panel.panel, .paste-panel.panel { overflow: visible; }
-      .results-head { position: sticky; top: 0; z-index: 5; background: var(--panel-solid); border-radius: var(--r-l) var(--r-l) 0 0; }
-      .stage { height: min(46vh, 400px); }
-      .stage.has-image { height: min(42vh, 380px); }
-      .output { min-height: 260px; }
-      .info-card.panel { display: none; }
+      .results-panel, .paste-panel { overflow: visible; }
+      .results-head { position: sticky; top: var(--top-h); z-index: 5; background: var(--panel); border-radius: var(--r) var(--r) 0 0; }
+      .stage { flex: none; height: min(46vh, 400px); }
+      .stage.has-image { height: min(40vh, 360px); }
+      .output { min-height: 240px; }
+      .info-card { display: none; }
     }
     @media (max-width: 1023px) {
       .tab-long { display: none; }
       .tab-short { display: inline; }
+      .brand-name span { display: none; }
     }
 
-    /* ── Phone ────────────────────────────────────────────────── */
+    /* ── Phone ──────────────────────────────────────────────────── */
     @media (max-width: 759px) {
-      .brand small { display: none; }
+      :root { --top-h: 50px; --nav-h: 64px; }
+      .topbar { padding: 0 14px; gap: 10px; }
+      .brand-name { font-size: 15px; }
+      .privacy { font-size: 12px; }
+      .views { padding: 12px 12px calc(var(--nav-h) + var(--safe-b) + 16px); }
+      .tabs {
+        position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; top: auto; transform: none;
+        margin: 0; padding: 6px 8px calc(6px + var(--safe-b)); border-radius: 0; gap: 4px;
+        background: var(--panel); border: 0; border-top: 1px solid var(--line);
+        box-shadow: 0 -4px 16px rgba(17,24,39,0.06);
+      }
+      .tab-btn { flex: 1; flex-direction: column; gap: 1px; padding: 6px 4px 5px; border-radius: 10px; font-size: 11.5px; }
+      .tab-btn .material-symbols-outlined { font-size: 23px; }
+      #tabIndicator { background: var(--accent-bg); box-shadow: none; border-radius: 10px; }
       .split { gap: 12px; }
       .col { gap: 10px; }
-      .stage { height: min(42vh, 360px); min-height: 230px; }
-      .stage.has-image { height: 220px; min-height: 0; }
+      .stage { height: min(42vh, 360px); min-height: 220px; }
+      .stage.has-image { height: 200px; min-height: 0; }
       .zoom-hint { opacity: 1; }
-      .results-head, .paste-head { padding: 10px 12px 10px 18px; min-height: 56px; }
-      .results-head .tools .btn.sm { padding: 0 11px; }
-      .results-head .tools .btn .material-symbols-outlined { display: none; }
+      .stage-empty h2 { font-size: 18px; }
+      .hero { width: 170px; height: 110px; }
+      .results-head { padding: 10px 12px; }
+      .results-head .tools .btn-sm { min-height: 38px; padding: 0 10px; }
+      .results-head .tools .btn-ghost .material-symbols-outlined { display: none; }
+      .results-head .tools .btn-primary .lbl { display: none; }
+      .results-head .tools .btn-primary { width: 40px; padding: 0; }
+      .results-title > .material-symbols-outlined { display: none; }
       .search { padding: 10px 12px; }
-      .search > .material-symbols-outlined { left: 25px; }
-      .output { padding: 16px; }
-      .kv { grid-template-columns: 1fr; gap: 2px; }
+      .search .material-symbols-outlined { left: 23px; }
+      .output { padding: 12px; }
+      .kv { grid-template-columns: 1fr; gap: 1px; }
       .kv .v { text-align: left; }
       .removed .kv { grid-template-columns: auto 1fr; gap: 10px; }
       .removed .kv .v { text-align: right; }
       .param-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .param .pl .material-symbols-outlined { opacity: .7; }
+      .param .pl .material-symbols-outlined { opacity: 0.7; }
       .prompt pre { max-height: 260px; }
-      .actions .btn { height: 46px; }
+      .copy-btn { width: 36px; height: 36px; }
+      .actions .btn { min-height: 48px; }
+      .btn:hover:not(:disabled) { transform: none; }
 
-      .paste-toggle { display: inline-flex; margin-left: auto; }
+      .paste-toggle { display: grid; margin-left: auto; }
       .paste-panel.collapsed .paste-body { display: none; }
       .paste-panel.collapsed .paste-toggle .material-symbols-outlined { transform: rotate(180deg); }
-      .paste-toggle .material-symbols-outlined { transition: transform .25s ease; }
+      .paste-toggle .material-symbols-outlined { transition: transform 0.25s ease; }
       #pasteTextarea { min-height: 34vh; flex: none; font-size: 13px; }
 
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stats { grid-template-columns: repeat(2, 1fr); }
       .queue-head { display: none !important; }
       .bulk-image-item {
         grid-template-columns: 52px minmax(0, 1fr) auto;
         grid-template-areas: "thumb name actions" "thumb meta actions";
-        row-gap: 4px; column-gap: 12px; padding: 10px 6px; border-bottom: 1px solid var(--rule); border-radius: 0;
+        row-gap: 4px; column-gap: 12px; padding: 10px; border-bottom: 1px solid var(--line); border-radius: 0;
       }
       .bulk-image-item:last-of-type { border-bottom: 0; }
       .bulk-image-item > img { grid-area: thumb; width: 52px; height: 52px; }
@@ -501,209 +713,247 @@
       .bulk-image-item .meta { grid-area: meta; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
       .bulk-image-item .filesize { text-align: left; display: flex; gap: 6px; }
       .bulk-image-item .filesize br { display: none; }
-      .bulk-image-item .status-pill { justify-self: auto; padding: 1px 9px 1px 6px; font-size: 12px; }
+      .bulk-image-item .status-pill { justify-self: auto; padding: 1px 8px 1px 6px; font-size: 11.5px; }
       .bulk-image-item .row-actions { grid-area: actions; }
       .row-actions a, .row-actions button { width: 40px; height: 40px; }
-      .bulk-drop { height: 210px; min-height: 0; }
-      .bulk-drop .drop-ico { display: none; }
+      .bulk-drop { height: 200px; min-height: 0; }
+      .bulk-drop .hero { display: none; }
       .bulk-drop.has-items { display: none; }
       #imageModal { padding: 10px; }
-      #globalDropOverlay .overlay-card { padding: 28px 30px; }
     }
-    @media (max-width: 420px) {
+    @media (max-width: 480px) {
       .privacy .txt { display: none; }
-      .privacy.chip { padding: 3px 9px; }
+      .privacy { padding: 5px 7px; }
     }
-    @media (hover: none) { .desk-only { display: none !important; } }
-    @media (hover: hover) { .touch-only { display: none !important; } }
+    @media (hover: none) {
+      .desk-only { display: none !important; }
+    }
+    @media (hover: hover) {
+      .touch-only { display: none !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
   </style>
 </head>
 <body>
-<quiet-sky></quiet-sky>
 
-<main class="kit-page">
-
-  <header class="top">
-    <a class="brand" href="./">Metadata <small>viewer</small></a>
-    <nav class="tabs" id="tabsBar" role="tablist" aria-label="Tools">
-      <div id="tabIndicator" aria-hidden="true"></div>
-      <button id="singleImageTabBtn" class="tab-btn" type="button" role="tab" title="Inspect (Alt+1)"><span class="tab-long">Inspect image</span><span class="tab-short">Inspect</span></button>
-      <button id="pasteMetaTabBtn" class="tab-btn" type="button" role="tab" title="Paste (Alt+2)"><span class="tab-long">Paste metadata</span><span class="tab-short">Paste</span></button>
-      <button id="bulkStripTabBtn" class="tab-btn" type="button" role="tab" title="Bulk strip (Alt+3)"><span class="tab-long">Bulk strip</span><span class="tab-short">Strip</span></button>
-    </nav>
-    <div class="top-actions">
-      <span class="privacy chip ok" title="Nothing is uploaded. Files are read and processed in this browser tab."><span class="txt">On-device</span><span class="material-symbols-outlined">lock</span></span>
-      <a class="icon-btn" href="/" aria-label="isaiart.com home"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5h11V10"/></svg></a>
-      <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle light / dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
-    </div>
-  </header>
-
-  <div class="views">
-
-    <!-- ============ Inspect ============ -->
-    <section id="singleImageTabContent" class="view" role="tabpanel">
-      <div class="split">
-        <div class="col">
-          <div id="dropZone" class="stage" tabindex="0" role="button" aria-label="Choose an image to inspect">
-            <div class="stage-bg" id="stageBg"></div>
-            <div class="grid-flash"></div>
-            <div class="scanline"></div>
-            <div id="previewPlaceholder" class="stage-empty">
-              <span class="drop-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m20.5 15.5-4.2-4.2L7.5 19.5"/></svg></span>
-              <strong>Drop an image to inspect</strong>
-              <p>PNG, JPG, WEBP. ComfyUI and A1111 data decoded automatically.</p>
-              <span class="btn btn-go touch-only"><span class="material-symbols-outlined">add_photo_alternate</span>Choose image</span>
-              <span class="hint desk-only">or click to browse &middot; paste with <kbd>Ctrl</kbd><kbd>V</kbd></span>
-            </div>
-            <img id="imagePreview" alt="Image preview" class="hidden" />
-            <div id="imageDimsBadge" class="badge hidden"></div>
-            <div id="zoomHint" class="badge zoom-hint hidden"><span class="material-symbols-outlined">zoom_in</span>Tap to zoom</div>
-          </div>
-          <div id="fileCard" class="file-card panel hidden"></div>
-          <div id="actionsContainer" class="actions">
-            <button id="stripButton" class="btn btn-go hidden" type="button"><span class="material-symbols-outlined">shield</span><span>Strip metadata</span></button>
-            <a id="downloadButton" class="btn btn-go hidden" href="#" download="cleaned_image.png"><span class="material-symbols-outlined">download</span><span>Download clean</span></a>
-            <button id="resetButton" class="btn hidden" type="button"><span class="material-symbols-outlined">restart_alt</span><span>New image</span></button>
-          </div>
-          <label class="name-toggle" title="Download cleaned files as 8 random characters instead of the original name">
-            <input type="checkbox" class="rand-toggle switch" />
-            <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
-          </label>
-          <div class="panel info-card reads-card">
-            <h4 class="sec-h">What it reads</h4>
-            <ul class="removes">
-              <li><span class="material-symbols-outlined">account_tree</span><span><b>ComfyUI</b>Prompt graph and workflow</span></li>
-              <li><span class="material-symbols-outlined">tune</span><span><b>A1111 / Forge</b>Prompts, sampler, seed, LoRAs</span></li>
-              <li><span class="material-symbols-outlined">photo_camera</span><span><b>EXIF</b>Camera, lens, timestamps</span></li>
-              <li><span class="material-symbols-outlined">notes</span><span><b>PNG text</b>Every tEXt, iTXt and zTXt chunk</span></li>
-            </ul>
-            <p class="fine">GPS coordinates are flagged before you share. Nothing leaves your device.</p>
-          </div>
-          <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
-        </div>
-
-        <div class="results-panel panel">
-          <div class="results-head">
-            <div class="results-title">Metadata<span id="sourceChip" class="source-chip chip hidden"></span></div>
-            <div class="tools">
-              <button id="exportTxtBtn" class="btn sm hidden" type="button" title="Export as .txt"><span class="material-symbols-outlined">text_snippet</span><span class="lbl">.txt</span></button>
-              <button id="exportJsonBtn" class="btn sm hidden" type="button" title="Export as .json"><span class="material-symbols-outlined">data_object</span><span class="lbl">.json</span></button>
-              <button id="copyAllMetadataBtn" class="btn sm hidden" type="button" title="Copy all raw metadata"><span class="material-symbols-outlined">content_copy</span><span class="lbl">Copy all</span></button>
-            </div>
-          </div>
-          <div id="metadataSearchWrap" class="search hidden">
-            <span class="material-symbols-outlined">search</span>
-            <input id="metadataSearch" class="field" type="search" placeholder="Filter fields, prompts, models…" autocomplete="off" />
-            <button id="metadataSearchClear" class="clear hidden" type="button" aria-label="Clear filter"><span class="material-symbols-outlined">close</span></button>
-          </div>
-          <div id="metadataOutput" class="output"></div>
-        </div>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="/" title="ISAIART home">
+        <span class="brand-mark"><span class="material-symbols-outlined">policy</span></span>
+        <span class="brand-name">Metadata<span> viewer</span></span>
+      </a>
+      <div class="theme-seg" id="themeSeg" role="radiogroup" aria-label="Colour theme">
+        <span class="knob" aria-hidden="true"></span>
+        <button type="button" data-theme-opt="light" role="radio" title="Light" aria-label="Light theme"><span class="material-symbols-outlined">light_mode</span></button>
+        <button type="button" data-theme-opt="system" role="radio" title="Match browser" aria-label="Match browser theme"><span class="material-symbols-outlined">contrast</span></button>
+        <button type="button" data-theme-opt="dark" role="radio" title="Dark" aria-label="Dark theme"><span class="material-symbols-outlined">dark_mode</span></button>
       </div>
-    </section>
+      <span class="privacy" title="Nothing is uploaded. Files are read and processed in this browser tab."><span class="dot"></span><span class="txt">On-device</span><span class="material-symbols-outlined">lock</span></span>
+    </header>
+      <nav class="tabs" id="tabsBar" role="tablist" aria-label="Tools">
+        <div id="tabIndicator"></div>
+        <button id="singleImageTabBtn" class="tab-btn" role="tab" title="Inspect (Alt+1)">
+          <span class="material-symbols-outlined">image_search</span><span class="tab-long">Inspect image</span><span class="tab-short">Inspect</span>
+        </button>
+        <button id="pasteMetaTabBtn" class="tab-btn" role="tab" title="Paste (Alt+2)">
+          <span class="material-symbols-outlined">content_paste_search</span><span class="tab-long">Paste metadata</span><span class="tab-short">Paste</span>
+        </button>
+        <button id="bulkStripTabBtn" class="tab-btn" role="tab" title="Bulk strip (Alt+3)">
+          <span class="material-symbols-outlined">auto_fix_high</span><span class="tab-long">Bulk strip</span><span class="tab-short">Strip</span>
+        </button>
+      </nav>
 
-    <!-- ============ Paste ============ -->
-    <section id="pasteMetaTabContent" class="view hidden" role="tabpanel">
-      <div class="split">
-        <div id="pasteInputDetails" class="paste-panel panel">
-          <div class="paste-head">
-            <div class="results-title">Raw input<span id="pasteFormatChip" class="source-chip chip acc hidden"></span></div>
-            <button id="pasteToggle" class="btn sm icon-only paste-toggle" type="button" aria-label="Show or hide input"><span class="material-symbols-outlined">expand_less</span></button>
+    <main class="views">
+
+      <!-- ============ Inspect ============ -->
+      <section id="singleImageTabContent" class="view" role="tabpanel">
+        <div class="split">
+          <div class="col">
+            <div id="dropZone" class="stage rise" tabindex="0" role="button" aria-label="Choose an image to inspect">
+              <div class="stage-bg" id="stageBg"></div>
+              <div class="grid-flash"></div>
+              <div class="scanline"></div>
+              <div id="previewPlaceholder" class="stage-empty">
+                <div class="hero" aria-hidden="true">
+                  <svg viewBox="0 0 230 150">
+                    <defs>
+                      <linearGradient id="hg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f87171"/><stop offset="1" stop-color="#dc2626"/></linearGradient>
+                      <clipPath id="frameClip"><rect x="62" y="28" width="106" height="88" rx="8"/></clipPath>
+                    </defs>
+                    <g class="frame">
+                      <rect x="62" y="28" width="106" height="88" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+                      <g clip-path="url(#frameClip)">
+                        <circle cx="140" cy="54" r="10" fill="url(#hg)" opacity="0.9"/>
+                        <path d="M62 116 L95 76 L117 98 L132 84 L168 116 Z" fill="#fee2e2"/>
+                        <path d="M62 116 L95 76 L117 98 L132 84 L168 116" fill="none" stroke="#fca5a5" stroke-width="1.5"/>
+                      </g>
+                      <rect x="54" y="20" width="14" height="2" rx="1" fill="url(#hg)"/><rect x="54" y="20" width="2" height="14" rx="1" fill="url(#hg)"/>
+                      <rect x="162" y="20" width="14" height="2" rx="1" fill="url(#hg)"/><rect x="174" y="20" width="2" height="14" rx="1" fill="url(#hg)"/>
+                      <rect x="54" y="122" width="14" height="2" rx="1" fill="url(#hg)"/><rect x="54" y="110" width="2" height="14" rx="1" fill="url(#hg)"/>
+                      <rect x="162" y="122" width="14" height="2" rx="1" fill="url(#hg)"/><rect x="174" y="110" width="2" height="14" rx="1" fill="url(#hg)"/>
+                    </g>
+                  </svg>
+                </div>
+                <h2>Drop an image to inspect</h2>
+                <p>PNG, JPG, WEBP. ComfyUI and A1111 data decoded automatically.</p>
+                <span class="btn btn-primary touch-only"><span class="material-symbols-outlined">add_photo_alternate</span>Choose image</span>
+                <span class="hint desk-only">or click to browse &middot; paste with <span class="kbd">Ctrl</span><span class="kbd">V</span></span>
+              </div>
+              <img id="imagePreview" alt="Image preview" class="hidden" />
+              <div id="imageDimsBadge" class="badge hidden"></div>
+              <div id="zoomHint" class="badge zoom-hint hidden"><span class="material-symbols-outlined">zoom_in</span>Tap to zoom</div>
+            </div>
+            <div id="fileCard" class="file-card panel hidden"></div>
+            <div id="actionsContainer" class="actions">
+              <button id="stripButton" class="btn btn-primary hidden"><span class="material-symbols-outlined">shield</span><span>Strip metadata</span></button>
+              <a id="downloadButton" class="btn btn-ok hidden" href="#" download="cleaned_image.png"><span class="material-symbols-outlined">download</span><span>Download clean</span></a>
+              <button id="resetButton" class="btn btn-ghost hidden"><span class="material-symbols-outlined">restart_alt</span><span>New image</span></button>
+            </div>
+            <label class="name-toggle" title="Download cleaned files as 8 random characters instead of the original name">
+              <input type="checkbox" class="rand-toggle" />
+              <span class="switch" aria-hidden="true"></span>
+              <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
+            </label>
+            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
           </div>
-          <div class="paste-body">
-            <textarea id="pasteTextarea" class="field mono" spellcheck="false" placeholder="Paste a ComfyUI prompt/workflow JSON, A1111 / Forge parameters text, plain JSON, or key: value lines. Parsing runs automatically on paste."></textarea>
-            <div class="formats"><span>ComfyUI prompt</span><span>ComfyUI workflow</span><span>A1111 / Forge</span><span>JSON</span><span>key: value</span></div>
+
+          <div class="results-panel panel rise d1">
+            <div class="results-head">
+              <div class="results-title"><span class="material-symbols-outlined">fact_check</span>Metadata<span id="sourceChip" class="source-chip hidden"></span></div>
+              <div class="tools">
+                <button id="exportTxtBtn" class="btn btn-ghost btn-sm hidden" title="Export as .txt"><span class="material-symbols-outlined">text_snippet</span><span class="lbl">.txt</span></button>
+                <button id="exportJsonBtn" class="btn btn-ghost btn-sm hidden" title="Export as .json"><span class="material-symbols-outlined">data_object</span><span class="lbl">.json</span></button>
+                <button id="copyAllMetadataBtn" class="btn btn-primary btn-sm hidden" title="Copy all raw metadata"><span class="material-symbols-outlined">content_copy</span><span class="lbl">Copy all</span></button>
+              </div>
+            </div>
+            <div id="metadataSearchWrap" class="search hidden">
+              <span class="material-symbols-outlined">search</span>
+              <input id="metadataSearch" type="search" placeholder="Filter fields, prompts, models…" autocomplete="off" />
+              <button id="metadataSearchClear" class="clear hidden" aria-label="Clear filter"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div id="metadataOutput" class="output scroll"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Paste ============ -->
+      <section id="pasteMetaTabContent" class="view hidden" role="tabpanel">
+        <div class="split">
+          <div id="pasteInputDetails" class="paste-panel panel">
+            <div class="paste-head">
+              <div class="results-title"><span class="material-symbols-outlined">content_paste</span>Raw input<span id="pasteFormatChip" class="source-chip hidden"></span></div>
+              <button id="pasteToggle" class="btn btn-ghost btn-icon paste-toggle" aria-label="Show or hide input"><span class="material-symbols-outlined">expand_less</span></button>
+            </div>
+            <div class="paste-body">
+              <textarea id="pasteTextarea" class="scroll" spellcheck="false" placeholder="Paste a ComfyUI prompt/workflow JSON, A1111 / Forge parameters text, plain JSON, or key: value lines. Parsing runs automatically on paste."></textarea>
+              <div class="formats"><span>ComfyUI prompt</span><span>ComfyUI workflow</span><span>A1111 / Forge</span><span>JSON</span><span>key: value</span></div>
+              <div class="actions">
+                <button id="clipboardPasteBtn" class="btn btn-ghost"><span class="material-symbols-outlined">content_paste_go</span>Paste</button>
+                <button id="parsePasteBtn" class="btn btn-primary"><span class="material-symbols-outlined">manage_search</span>Parse</button>
+                <button id="clearPasteBtn" class="btn btn-ghost btn-icon" title="Clear" aria-label="Clear"><span class="material-symbols-outlined">backspace</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="results-panel panel">
+            <div class="results-head">
+              <div class="results-title"><span class="material-symbols-outlined">quick_reference_all</span>Parsed result</div>
+              <div class="tools">
+                <button id="pasteExportTxtBtn" class="btn btn-ghost btn-sm hidden" title="Export as .txt"><span class="material-symbols-outlined">text_snippet</span><span class="lbl">.txt</span></button>
+                <button id="pasteCopyAllBtn" class="btn btn-primary btn-sm hidden" title="Copy parsed text"><span class="material-symbols-outlined">content_copy</span><span class="lbl">Copy all</span></button>
+              </div>
+            </div>
+            <div id="pasteOutput" class="output scroll"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Bulk ============ -->
+      <section id="bulkStripTabContent" class="view hidden" role="tabpanel">
+        <div class="split">
+          <div class="col">
+            <div id="bulkDropZone" class="stage bulk-drop" tabindex="0" role="button" aria-label="Add images to the queue">
+              <div class="stage-empty">
+                <div class="hero" aria-hidden="true">
+                  <svg viewBox="0 0 230 150">
+                    <g class="frame">
+                      <rect x="84" y="22" width="80" height="66" rx="7" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5" transform="rotate(8 124 55)"/>
+                      <rect x="74" y="30" width="80" height="66" rx="7" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" transform="rotate(-6 114 63)"/>
+                      <rect x="76" y="40" width="80" height="66" rx="7" fill="#ffffff" stroke="#9ca3af" stroke-width="1.5"/>
+                      <circle cx="136" cy="60" r="7" fill="#f87171"/>
+                      <path d="M76 106 L102 76 L120 94 L132 84 L156 106 Z" fill="#fee2e2"/>
+                      <g transform="translate(150 96)"><circle r="16" fill="#16a34a"/><path d="M-7 0 L-2 5 L7 -5" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+                    </g>
+                  </svg>
+                </div>
+                <h2>Drop a batch of images</h2>
+                <p>Every file is re-encoded clean. No EXIF, no prompts, no GPS.</p>
+                <span class="btn btn-primary touch-only"><span class="material-symbols-outlined">add_photo_alternate</span>Add images</span>
+                <span class="hint desk-only">or click to browse</span>
+              </div>
+            </div>
+            <input type="file" id="bulkFileInput" accept="image/png, image/jpeg, image/webp" class="hidden" multiple />
+            <div class="stats">
+              <div class="stat"><div class="sl">Queued</div><div class="sv" id="statQueued">0</div></div>
+              <div class="stat"><div class="sl">Total</div><div class="sv" id="statTotal">0 B</div></div>
+              <div class="stat"><div class="sl">Cleaned</div><div class="sv" id="statClean">0</div></div>
+              <div class="stat"><div class="sl">Size change</div><div class="sv" id="statSaved">0 B</div></div>
+            </div>
             <div class="actions">
-              <button id="clipboardPasteBtn" class="btn" type="button"><span class="material-symbols-outlined">content_paste_go</span>Paste</button>
-              <button id="parsePasteBtn" class="btn btn-go" type="button"><span class="material-symbols-outlined">manage_search</span>Parse</button>
-              <button id="clearPasteBtn" class="btn btn-danger icon-only" type="button" title="Clear" aria-label="Clear"><span class="material-symbols-outlined">backspace</span></button>
+              <button id="stripAllBulkButton" class="btn btn-primary"><span class="material-symbols-outlined">auto_fix_high</span><span>Strip all</span></button>
+              <button id="downloadAllCleanedBulkButton" class="btn btn-ok"><span class="material-symbols-outlined">folder_zip</span><span>Download .zip</span></button>
+              <button id="clearBulkQueueButton" class="btn btn-ghost btn-icon" style="flex:0 0 44px;min-height:44px" title="Clear queue" aria-label="Clear queue"><span class="material-symbols-outlined">delete_sweep</span></button>
+            </div>
+            <label class="name-toggle" title="Download cleaned files as 8 random characters instead of the original name">
+              <input type="checkbox" class="rand-toggle" />
+              <span class="switch" aria-hidden="true"></span>
+              <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
+            </label>
+            <div class="panel info-card">
+              <h4 class="sec-h">What gets removed</h4>
+              <ul class="removes">
+                <li><span class="material-symbols-outlined">photo_camera</span><span><b>EXIF</b>Camera, lens, timestamps</span></li>
+                <li><span class="material-symbols-outlined">location_off</span><span><b>GPS</b>Where the photo was taken</span></li>
+                <li><span class="material-symbols-outlined">account_tree</span><span><b>ComfyUI</b>Prompts and full workflows</span></li>
+                <li><span class="material-symbols-outlined">tune</span><span><b>A1111 / Forge</b>Prompts and parameters</span></li>
+              </ul>
+              <p class="fine">Pixels are redrawn on a canvas and re-encoded, so PNGs can come out a little larger. Nothing leaves your device.</p>
+            </div>
+            <div id="bulkProgressWrap" class="progress hidden">
+              <div class="pmeta"><span id="bulkProgressLabel">Processing…</span><span id="bulkProgressCount" class="mono"></span></div>
+              <div class="track"><div id="bulkProgressBar" style="width:0%"></div></div>
             </div>
           </div>
-        </div>
 
-        <div class="results-panel panel">
-          <div class="results-head">
-            <div class="results-title">Parsed result</div>
-            <div class="tools">
-              <button id="pasteExportTxtBtn" class="btn sm hidden" type="button" title="Export as .txt"><span class="material-symbols-outlined">text_snippet</span><span class="lbl">.txt</span></button>
-              <button id="pasteCopyAllBtn" class="btn sm hidden" type="button" title="Copy parsed text"><span class="material-symbols-outlined">content_copy</span><span class="lbl">Copy all</span></button>
+          <div class="results-panel panel">
+            <div class="results-head">
+              <div class="results-title"><span class="material-symbols-outlined">photo_library</span>Queue<span id="queueChip" class="source-chip hidden"></span></div>
             </div>
-          </div>
-          <div id="pasteOutput" class="output"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ Bulk ============ -->
-    <section id="bulkStripTabContent" class="view hidden" role="tabpanel">
-      <div class="split">
-        <div class="col">
-          <div id="bulkDropZone" class="stage bulk-drop" tabindex="0" role="button" aria-label="Add images to the queue">
-            <div class="stage-empty">
-              <span class="drop-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="13" rx="2.2"/><path d="M7 4h11.5A2.5 2.5 0 0 1 21 6.5V16"/><path d="m17 16.5-3.6-3.6L6.5 20"/></svg></span>
-              <strong>Drop a batch of images</strong>
-              <p>Every file is re-encoded clean. No EXIF, no prompts, no GPS.</p>
-              <span class="btn btn-go touch-only"><span class="material-symbols-outlined">add_photo_alternate</span>Add images</span>
-              <span class="hint desk-only">or click to browse</span>
-            </div>
-          </div>
-          <input type="file" id="bulkFileInput" accept="image/png, image/jpeg, image/webp" class="hidden" multiple />
-          <div class="stats">
-            <div class="stat"><div class="sl">Queued</div><div class="sv" id="statQueued">0</div></div>
-            <div class="stat"><div class="sl">Total</div><div class="sv" id="statTotal">0 B</div></div>
-            <div class="stat"><div class="sl">Cleaned</div><div class="sv" id="statClean">0</div></div>
-            <div class="stat"><div class="sl">Size change</div><div class="sv" id="statSaved">0 B</div></div>
-          </div>
-          <div class="actions">
-            <button id="stripAllBulkButton" class="btn btn-go" type="button"><span class="material-symbols-outlined">auto_fix_high</span><span>Strip all</span></button>
-            <button id="downloadAllCleanedBulkButton" class="btn" type="button"><span class="material-symbols-outlined">folder_zip</span><span>Download .zip</span></button>
-            <button id="clearBulkQueueButton" class="btn btn-danger icon-only" type="button" title="Clear queue" aria-label="Clear queue"><span class="material-symbols-outlined">delete_sweep</span></button>
-          </div>
-          <label class="name-toggle" title="Download cleaned files as 8 random characters instead of the original name">
-            <input type="checkbox" class="rand-toggle switch" />
-            <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
-          </label>
-          <div id="bulkProgressWrap" class="progress hidden">
-            <div class="pmeta"><span id="bulkProgressLabel">Processing…</span><span id="bulkProgressCount" class="mono"></span></div>
-            <div class="track"><div id="bulkProgressBar" style="width:0%"></div></div>
-          </div>
-          <div class="panel info-card">
-            <h4 class="sec-h">What gets removed</h4>
-            <ul class="removes">
-              <li><span class="material-symbols-outlined">photo_camera</span><span><b>EXIF</b>Camera, lens, timestamps</span></li>
-              <li><span class="material-symbols-outlined">location_off</span><span><b>GPS</b>Where the photo was taken</span></li>
-              <li><span class="material-symbols-outlined">account_tree</span><span><b>ComfyUI</b>Prompts and full workflows</span></li>
-              <li><span class="material-symbols-outlined">tune</span><span><b>A1111 / Forge</b>Prompts and parameters</span></li>
-            </ul>
-            <p class="fine">Pixels are redrawn on a canvas and re-encoded, so PNGs can come out a little larger. Nothing leaves your device.</p>
+            <div id="bulkImageListHeader" class="queue-head hidden"><span></span><span>File</span><span>Size</span><span>Status</span><span>Action</span></div>
+            <div id="bulkImageList" class="scroll"></div>
           </div>
         </div>
-
-        <div class="results-panel panel">
-          <div class="results-head">
-            <div class="results-title">Queue<span id="queueChip" class="source-chip chip hidden"></span></div>
-          </div>
-          <div id="bulkImageListHeader" class="queue-head hidden"><span></span><span>File</span><span>Size</span><span>Status</span><span>Action</span></div>
-          <div id="bulkImageList"></div>
-        </div>
-      </div>
-    </section>
+      </section>
+    </main>
   </div>
-</main>
 
-<div id="globalDropOverlay" class="hidden-overlay">
-  <div class="overlay-card">
-    <span class="material-symbols-outlined">place_item</span>
-    <h3>Drop it anywhere</h3>
-    <p id="globalDropHint">Images will be routed to the current tab</p>
+  <div id="globalDropOverlay" class="hidden-overlay">
+    <div class="overlay-card">
+      <span class="material-symbols-outlined">place_item</span>
+      <h3>Drop it anywhere</h3>
+      <p id="globalDropHint">Images will be routed to the current tab</p>
+    </div>
   </div>
-</div>
 
-<div id="toastStack" aria-live="polite"></div>
+  <div id="toastStack" aria-live="polite"></div>
 
-<div id="imageModal" class="hidden" role="dialog" aria-modal="true" aria-label="Image preview">
-  <img id="modalImage" src="" alt="Full image preview">
-  <button id="closeModalBtn" class="icon-btn" type="button" aria-label="Close preview"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-</div>
+  <div id="imageModal" class="hidden" role="dialog" aria-modal="true" aria-label="Image preview">
+    <img id="modalImage" src="" alt="Full image preview">
+    <button id="closeModalBtn" type="button" aria-label="Close preview"><span class="material-symbols-outlined">close</span></button>
+  </div>
 
   <script>
     // =========================================================
@@ -836,13 +1086,13 @@
     }
     function emptyState(iconName, title, text, art = true) {
         const svg = art ? `<svg class="empty-art" viewBox="0 0 120 90" aria-hidden="true">
-            <rect class="fr" x="14" y="6" width="92" height="78" rx="12" stroke-width="1"/>
-            <g><rect class="row ky" x="26" y="20" width="30" height="5" rx="2.5"/><rect class="row vl" x="62" y="20" width="32" height="5" rx="2.5"/></g>
-            <g><rect class="row ky b" x="26" y="36" width="22" height="5" rx="2.5"/><rect class="row vl" x="54" y="36" width="40" height="5" rx="2.5"/></g>
-            <g><rect class="row ky" x="26" y="52" width="34" height="5" rx="2.5"/><rect class="row vl" x="66" y="52" width="28" height="5" rx="2.5"/></g>
-            <g><rect class="row ky b" x="26" y="68" width="26" height="5" rx="2.5"/><rect class="row vl" x="58" y="68" width="36" height="5" rx="2.5"/></g>
+            <rect x="14" y="6" width="92" height="78" rx="10" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+            <g><rect class="row" x="26" y="20" width="30" height="6" rx="3" fill="#f87171"/><rect class="row" x="62" y="20" width="32" height="6" rx="3" fill="#e5e7eb"/></g>
+            <g><rect class="row" x="26" y="36" width="22" height="6" rx="3" fill="#fca5a5"/><rect class="row" x="54" y="36" width="40" height="6" rx="3" fill="#e5e7eb"/></g>
+            <g><rect class="row" x="26" y="52" width="34" height="6" rx="3" fill="#f87171" opacity="0.7"/><rect class="row" x="66" y="52" width="28" height="6" rx="3" fill="#e5e7eb"/></g>
+            <g><rect class="row" x="26" y="68" width="26" height="6" rx="3" fill="#fca5a5" opacity="0.7"/><rect class="row" x="58" y="68" width="36" height="6" rx="3" fill="#e5e7eb"/></g>
           </svg>` : icon(iconName);
-        return `<div class="empty">${svg}<h3>${title}</h3><p>${text}</p></div>`;
+        return `<div class="empty anim-in">${svg}<h3>${title}</h3><p>${text}</p></div>`;
     }
 
     // =========================================================
@@ -1090,10 +1340,7 @@
     function setSource(label) {
         if (!label) { sourceChip.classList.add('hidden'); return; }
         sourceChip.textContent = label;
-        // chip tone: AI generation data is the risky find, EXIF and loose text chunks are worth a look
         sourceChip.classList.toggle('ok', label === 'Clean');
-        sourceChip.classList.toggle('bad', label === 'ComfyUI' || label === 'A1111 / Forge');
-        sourceChip.classList.toggle('warn', label === 'EXIF' || label === 'PNG text');
         sourceChip.classList.remove('hidden');
         sourceChip.style.animation = 'none'; void sourceChip.offsetWidth; sourceChip.style.animation = '';
     }
@@ -2103,21 +2350,19 @@
                     const cleanSize = dataUrlByteLength(cleanedDataUrl);
                     const fcSize = document.getElementById('fcSize');
                     const grew = cleanSize > currentFile.size;
-                    const same = formatBytes(cleanSize) === formatBytes(currentFile.size);
-                    const tone = same ? '--ink' : grew ? '--warn' : '--ok';
-                    if (fcSize) fcSize.innerHTML = `${formatBytes(currentFile.size)} → <span style="color:var(${tone})" title="${same ? 'Same size after stripping' : grew ? 'Re-encoding made the file larger' : 'Smaller after stripping'}">${formatBytes(cleanSize)}</span>`;
+                    if (fcSize) fcSize.innerHTML = `${formatBytes(currentFile.size)} → <span style="color:var(${grew ? '--warn' : '--ok'})" title="${grew ? 'Re-encoding made the file larger' : 'Smaller after stripping'}">${formatBytes(cleanSize)}</span>`;
                     setSource('Clean');
                     metadataOutput.innerHTML = `<div class="success anim-in">
                         <svg viewBox="0 0 96 96" aria-hidden="true">
-                          <circle class="ring" cx="48" cy="48" r="40" fill="none" stroke-width="2"/>
-                          <path class="fill" d="M48 10 L80 22 V46 C80 66 66 80 48 86 C30 80 16 66 16 46 V22 Z"/>
-                          <path class="shield" d="M48 10 L80 22 V46 C80 66 66 80 48 86 C30 80 16 66 16 46 V22 Z" fill="none" stroke-width="2.2" stroke-linejoin="round"/>
-                          <path class="tick" d="M35 48 L44 57 L62 38" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                          <circle class="ring" cx="48" cy="48" r="40" fill="none" stroke="#16a34a" stroke-width="2"/>
+                          <path class="fill" d="M48 10 L80 22 V46 C80 66 66 80 48 86 C30 80 16 66 16 46 V22 Z" fill="#dcfce7"/>
+                          <path class="shield" d="M48 10 L80 22 V46 C80 66 66 80 48 86 C30 80 16 66 16 46 V22 Z" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round"/>
+                          <path class="tick" d="M34 48 L44 58 L63 38" fill="none" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <h3>Metadata stripped</h3><p>Re-encoded with zero text chunks or EXIF. Ready to download.</p>
                         <div class="removed kv-list">
                           ${(findings.length ? findings : [['check', 'Embedded metadata', 'none found']]).map(([ic, k, v]) => `<div class="kv"><div class="k">${icon(ic)}${escapeHtml(k)}</div><div class="v gone">${escapeHtml(v)}${v === 'none found' ? '' : ' · gone'}</div></div>`).join('')}
-                          <div class="kv"><div class="k">${icon('straighten')}Size</div><div class="v">${formatBytes(currentFile.size)} → <span style="color:var(${tone})">${formatBytes(cleanSize)}</span></div></div>
+                          <div class="kv"><div class="k">${icon('straighten')}Size</div><div class="v">${formatBytes(currentFile.size)} → <span style="color:var(${grew ? '--warn' : '--ok'})">${formatBytes(cleanSize)}</span></div></div>
                           <div class="kv"><div class="k">${icon('aspect_ratio')}Pixels</div><div class="v">${imagePreview.naturalWidth}×${imagePreview.naturalHeight} · untouched</div></div>
                         </div></div>`;
                     [copyAllMetadataBtn, exportTxtBtn, exportJsonBtn].forEach(b => b.classList.add('hidden'));
@@ -2345,7 +2590,7 @@
 
         const successCount = bulkFilesData.filter(f => f.status === 'Stripped').length;
         const errorCount = bulkFilesData.filter(f => f.status === 'Error').length;
-        if (successCount > 0) { showToast(`${successCount} image${successCount > 1 ? 's' : ''} cleaned`, 'check_circle', 'success'); burst(downloadAllCleanedBulkButton); }
+        if (successCount > 0) { showToast(`${successCount} image${successCount > 1 ? 's' : ''} cleaned`, 'success', 'success'); burst(downloadAllCleanedBulkButton); }
         if (errorCount > 0) showToast(`${errorCount} image${errorCount > 1 ? 's' : ''} failed`, 'error', 'error');
     }
 
@@ -2443,6 +2688,31 @@
         else if (e.key === '2') { e.preventDefault(); switchTab('paste'); }
         else if (e.key === '3') { e.preventDefault(); switchTab('bulk'); }
     });
+
+    // =========================================================
+    //  Theme switch
+    // =========================================================
+    (function () {
+        const seg = $('themeSeg');
+        const btns = Array.from(seg.querySelectorAll('button'));
+        const knob = seg.querySelector('.knob');
+        function sync() {
+            const cur = document.documentElement.dataset.theme || 'system';
+            btns.forEach((b, i) => {
+                const on = b.dataset.themeOpt === cur;
+                b.classList.toggle('on', on);
+                b.setAttribute('aria-checked', on);
+                if (on) knob.style.transform = `translateX(${i * 30}px)`;
+            });
+        }
+        btns.forEach(b => b.addEventListener('click', () => {
+            window.setTheme(b.dataset.themeOpt);
+            sync();
+            const label = { light: 'Light theme', dark: 'Dark theme', system: 'Matching your browser' }[b.dataset.themeOpt];
+            showToast(label, b.querySelector('.material-symbols-outlined').textContent, 'info', 1400);
+        }));
+        sync();
+    })();
 
     // =========================================================
     //  Init
