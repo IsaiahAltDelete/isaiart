@@ -1,0 +1,190 @@
+{
+ "date": "2026-10-30",
+ "updated": "2026-10-30T07:59:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today; U.S. clocks fall back early Sunday, Nov. 1. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Lakers at Warriors (10:00 PM ET, Prime Video)",
+  "Knicks at 76ers (7:30 PM ET, Prime Video)",
+  "Baylor at UCF (7:30 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "Prime Video doubleheader"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 10",
+   "note": "Friday national windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-tuln-clt",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tulane Green Wave",
+     "abbr": "TULN",
+     "detail": "3\u20134"
+    },
+    {
+     "name": "Charlotte 49ers",
+     "abbr": "CLT",
+     "detail": "1\u20136"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-30T19:00:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Jerry Richardson Stadium, Charlotte",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Friday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "nba-ny-phi",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "New York Knicks",
+     "abbr": "NY",
+     "detail": "2\u20133",
+     "logo": "nba/ny"
+    },
+    {
+     "name": "Philadelphia 76ers",
+     "abbr": "PHI",
+     "detail": "4\u20131",
+     "logo": "nba/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-30T19:30:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Xfinity Mobile Arena, Philadelphia",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Atlantic Division matchup; Philadelphia is off to a 4\u20131 start.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaf-bay-ucf",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baylor Bears",
+     "abbr": "BAY",
+     "detail": "4\u20133"
+    },
+    {
+     "name": "UCF Knights",
+     "abbr": "UCF",
+     "detail": "4\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-30T19:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Acrisure Bounce House, Orlando, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Friday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "nba-lal-gs",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Lakers",
+     "abbr": "LAL",
+     "detail": "4\u20131",
+     "logo": "nba/lal"
+    },
+    {
+     "name": "Golden State Warriors",
+     "abbr": "GS",
+     "detail": "2\u20133",
+     "logo": "nba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-30T22:00:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Pacific Division rivals in the late window. Tip is 7:00 p.m. local.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaf-kent-sac",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kent State Golden Flashes",
+     "abbr": "KENT",
+     "detail": "3\u20135"
+    },
+    {
+     "name": "Sacramento State Hornets",
+     "abbr": "SAC",
+     "detail": "1\u20137"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-30T22:30:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Hornet Stadium, Sacramento, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Friday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  }
+ ],
+ "footer_note": "Five qualifying events fall inside Friday's Eastern calendar day. Regional NHL and NBA games, preseason and exhibition games are excluded. Milwaukee won the World Series 4\u20131 on Wednesday, and Golden State won the WNBA title in Game 5 on Monday.",
+ "sources": [
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261030"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261030"
+  },
+  {
+   "label": "MLB Stats API, World Series",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2026-10-23&endDate=2026-10-29"
+  }
+ ]
+}
