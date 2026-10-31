@@ -1,0 +1,548 @@
+{
+ "date": "2026-10-31",
+ "updated": "2026-10-31T07:58:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today; U.S. clocks fall back at 2 a.m. Sunday, Nov. 1. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 2 Ohio State at USC (7:30 PM ET, NBC)",
+  "No. 17 Florida vs. No. 3 Georgia in Atlanta (3:30 PM ET, ABC)",
+  "No. 22 Arizona at No. 13 Texas Tech (12:00 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 10",
+   "note": "Saturday games with AP Top 25 teams • ranks from the Oct. 25 AP poll"
+  }
+ ],
+ "footer_note": "Eighteen qualifying events fall inside Saturday’s Eastern calendar day: every Saturday game involving an AP Top 25 team. Regional NHL games, NBA TV games, MLS regular-season matches on Apple TV and UFC Fight Night are excluded. Sunday’s desk picks up the NFL slate on standard time.",
+ "sources": [
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261031"
+  },
+  {
+   "label": "AP Top 25, Week 9",
+   "url": "https://www.espn.com/college-football/rankings"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-31"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261031"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-nd-navy",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 5 • 6–1"
+    },
+    {
+     "name": "Navy Midshipmen",
+     "abbr": "NAVY",
+     "detail": "2–5"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-10-31T12:00:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Gillette Stadium, Foxborough, Mass.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Neutral-site game; Navy is the designated home team.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ariz-ttu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Wildcats",
+     "abbr": "ARIZ",
+     "detail": "No. 22 • 6–1"
+    },
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 13 • 6–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T12:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Galaxy Stadium, Lubbock, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Ranked matchup of 6–1 teams; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-smu-syr",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "SMU Mustangs",
+     "abbr": "SMU",
+     "detail": "No. 19 • 6–1"
+    },
+    {
+     "name": "Syracuse Orange",
+     "abbr": "SYR",
+     "detail": "3–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T12:00:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "JMA Wireless Dome, Syracuse, N.Y.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 19 SMU on the road.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-wis-iowa",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Wisconsin Badgers",
+     "abbr": "WIS",
+     "detail": "No. 25 • 5–2"
+    },
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "5–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T12:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Kinnick Stadium, Iowa City, Iowa",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 25 Wisconsin on the road.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-aub-miss",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Auburn Tigers",
+     "abbr": "AUB",
+     "detail": "4–3"
+    },
+    {
+     "name": "Ole Miss Rebels",
+     "abbr": "MISS",
+     "detail": "No. 12 • 5–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T12:45:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Vaught-Hemingway Stadium, Oxford, Miss.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 12 Ole Miss at home; 11:45 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-fla-uga",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 17 • 5–2"
+    },
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 3 • 6–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-10-31T15:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Mercedes-Benz Stadium, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Neutral-site rivalry game; Georgia is the designated home team.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-minn-iu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Minnesota Golden Gophers",
+     "abbr": "MINN",
+     "detail": "5–2"
+    },
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IU",
+     "detail": "No. 4 • 7–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T15:30:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "venue": "Memorial Stadium, Bloomington, Ind.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 4 Indiana at home.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-asu-byu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona State Sun Devils",
+     "abbr": "ASU",
+     "detail": "4–3"
+    },
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 8 • 6–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T15:30:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "LaVell Edwards Stadium, Provo, Utah",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "No. 8 BYU at home; 1:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-nu-ore",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Northwestern Wildcats",
+     "abbr": "NU",
+     "detail": "No. 20 • 6–1"
+    },
+    {
+     "name": "Oregon Ducks",
+     "abbr": "ORE",
+     "detail": "4–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T15:30:00-04:00",
+   "watch": "Peacock",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "venue": "Autzen Stadium, Eugene, Ore.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "No. 20 Northwestern on the road; 12:30 p.m. local kickoff.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "ncaaf-utah-cin",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 6 • 7–0"
+    },
+    {
+     "name": "Cincinnati Bearcats",
+     "abbr": "CIN",
+     "detail": "5–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T15:45:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Nippert Stadium, Cincinnati",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten No. 6 Utah on the road.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-uva-wake",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Virginia Cavaliers",
+     "abbr": "UVA",
+     "detail": "4–4"
+    },
+    {
+     "name": "Wake Forest Demon Deacons",
+     "abbr": "WAKE",
+     "detail": "No. 14 • 6–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T15:45:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Allegacy Federal Credit Union Stadium, Winston-Salem, N.C.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 14 Wake Forest at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-nev-ucla",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Nevada Wolf Pack",
+     "abbr": "NEV",
+     "detail": "3–4"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 7 • 7–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T16:15:00-04:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Rose Bowl, Pasadena, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Unbeaten No. 7 UCLA at home; 1:15 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required."
+  },
+  {
+   "id": "ncaaf-okst-isu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oklahoma State Cowboys",
+     "abbr": "OKST",
+     "detail": "No. 24 • 5–2"
+    },
+    {
+     "name": "Iowa State Cyclones",
+     "abbr": "ISU",
+     "detail": "3–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T19:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Jack Trice Stadium, Ames, Iowa",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 24 Oklahoma State on the road; 6 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-mia-unc",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 1 • 7–0"
+    },
+    {
+     "name": "North Carolina Tar Heels",
+     "abbr": "UNC",
+     "detail": "4–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T19:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Kenan Stadium, Chapel Hill, N.C.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten No. 1 Miami on the road.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-osu-usc",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 2 • 6–1"
+    },
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T19:30:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Los Angeles Memorial Coliseum, Los Angeles",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "No. 2 Ohio State visits USC; 4:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-msst-tex",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Mississippi State Bulldogs",
+     "abbr": "MSST",
+     "detail": "4–3"
+    },
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 11 • 5–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T19:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "DKR-Texas Memorial Stadium, Austin",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 11 Texas at home; 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-miz-ark",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "No. 23 • 5–2"
+    },
+    {
+     "name": "Arkansas Razorbacks",
+     "abbr": "ARK",
+     "detail": "3–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T19:45:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Donald W. Reynolds Razorback Stadium, Fayetteville, Ark.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 23 Missouri on the road; 6:45 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-txst-bois",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas State Bobcats",
+     "abbr": "TXST",
+     "detail": "4–3"
+    },
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BOIS",
+     "detail": "No. 20 • 6–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-31T22:00:00-04:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Albertsons Stadium, Boise, Idaho",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "No. 20 Boise State closes the night; 8 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  }
+ ]
+}
