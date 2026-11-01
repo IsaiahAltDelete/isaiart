@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Food</title>
-<meta name="description" content="Six spinning 3D foods. Click one to inspect it: what it is, what it is in code, and its D&amp;D stat block.">
+<meta name="description" content="Twelve spinning 3D foods. Click one to inspect it: what it is, what it is in code, and its D&amp;D stat block.">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -125,7 +125,7 @@ pre.code .c { color: var(--ink-2); }
 </script>
 </head>
 <body>
-<canvas id="stage" tabindex="-1" aria-label="Six spinning foods. Select one to inspect it."></canvas>
+<canvas id="stage" tabindex="-1" aria-label="Twelve spinning foods. Select one to inspect it."></canvas>
 <nav class="picker" id="picker" aria-label="Inspect a food"></nav>
 <button class="x" id="close" type="button" aria-label="Close readout">[esc] close</button>
 <aside class="panel" id="panel" aria-live="polite"></aside>
@@ -255,7 +255,126 @@ bottle.squeeze();     <c>// emits Crinkle, 60 ft.</c>`,
     actions: [
       ["Roll Under Seat.", "If dropped in a moving vehicle, the bottle becomes invisible until the vehicle stops."],
     ] },
+  {
+    id: "donut", name: "Donut",
+    sig: ["class", " Donut ", "extends", " Torus"],
+    lit: "A ring of fried dough under strawberry glaze and rainbow sprinkles. The hole is included at no extra charge.",
+    code: `donut.volume - donut.hole.volume; <c>// you paid for both</c>
+donut.hole = null;                 <c>// sold separately</c>`,
+    type: "Small food, chaotic sweet",
+    ac: "8 (glaze)", hp: "10 (3d6)", speed: "0 ft. (20 ft. when dropped)",
+    abil: [3, 2, 10, 1, 4, 18],
+    extra: [["Senses", "always knows where the break room is"], ["Challenge", "1/8 (25 XP)"]],
+    traits: [
+      ["Box of Twelve.", "A donut is never encountered alone. By the time you arrive, one is left, and it is the plain one."],
+      ["Glazed.", "A creature that touches it leaves fingerprints on every surface it touches for 1 hour."],
+    ],
+    actions: [
+      ["Glaze Over.", "One creature that can see it must succeed on a DC 12 Wisdom save or forget why it walked into the kitchen."],
+    ],
+  },
+  {
+    id: "taco", name: "Taco",
+    sig: ["class", " Taco ", "extends", " Shell<Filling> ", "implements", " Fragile"],
+    lit: "A folded corn shell holding seasoned beef, lettuce, diced tomato and shredded cheddar. Designed to fail on the first bite.",
+    code: `try {
+  taco.bite();
+} catch (e) {          <c>// always throws</c>
+  plate.collect(taco.contents);
+}`,
+    type: "Small food, chaotic crunchy",
+    ac: "6 (brittle shell)", hp: "7 (2d6)", speed: "0 ft.",
+    abil: [4, 1, 10, 1, 3, 17],
+    extra: [["Vulnerable", "bludgeoning, biting, looking at it"], ["Challenge", "1/8 (25 XP)"]],
+    traits: [
+      ["Shatterpoint.", "On the first bite, the shell breaks and the filling scatters into a 5-foot square. It is no longer a taco. It is a salad with regrets."],
+      ["Tuesday.", "On Tuesdays, the taco has advantage on all checks."],
+    ],
+    actions: [
+      ["Spill.", "One creature holding it must succeed on a DC 14 Dexterity save or take 1d4 stain damage to its shirt."],
+    ],
+  },
+  {
+    id: "fries", name: "Fries",
+    sig: ["class", " Fries ", "extends", " Swarm<Fry>"],
+    lit: "A red-and-white striped carton of golden potato fries, salted. Count unknown. Count decreasing.",
+    code: `fries.length;   <c>// 24</c>
+fries.length;   <c>// 19. you were not eating them.</c>
+bag.find(f => f.lost);  <c>// the best one</c>`,
+    type: "Medium swarm of Tiny food, neutral salty",
+    ac: "9 (carton)", hp: "22 (5d8)", speed: "0 ft.",
+    abil: [2, 8, 10, 1, 3, 15],
+    extra: [["Resistant", "being shared"], ["Challenge", "1/4 (50 XP)"]],
+    traits: [
+      ["Swarm.", "The fries can enter any space large enough for one fry, such as the gap between a car seat and the console."],
+      ["“I Don’t Want Any.”", "A creature that says this grants every other creature at the table permission to take its fries."],
+    ],
+    actions: [
+      ["Bottom of the Bag.", "The last fry is found three days later. It is somehow still warm."],
+    ],
+  },
+  {
+    id: "coffee", name: "Coffee",
+    sig: ["class", " Coffee ", "extends", " Beverage ", "implements", " Dependency"],
+    lit: "A latte with a foam heart in a teal mug, on a saucer. The barista drew the heart. The barista does not love you.",
+    code: `user.energy += coffee.drink();
+setTimeout(user.crash, 4 * HOUR);  <c>// scheduled</c>
+if (!coffee) user.speak();  <c>// unreachable</c>`,
+    type: "Tiny object, lawful jittery",
+    ac: "14 (ceramic)", hp: "5 (2d4)", speed: "0 ft.",
+    abil: [1, 1, 10, 1, 6, 14],
+    extra: [["Damage", "1 fire (it is hot. the cup says so.)"], ["Challenge", "1/4 (50 XP)"]],
+    traits: [
+      ["Caffeinated.", "A creature that drinks it gains an extra bonus action each turn for 4 hours. Then it gains a level of exhaustion and opinions about productivity."],
+      ["Lukewarm.", "After 10 minutes, the coffee loses every property except the drinker’s refusal to throw it out."],
+    ],
+    actions: [
+      ["Before Coffee.", "A creature that has not had it yet has disadvantage on every conversation within 10 ft."],
+    ],
+  },
+  {
+    id: "sushi", name: "Sushi",
+    sig: ["class", " SushiRoll ", "extends", " Array<Maki>(3)"],
+    lit: "Three pieces of salmon and cucumber maki on a wooden board, with a dab of wasabi and a pair of chopsticks for the confident.",
+    code: `chopsticks.pick(maki[0]);  <c>// ok</c>
+chopsticks.pick(maki[1]);  <c>// dropped in the soy</c>
+hand.pick(maki[2]);        <c>// fallback</c>`,
+    type: "Small food, lawful delicate",
+    ac: "10 (nori)", hp: "7 (2d6)", speed: "0 ft. (2 mph on the conveyor)",
+    abil: [2, 6, 10, 4, 12, 16],
+    extra: [["Senses", "knows you are holding the chopsticks wrong"], ["Challenge", "1/4 (50 XP)"]],
+    traits: [
+      ["One Bite.", "A creature that tries to eat a piece in two bites must succeed on a DC 15 Dexterity save or the piece unrolls."],
+      ["Wasabi Trap.", "A creature that mistakes the wasabi for avocado takes 2d6 psychic damage, mostly through the nose."],
+    ],
+    actions: [
+      ["Soy Dive.", "The piece is dunked rice-side down. It drinks the whole dish and falls apart in it."],
+    ],
+  },
+  {
+    id: "soda", name: "Soda Can",
+    sig: ["class", " SodaCan ", "extends", " Container<Fizz> { ", "readonly", " pressure }"],
+    lit: "A twelve-ounce aluminium can of orange soda with a pull tab. Whether it has been shaken is unknown. That is the gamble.",
+    code: `can.shaken = Math.random() < 1/6;  <c>// private</c>
+await can.open();
+desk.wipe();                       <c>// 17% of the time</c>`,
+    type: "Small object, chaotic fizzy",
+    ac: "13 (aluminium)", hp: "7 (2d6)", speed: "0 ft. (rolls under the fridge)",
+    abil: [2, 1, 10, 1, 2, 15],
+    extra: [["Immune", "being recycled properly"], ["Challenge", "1/4 (50 XP)"]],
+    traits: [
+      ["Shaken.", "When opened, roll a d6. On a 1, it sprays a 10-foot cone, and the opener says it was fine."],
+      ["Flat.", "If left open for 1 hour, the soda loses all its traits and gains the Disappointing condition."],
+    ],
+    actions: [
+      ["Tab Snap.", "The pull tab breaks off. The can is now a sealed container that mocks you."],
+    ],
+  },
 ];
+
+/* Grid order: mains, then sweets, then drinks. */
+const ORDER = ["cheeseburger", "pizza", "taco", "fries", "sushi", "icecream", "donut", "cake", "cakeslice", "coffee", "soda", "water"];
+FOODS.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
 /* ───────────────────────── renderer ───────────────────────── */
 
@@ -286,7 +405,7 @@ const RAMP = (() => {
   t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
   return t;
 })();
-const TOON_KEYS = ["map", "side", "transparent", "opacity", "depthWrite"];
+const TOON_KEYS = ["map", "side", "transparent", "opacity", "depthWrite", "vertexColors"];
 function mat(color, o = {}) {
   const p = { color, gradientMap: RAMP };
   TOON_KEYS.forEach((k) => { if (k in o) p[k] = o[k]; });
@@ -792,9 +911,253 @@ function makeBottle() {
 
 function buttercream(color) { return mat(color); }
 
-const BUILDERS = { cheeseburger: makeBurger, pizza: makePizza, icecream: makeIceCream, cake: makeCake, cakeslice: makeSlice, water: makeBottle };
-const MASS = { cheeseburger: 1, pizza: 1, icecream: 1.14, cake: 1, cakeslice: 0.84, water: 1.12 };
-const TILT = { cheeseburger: 0.28, pizza: 0.82, icecream: 0.12, cake: 0.32, cakeslice: 0.38, water: 0.1 };
+function makeDonut() {
+  const g = new THREE.Group();
+  const R = 0.78, T = 0.37;
+  const SY = 1.3;   // fried dough is puffier than a torus
+  const dough = displace(new THREE.TorusGeometry(R, T, 48, 160).rotateX(Math.PI / 2), (v) => 0.012 * n3(v.x * 5, v.y * 5, v.z * 5)).scale(1, SY, 1);
+  g.add(mesh(dough, mat(0xd99a52)));
+  // glaze: a slightly fatter torus whose underside is tucked back inside the dough along a wavy drip line
+  let glaze = new THREE.TorusGeometry(R, T + 0.03, 96, 240).rotateX(Math.PI / 2);
+  glaze.deleteAttribute("normal"); glaze.deleteAttribute("uv");
+  glaze = mergeVertices(glaze);
+  const gp = glaze.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i < gp.count; i++) {
+    v.fromBufferAttribute(gp, i);
+    c.set(v.x, 0, v.z).normalize().multiplyScalar(R);
+    const th = Math.atan2(v.z, v.x);
+    // rounded drip lobes: the edge dips lower in a few soft bulges
+    const lobes = Math.pow(Math.max(0, Math.sin(th * 6 + 0.4)), 3) * 0.35 + Math.pow(Math.max(0, Math.sin(th * 13 + 2)), 4) * 0.15;
+    const inward = Math.max(0, -((v.x - c.x) * c.x + (v.z - c.z) * c.z) / (R * T));   // 0 outside, 1 facing the hole
+    const edge = T * (0.05 - lobes * (1 - inward) - 0.22 * inward);   // inside the hole the glaze stops partway down
+    const t = THREE.MathUtils.smoothstep(v.y, edge - 0.05, edge + 0.01);
+    v.sub(c).multiplyScalar(THREE.MathUtils.lerp((T - 0.04) / (T + 0.03), 1, t)).add(c);
+    gp.setXYZ(i, v.x, v.y, v.z);
+  }
+  glaze.scale(1, SY, 1);
+  glaze.computeVertexNormals();
+  g.add(mesh(glaze, mat(0xf28fb8)));
+  // sprinkles over the top of the glaze
+  const sprCols = [0xe8443a, 0xf2c230, 0x3a9ee8, 0x56c26a, 0xffffff, 0xa65be0];
+  const sprGeo = new THREE.CapsuleGeometry(0.02, 0.08, 3, 8);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  sprCols.forEach((col, ci) => {
+    const inst = new THREE.InstancedMesh(sprGeo, mat(col), 8);
+    for (let i = 0; i < 8; i++) {
+      const th = (ci * 8 + i) * 2.399963 + rnd() * 0.3, ph = 1.2 + rnd() * 0.8;   // around the ring, on the crown only, clear of the silhouette
+      const out = new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
+      const dir = out.clone().multiplyScalar(Math.cos(ph)).add(new THREE.Vector3(0, Math.sin(ph), 0));
+      const pos = out.clone().multiplyScalar(R).add(dir.clone().multiplyScalar(T + 0.035));
+      pos.y *= SY;
+      const nrm = dir.clone().setY(dir.y / SY).normalize();
+      q.setFromUnitVectors(up, nrm).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, rnd() * 6, 0)));
+      m4.compose(pos, q, new THREE.Vector3(1, 1, 1));
+      inst.setMatrixAt(i, m4);
+    }
+    g.add(inst);
+  });
+  return g;
+}
+
+function makeTaco() {
+  const g = new THREE.Group();
+  // shell: a lathed disc (true round rim, ring-by-ring subdivision), folded over a cylinder of radius rho
+  const rho = 0.45, disc = [];
+  for (let i = 0; i <= 24; i++) disc.push([i / 24, -0.03]);
+  disc.push([1.015, 0]);
+  for (let i = 24; i >= 0; i--) disc.push([i / 24, 0.03]);
+  const shell = lathe(disc, 192);
+  const sp = shell.attributes.position, cols = new Float32Array(sp.count * 3);
+  const gold = new THREE.Color(0xeab857), toast = new THREE.Color(0xc4842c), tmp = new THREE.Color();
+  const fold = (x, z, y) => { const th = z / rho * 0.98, rr = rho - y; return [x, rho - rr * Math.cos(th), rr * Math.sin(th), th]; };
+  for (let i = 0; i < sp.count; i++) {
+    const x = sp.getX(i), y = sp.getY(i), z = sp.getZ(i), r = Math.hypot(x, z);
+    // toasted along the fold and the rim, where the fryer hits hardest
+    const t = Math.max(0.75 * Math.exp(-((z / 0.16) ** 2)), 0.6 * THREE.MathUtils.smoothstep(r, 0.86, 1));
+    tmp.copy(gold).lerp(toast, t).toArray(cols, i * 3);
+    const [fx, fy, fz] = fold(x, z, y);
+    sp.setXYZ(i, fx, fy, fz);   // fold without stretching: the tips lean back in
+  }
+  shell.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+  shell.computeVertexNormals();
+  const shellMesh = mesh(shell, mat(0xffffff, { vertexColors: true }));
+  shellMesh.userData.hull = cornerHull(shell);
+  g.add(shellMesh);
+  // fried speckles on the outside of the shell
+  const speck = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), mat(0xa8641f), 46);
+  const sm4 = new THREE.Matrix4(), sq = new THREE.Quaternion(), yUp = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < 46; i++) {
+    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.93, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const [fx, fy, fz, th] = fold(x, z, -0.031);
+    sq.setFromUnitVectors(yUp, new THREE.Vector3(0, -Math.cos(th), Math.sin(th)));
+    const sz = 0.014 + rnd() * 0.016;
+    sm4.compose(new THREE.Vector3(fx, fy, fz), sq, new THREE.Vector3(sz * 1.4, sz * 0.25, sz));
+    speck.setMatrixAt(i, sm4);
+  }
+  g.add(speck);
+  // filling rides along the fold, kept below the shell's rim at each point
+  const rim = (x) => rho * (1 - Math.cos(Math.min(Math.PI, Math.sqrt(Math.max(0, 1 - x * x)) / rho * 0.98)));
+  const beef = [mat(0x5e3219, { ink: [1, 0x2a1408] }), mat(0x7a4424, { ink: [1, 0x2a1408] })];
+  for (let i = 0; i < 60; i++) {
+    const x = (rnd() - 0.5) * 1.3, y = Math.min(0.12 + rnd() * 0.34, rim(x) - 0.06);
+    const ch = mesh(blob(0.045 + rnd() * 0.02, 0, (v) => 0.012 * n3(v.x * 30, v.y * 30, v.z * 30)), beef[i % 2], x, y, (rnd() - 0.5) * 0.3);
+    ch.scale.set(1 + rnd() * 0.6, 0.55 + rnd() * 0.3, 1 + rnd() * 0.4);   // crumbles, not meatballs
+    ch.rotation.set(rnd() * 3, rnd() * 3, 0); g.add(ch);
+  }
+  const lettuce = mat(0x74c43f, { ink: [1, 0x1d3d0e] });
+  const ribbon = new THREE.BoxGeometry(0.26, 0.016, 0.05);
+  for (let i = 0; i < 34; i++) {
+    const x = (rnd() - 0.5) * 1.3, y = rim(x) - 0.03 + rnd() * 0.06;
+    const l = mesh(ribbon, lettuce, x, y, (rnd() - 0.5) * 0.3);
+    l.rotation.set((rnd() - 0.5) * 0.9, rnd() * 3, (rnd() - 0.5) * 0.9); g.add(l);
+  }
+  const tomato = mat(0xd8321f, { ink: [1.2, 0x4a0d06] });
+  for (let i = 0; i < 9; i++) {
+    const x = -0.6 + (i / 8) * 1.2, top = rim(x) + 0.06;
+    const t = mesh(new THREE.BoxGeometry(0.11, 0.09, 0.11), tomato, x, top, (rnd() - 0.5) * 0.14);
+    t.rotation.set(rnd(), rnd(), rnd()); g.add(t);
+  }
+  const shredGeo = new THREE.CapsuleGeometry(0.018, 0.12, 2, 6);
+  const shreds = new THREE.InstancedMesh(shredGeo, mat(0xf2a31b), 34);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  for (let i = 0; i < 34; i++) {
+    const x = -0.7 + rnd() * 1.4, top = rim(x) + 0.09;
+    q.setFromEuler(new THREE.Euler(Math.PI / 2 + (rnd() - 0.5), rnd() * 6, (rnd() - 0.5) * 0.8));
+    m4.compose(new THREE.Vector3(x, top, (rnd() - 0.5) * 0.24), q, new THREE.Vector3(1, 1, 1));
+    shreds.setMatrixAt(i, m4);
+  }
+  g.add(shreds);
+  return g;
+}
+
+function makeFries() {
+  const g = new THREE.Group();
+  // carton: an oval paper cup, open on top, front and back walls rising in a curve
+  const prof = [[0, 0], [0.46, 0], [0.62, 1.0], [0.58, 1.0], [0.43, 0.05], [0, 0.05]];
+  const box = lathe(prof, 96);
+  const bp = box.attributes.position;
+  for (let i = 0; i < bp.count; i++) {
+    const x = bp.getX(i), y = bp.getY(i), z = bp.getZ(i), r0 = Math.hypot(x, z), r = r0 || 1;
+    const cx = x / r, cz = z / r, sq = r0 > 1e-6 ? 1 / Math.pow(Math.abs(cx) ** 4 + Math.abs(cz) ** 4, 0.25) : 1;   // round -> squircle
+    const lift = y > 0.95 ? 0.12 - 0.3 * cz - 0.1 * Math.max(0, cz) ** 2 : 0;   // tall back, scooped front lip
+    bp.setXYZ(i, x * sq * 0.92, y + lift, z * sq * 0.6);
+  }
+  box.computeVertexNormals();
+  const stripes = canvasTex(512, 64, (c, w, h) => {
+    c.fillStyle = "#f7f3ea"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#d82a2a";
+    for (let i = 0; i < 16; i++) c.fillRect(i * w / 16, 0, w / 32, h);
+  });
+  g.add(mesh(box, mat(0xffffff, { map: stripes })));
+  // the fries: one bevel-less stick, scaled per fry, sharing a clean hull
+  const fryGeo = new THREE.BoxGeometry(0.09, 1, 0.09);
+  const fryHull = cornerHull(fryGeo);
+  const fryMat = mat(0xf6c445, { ink: [1.2, 0x8a5a12] });
+  for (let i = 0; i < 24; i++) {
+    const row = i % 3;   // back, middle, front rows; the front row leans out over the lip
+    const h = 0.7 + rnd() * 0.55 + (row === 0 ? 0.15 : 0);
+    const x = (rnd() - 0.5) * 0.62, z = -0.14 + row * 0.13 + (rnd() - 0.5) * 0.05;
+    const f = mesh(fryGeo, fryMat, x, 0.3 + h / 2, z);
+    f.scale.y = h; f.rotation.set(row === 2 ? 0.25 + rnd() * 0.25 : (rnd() - 0.5) * 0.2, rnd() * 3, (rnd() - 0.5) * 0.3 + x * 0.5);
+    f.userData.hull = fryHull;
+    g.add(f);
+  }
+  return g;
+}
+
+function makeCoffee() {
+  const g = new THREE.Group();
+  g.add(plate(1.05));
+  const base = 0.065;
+  const prof = [[0, 0], [0.42, 0], [0.47, 0.04], [0.5, 0.12]];
+  for (let i = 1; i <= 32; i++) { const t = i / 32; prof.push([0.5 + 0.03 * t + 0.015 * Math.sin(t * Math.PI), 0.12 + 0.83 * t]); }
+  prof.push([0.51, 0.99], [0.47, 0.99], [0.46, 0.2], [0, 0.2]);
+  g.add(mesh(lathe(prof, 96), mat(0x2f9e95), 0, base, 0));
+  const latte = canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = "#6b3f22"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#b07a4c"; c.beginPath(); c.arc(w / 2, h / 2, w * 0.44, 0, 7); c.fill();
+    c.fillStyle = "#fbf3e6";
+    [0.37, 0.63].forEach((x) => { c.beginPath(); c.arc(w * x, h * 0.42, w * 0.135, 0, 7); c.fill(); });
+    c.beginPath(); c.moveTo(w * 0.24, h * 0.47); c.lineTo(w * 0.76, h * 0.47); c.lineTo(w * 0.5, h * 0.8); c.fill();
+  });
+  const top = mesh(new THREE.CircleGeometry(0.465, 64), mat(0xffffff, { map: latte, noOutline: true }), 0, base + 0.92, 0);
+  top.rotation.x = -Math.PI / 2;
+  g.add(top);
+  const handle = mesh(new THREE.TorusGeometry(0.22, 0.06, 16, 48, Math.PI * 1.1), mat(0x2f9e95), 0.5, base + 0.53, 0);
+  handle.rotation.z = -Math.PI * 0.55;
+  g.add(handle);
+  return g;
+}
+
+function makeSushi() {
+  const g = new THREE.Group();
+  const grain = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = "#d8a466"; c.fillRect(0, 0, w, h);
+    c.strokeStyle = "rgba(140,86,40,.45)"; c.lineWidth = 3;
+    for (let i = 0; i < 16; i++) { const y = rnd() * h; c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(w * 0.3, y + 8, w * 0.6, y - 8, w, y + (rnd() - 0.5) * 6); c.stroke(); }
+  });
+  const wood = mat(0xffffff, { map: grain });
+  g.add(mesh(new THREE.BoxGeometry(3.0, 0.12, 1.1), wood, 0, 0.2, 0));
+  [-1.15, 1.15].forEach((x) => g.add(mesh(new THREE.BoxGeometry(0.14, 0.14, 1.1), wood, x, 0.07, 0)));
+  const top = 0.26;
+  const nori = mat(0x23402c), rice = mat(0xf8f6ef), salmon = mat(0xf27f4e), cuke = mat(0x5aa845, { ink: [1, 0x1d3d0e] });
+  [-0.9, 0, 0.9].forEach((x, i) => {
+    const mk = new THREE.Group();
+    mk.add(mesh(lathe([[0, 0], [0.34, 0], [0.36, 0.04], [0.375, 0.23], [0.36, 0.42], [0.34, 0.46], [0, 0.46]], 72), nori));
+    const r = mesh(displace(new THREE.CylinderGeometry(0.33, 0.33, 0.06, 48, 1), (v, n) => (n.y > 0.5 ? 0.012 * n3(v.x * 30, 0, v.z * 30) : 0)), rice, 0, 0.47, 0);
+    mk.add(r);
+    mk.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.07, 32), salmon, -0.03, 0.5, 0.02));
+    mk.add(mesh(new THREE.BoxGeometry(0.08, 0.07, 0.08), cuke, 0.13, 0.5, -0.06));
+    mk.position.set(x, top, -0.08); mk.rotation.y = i * 1.3;
+    g.add(mk);
+  });
+  const wasabi = mesh(blob(0.14, 3, (v) => 0.03 * n3(v.x * 9, v.y * 9, v.z * 9)), mat(0x9ccf3f), 1.25, top + 0.06, 0.32);
+  wasabi.scale.y = 0.6; g.add(wasabi);
+  const stick = mat(0x3a2418);
+  [0, 1].forEach((k) => {
+    const c = mesh(new THREE.CylinderGeometry(0.018, 0.032, 2.4, 12), stick, -0.1 + k * 0.08, top + 0.035, 0.44 + k * 0.03);
+    c.rotation.z = Math.PI / 2; c.rotation.y = 0.04 - k * 0.06; g.add(c);
+  });
+  return g;
+}
+
+function makeSoda() {
+  const g = new THREE.Group();
+  const prof = [[0, 0.07], [0.3, 0.0], [0.42, 0.02], [0.46, 0.1], [0.47, 0.2], [0.47, 1.5], [0.42, 1.62], [0.4, 1.66], [0.415, 1.69], [0.39, 1.71], [0.37, 1.67], [0, 1.67]];
+  g.add(mesh(lathe(prof, 96), mat(0xc9ced6)));
+  const label = canvasTex(1024, 448, (c, w, h) => {
+    c.fillStyle = "#f07a1a"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#ffb04a";
+    c.beginPath(); c.moveTo(0, h * 0.72);
+    for (let x = 0; x <= w; x += 16) c.lineTo(x, h * 0.72 + Math.sin(x / w * Math.PI * 6) * 18);
+    c.lineTo(w, h); c.lineTo(0, h); c.fill();
+    c.fillStyle = "#ffffff"; c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = "bold 150px 'Share Tech Mono', monospace";
+    c.fillText("FIZZ", w / 2, h * 0.4);
+    c.font = "36px 'Share Tech Mono', monospace";
+    c.fillText("12 FL OZ · ORANGE", w / 2, h * 0.86);
+    [100, 924].forEach((x) => { c.beginPath(); c.arc(x, h * 0.4, 26, 0, 7); c.fill(); });
+  });
+  const lab = mesh(new THREE.CylinderGeometry(0.474, 0.474, 1.26, 96, 1, true), mat(0xffffff, { map: label, noOutline: true }), 0, 0.84, 0);
+  lab.rotation.y = Math.PI;
+  g.add(lab);
+  const tab = mesh(new THREE.CapsuleGeometry(0.06, 0.16, 4, 16), mat(0xb3b9c2, { ink: [1.4, 0x2a2e33] }), 0, 1.69, 0.08);
+  tab.rotation.x = Math.PI / 2; tab.scale.set(1, 1, 0.3);
+  g.add(tab);
+  g.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 16), mat(0x8e959e, { ink: [1, 0x2a2e33] }), 0, 1.7, 0.01));
+  const mouth = mesh(new THREE.CircleGeometry(0.07, 24), mat(0x2a2e33, { noOutline: true }), 0, 1.672, -0.18);
+  mouth.rotation.x = -Math.PI / 2; mouth.scale.set(1.3, 0.8, 1);
+  g.add(mouth);
+  return g;
+}
+
+
+const BUILDERS = {
+  cheeseburger: makeBurger, pizza: makePizza, icecream: makeIceCream, cake: makeCake, cakeslice: makeSlice, water: makeBottle,
+  donut: makeDonut, taco: makeTaco, fries: makeFries, coffee: makeCoffee, sushi: makeSushi, soda: makeSoda,
+};
+const MASS = { cheeseburger: 1, pizza: 1, icecream: 1.14, cake: 1, cakeslice: 0.84, water: 1.12, donut: 1, taco: 1.15, fries: 1, coffee: 0.9, sushi: 1, soda: 0.92 };
+const TILT = { cheeseburger: 0.28, pizza: 0.82, icecream: 0.12, cake: 0.32, cakeslice: 0.38, water: 0.1, donut: 0.75, taco: 0.22, fries: 0.15, coffee: 0.35, sushi: 0.55, soda: 0.3 };
 
 /* Soft contact shadow, one per object. */
 const shadowTex = canvasTex(256, 256, (c, w, h) => {
@@ -813,10 +1176,9 @@ const items = FOODS.map((f, i) => {
   tilt.add(spin);
   tilt.rotation.x = TILT[f.id];
   root.add(tilt);
-  const foot = Math.max(size.x, size.z);
   const sh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, toneMapped: false }));
   sh.rotation.x = -Math.PI / 2;
-  sh.scale.set(foot * 1.25, foot * 1.25, 1);
+  sh.scale.set(size.x * 1.25, size.z * 1.25, 1);
   sh.position.y = -size.y / 2 - 0.01;
   tilt.add(sh);
   const t = TILT[f.id], foot2 = Math.max(size.x, size.z);
@@ -844,14 +1206,15 @@ function layout() {
   viewH = 2 * CAM_Z * Math.tan(THREE.MathUtils.degToRad(FOV / 2));
   viewW = viewH * camera.aspect;
   narrow = W <= 760 || W / H <= 1;
-  const cols = narrow ? 2 : 3, rows = narrow ? 3 : 2;
-  const padX = narrow ? 0.04 : 0.08, padY = narrow ? 0.16 : 0.1;
+  const cols = narrow ? 3 : 4, rows = Math.ceil(items.length / cols);
+  const padX = narrow ? 0.03 : 0.06, padY = narrow ? 0.05 : 0.07;
   const cw = (1 - padX * 2) / cols, chh = (1 - padY * 2) / rows;
   items.forEach((it, i) => {
     const c = i % cols, r = Math.floor(i / cols);
     const fx = padX + cw * (c + 0.5), fy = padY + chh * (r + 0.5);
     it.gridPos = screenToWorld(fx, fy);
-    it.gridScl = (narrow ? 1 : MASS[it.f.id]) * Math.min((cw * viewW * 0.6) / it.fitW, (chh * viewH * 0.6) / it.fitH);
+    const fill = narrow ? 0.7 : 0.6;
+    it.gridScl = (narrow ? 1 : MASS[it.f.id]) * Math.min((cw * viewW * fill) / it.fitW, (chh * viewH * fill) / it.fitH);
   });
   const focusPos = narrow ? screenToWorld(0.5, 0.17) : screenToWorld(0.3, 0.5);
   const fw = narrow ? viewW * 0.66 : viewW * 0.42, fh = narrow ? viewH * 0.26 : viewH * 0.62;
