@@ -1,0 +1,479 @@
+{
+ "date": "2026-11-01",
+ "updated": "2026-11-01T07:57:00-05:00",
+ "dst_note": "U.S. clocks fell back overnight: Eastern, Central, Mountain and Pacific are on standard time today. Arizona now matches Mountain time; Hawaii is five hours behind Eastern. Mexico City stays on Central Standard Time. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Chiefs at Broncos (4:25 PM ET, CBS)",
+  "Vikings at Lions, Minnesota unbeaten at 6–0 (1:00 PM ET, FOX)",
+  "Mexico City Grand Prix (3:00 PM ET, Apple TV)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 8",
+   "note": "CBS and FOX regional windows • SNF"
+  },
+  {
+   "key": "NASCAR",
+   "name": "NASCAR",
+   "subtitle": "Cup Series",
+   "note": "The Chase • Martinsville"
+  },
+  {
+   "key": "F1",
+   "name": "Formula 1",
+   "subtitle": "Mexico City Grand Prix",
+   "note": "Race at Autódromo Hermanos Rodríguez"
+  }
+ ],
+ "footer_note": "Fourteen qualifying events fall inside Sunday’s Eastern calendar day. Regional NHL and NBA games, NHL Network games, and MLS and NWSL regular-season matches are excluded. Monday Night Football is Bears at Seahawks (8:15 PM ET, ESPN).",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/8/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NASCAR scoreboard",
+   "url": "https://www.espn.com/racing/schedule"
+  },
+  {
+   "label": "ESPN F1 schedule",
+   "url": "https://www.espn.com/f1/schedule"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-01"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261101"
+  }
+ ],
+ "events": [
+  {
+   "id": "nfl-bal-buf",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baltimore Ravens",
+     "abbr": "BAL",
+     "detail": "4–3",
+     "logo": "nfl/bal"
+    },
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "5–1",
+     "logo": "nfl/buf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Highmark Stadium, Orchard Park, N.Y.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 8 early window game."
+  },
+  {
+   "id": "nfl-ten-cin",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Titans",
+     "abbr": "TEN",
+     "detail": "1–6",
+     "logo": "nfl/ten"
+    },
+    {
+     "name": "Cincinnati Bengals",
+     "abbr": "CIN",
+     "detail": "4–2",
+     "logo": "nfl/cin"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Paycor Stadium, Cincinnati",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 8 early window game."
+  },
+  {
+   "id": "nfl-ari-dal",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "2–5",
+     "logo": "nfl/ari"
+    },
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "3–4",
+     "logo": "nfl/dal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "AT&T Stadium, Arlington, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 8 early window game."
+  },
+  {
+   "id": "nfl-min-det",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Minnesota Vikings",
+     "abbr": "MIN",
+     "detail": "6–0",
+     "logo": "nfl/min"
+    },
+    {
+     "name": "Detroit Lions",
+     "abbr": "DET",
+     "detail": "4–2",
+     "logo": "nfl/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Ford Field, Detroit",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Unbeaten Minnesota visits Detroit."
+  },
+  {
+   "id": "nfl-lv-nyj",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "3–4",
+     "logo": "nfl/lv"
+    },
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "2–5",
+     "logo": "nfl/nyj"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 8 early window game."
+  },
+  {
+   "id": "nfl-cle-pit",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Cleveland Browns",
+     "abbr": "CLE",
+     "detail": "5–2",
+     "logo": "nfl/cle"
+    },
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "5–2",
+     "logo": "nfl/pit"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Acrisure Stadium, Pittsburgh",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Both teams enter 5–2."
+  },
+  {
+   "id": "nfl-atl-tb",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Atlanta Falcons",
+     "abbr": "ATL",
+     "detail": "3–4",
+     "logo": "nfl/atl"
+    },
+    {
+     "name": "Tampa Bay Buccaneers",
+     "abbr": "TB",
+     "detail": "2–5",
+     "logo": "nfl/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Raymond James Stadium, Tampa, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 8 early window game."
+  },
+  {
+   "id": "nfl-ind-jax",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "2–5",
+     "logo": "nfl/ind"
+    },
+    {
+     "name": "Jacksonville Jaguars",
+     "abbr": "JAX",
+     "detail": "4–2",
+     "logo": "nfl/jax"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "EverBank Stadium, Jacksonville, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 8 early window game."
+  },
+  {
+   "id": "nascar-mar",
+   "league": "NASCAR",
+   "label": "NASCAR Cup • The Chase",
+   "flags": [
+    "The Chase"
+   ],
+   "competitors": [
+    {
+     "name": "Cup Series at Martinsville",
+     "abbr": "MAR",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-11-01T14:00:00-05:00",
+   "watch": "NBC",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Martinsville Speedway, Ridgeway, Va.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Short-track race in NASCAR's 10-race Chase.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "f1-mexico",
+   "league": "F1",
+   "label": "F1 • Mexico City Grand Prix",
+   "flags": [
+    "Race"
+   ],
+   "competitors": [
+    {
+     "name": "Mexico City Grand Prix",
+     "abbr": "MEX",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-11-01T15:00:00-05:00",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "U.S. Formula 1 coverage is on Apple TV.",
+   "venue": "Autódromo Hermanos Rodríguez, Mexico City",
+   "venue_tz": "Central Standard Time (Mexico City)",
+   "notes": "Race start is 2:00 p.m. local.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "nfl-lac-lar",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Chargers",
+     "abbr": "LAC",
+     "detail": "0–6",
+     "logo": "nfl/lac"
+    },
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "3–4",
+     "logo": "nfl/lar"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T16:05:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "SoFi Stadium, Inglewood, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "The winless Chargers face the Rams; 1:05 p.m. local kickoff."
+  },
+  {
+   "id": "nfl-kc-den",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "5–1",
+     "logo": "nfl/kc"
+    },
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "5–2",
+     "logo": "nfl/den"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T16:25:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Empower Field at Mile High, Denver",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "AFC West matchup; 2:25 p.m. local kickoff."
+  },
+  {
+   "id": "nfl-ne-mia",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New England Patriots",
+     "abbr": "NE",
+     "detail": "4–3",
+     "logo": "nfl/ne"
+    },
+    {
+     "name": "Miami Dolphins",
+     "abbr": "MIA",
+     "detail": "1–5",
+     "logo": "nfl/mia"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T16:25:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply.",
+   "venue": "Hard Rock Stadium, Miami Gardens, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 8 late window game."
+  },
+  {
+   "id": "nfl-phi-wsh",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [
+    "Sunday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Philadelphia Eagles",
+     "abbr": "PHI",
+     "detail": "2–5",
+     "logo": "nfl/phi"
+    },
+    {
+     "name": "Washington Commanders",
+     "abbr": "WSH",
+     "detail": "1–4–1",
+     "logo": "nfl/wsh"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-01T20:20:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply.",
+   "venue": "Northwest Stadium, Landover, Md.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "NFC East game in prime time."
+  }
+ ]
+}
