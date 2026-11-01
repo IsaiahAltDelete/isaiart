@@ -1353,7 +1353,8 @@ function frame(now) {
     it.root.position.copy(it.pos);
     it.root.scale.setScalar(s);
     it.root.visible = s > 0.002;
-    const base = still ? 0 : reduced ? 0.12 : i === focused ? 0.35 : 0.55;
+    // a slow, steady turntable: about one turn every 16 s in the grid, a little slower when inspected
+    const base = still ? 0 : reduced ? 0.2 : i === focused ? 0.3 : 0.4;
     if (!down || down.item !== i) it.vel += (base - it.vel) * (1 - Math.exp(-dt * 1.6));
     if (still) it.vel = 0;
     it.angle += it.vel * dt;
