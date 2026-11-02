@@ -1,11 +1,10 @@
 {
-  "date": "2026-11-01",
-  "updated": "2026-11-01T07:57:00-05:00",
-  "events": 14,
+  "date": "2026-11-02",
+  "updated": "2026-11-02T08:08:00-05:00",
+  "events": 2,
   "headlines": [
-    "Chiefs at Broncos (4:25 PM ET, CBS)",
-    "Vikings at Lions, Minnesota unbeaten at 6\u20130 (1:00 PM ET, FOX)",
-    "Mexico City Grand Prix (3:00 PM ET, Apple TV)"
+    "Bears at Seahawks, Monday Night Football (8:15 PM ET, ESPN)",
+    "Thunder at Cavaliers (7:00 PM ET, NBCSN)"
   ],
   "template": "2026-09-29.1"
 }

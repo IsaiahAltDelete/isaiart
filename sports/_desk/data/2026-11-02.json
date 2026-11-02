@@ -1,0 +1,105 @@
+{
+ "date": "2026-11-02",
+ "updated": "2026-11-02T08:08:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "Light Monday: one national NBA game, then Monday Night Football in Seattle.",
+ "headlines": [
+  "Bears at Seahawks, Monday Night Football (8:15 PM ET, ESPN)",
+  "Thunder at Cavaliers (7:00 PM ET, NBCSN)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 8",
+   "note": "Monday Night Football"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "NBCSN Monday"
+  }
+ ],
+ "footer_note": "Two qualifying events fall inside Monday’s Eastern calendar day. Regional NHL and NBA games and NHL Network games are excluded. The desk skips Tuesday through Thursday this week and returns Friday.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/8/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261102"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-02"
+  }
+ ],
+ "events": [
+  {
+   "id": "nba-okc-cle",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "NBCSN Monday"
+   ],
+   "competitors": [
+    {
+     "name": "Oklahoma City Thunder",
+     "abbr": "OKC",
+     "detail": "4–2",
+     "logo": "nba/okc"
+    },
+    {
+     "name": "Cleveland Cavaliers",
+     "abbr": "CLE",
+     "detail": "4–2",
+     "logo": "nba/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-02T19:00:00-05:00",
+   "watch": "NBCSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "Rocket Arena, Cleveland",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Both teams enter 4–2.",
+   "blackout": "Local team-network availability varies by market; NBA League Pass restrictions may apply to national games."
+  },
+  {
+   "id": "nfl-chi-sea",
+   "league": "NFL",
+   "label": "NFL • Week 8",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago Bears",
+     "abbr": "CHI",
+     "detail": "5–2",
+     "logo": "nfl/chi"
+    },
+    {
+     "name": "Seattle Seahawks",
+     "abbr": "SEA",
+     "detail": "4–3",
+     "logo": "nfl/sea"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-02T20:15:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window.",
+   "venue": "Lumen Field, Seattle",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Chicago visits Seattle to close Week 8; 5:15 p.m. local kickoff.",
+   "blackout": "No territorial blackout. Local over-the-air simulcasts may air in the Chicago and Seattle markets; NFL+ restrictions may apply."
+  }
+ ]
+}
