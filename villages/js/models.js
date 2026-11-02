@@ -1194,7 +1194,9 @@ function villagerBlend(v) {
   if (elder) { N.head.rotation.x = 0.22; N.head.position.z += 0.02; if (N.torso) N.torso.rotation.x = 0.1; }
   const m = { group: g, body, hipL: N.hipL, hipR: N.hipR, armL: N.armL, armR: N.armR, head: N.head, tool, sack, toolKind: null, wiz, bed, umb, blob,
     stage: child ? 'child' : elder ? 'elder' : 'adult', nodes: N, style, blend: true };
+  lightMatrixWalk(g);
   dressVillager(m, v);
+  freezeStatic(m);
   return m;
 }
 
@@ -1275,6 +1277,31 @@ export function dressVillager(m, v, wx = false) {
 // outfit changes. Props that come and go on their own (tools, the sack, umbrella, wizard hat,
 // bedroll) and anything see-through are left as they are.
 export const BAKED_LAYER = 31;
+
+// A villager is ~120 nodes, and a town of hundreds would spend most of its frame recomputing their
+// matrices. This walk (installed on every node of a villager) is three.js's updateMatrixWorld minus
+// the subtrees nobody reads: hidden parts (the hats and hair not worn, an indoors villager), meshes
+// the batch has baked (it only needs the rigid roots), and villagers the camera can't see (main.js
+// flags them). bakeVillager needs every matrix, so it walks the whole tree.
+let FULL_WALK = false;
+function villagerUpdateMatrixWorld(force) {
+  if (this.matrixAutoUpdate) this.updateMatrix();
+  if (this.matrixWorldNeedsUpdate || force) {
+    if (this.matrixWorldAutoUpdate) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+    this.matrixWorldNeedsUpdate = false; force = true;
+  }
+  if (!FULL_WALK && this.userData.cull) return;
+  const ch = this.children;
+  for (let i = 0; i < ch.length; i++) { const c = ch[i]; if (!FULL_WALK && (c.userData.baked || !c.visible)) continue; c.updateMatrixWorld(force); }
+}
+export function lightMatrixWalk(g) { g.traverse(o => { o.updateMatrixWorld = villagerUpdateMatrixWorld; }); }
+// The pivots the game animates (main.js, peek.js, rpgview.js, lifeview.js) keep composing their matrix
+// each frame; every other node is frozen with the matrix it was built with. Dressing only toggles
+// visibility and materials, never transforms, and anything added later (bubbles, tools, a sled) is new.
+function freezeStatic(m) {
+  const live = new Set([m.group, m.body, m.head, m.hipL, m.hipR, m.armL, m.armR, m.umb, m.bed, m.tool].filter(Boolean));
+  m.group.traverse(o => { if (!live.has(o)) { o.updateMatrix(); o.matrixAutoUpdate = false; } });
+}
 let bakeLeft = Infinity;
 export function bakeBudget(n) { bakeLeft = n; }   // re-dresses (and rebakes) allowed this frame
 export const BAKED = new Set();       // villager models with fresh bakes waiting for (or in) the batch
@@ -1293,7 +1320,7 @@ export function bakeVillager(m) {
   // its own part, shown or hidden by its own node
   const rigid = [m.body, m.head, m.armL, m.armR, m.hipL, m.hipR, m.umb, m.wiz, m.bed].filter(Boolean);
   const stop = new Set([...rigid, m.tool, m.sack].filter(Boolean));   // tools and the sack swap every work step: left as they are
-  m.group.updateMatrixWorld(true);
+  FULL_WALK = true; try { m.group.updateMatrixWorld(true); } finally { FULL_WALK = false; }
   m.uid ||= ++bakeUid;
   const M = new THREE.Matrix4(), NM = new THREE.Matrix3(), v = new THREE.Vector3();
   const build = (R, parts) => {
@@ -1331,7 +1358,7 @@ export function bakeVillager(m) {
         if (stop.has(c)) continue;
         // the far-camera trim (main.js villagerLod) only ever hides details: bake them as if shown
         const vis = shownUp && (c.visible || !!c.userData.detail);
-        if (c.isMesh && !Array.isArray(c.material) && !c.material.transparent) { c.layers.set(BAKED_LAYER); if (vis && !c.matrixWorld.elements.some(Number.isNaN)) parts.push(c); }   // (a NaN transform never drew anyway)
+        if (c.isMesh && !Array.isArray(c.material) && !c.material.transparent) { c.layers.set(BAKED_LAYER); c.userData.baked = true; if (vis && !c.matrixWorld.elements.some(Number.isNaN)) parts.push(c); }   // (a NaN transform never drew anyway)
         walk(c, vis);
       }
     };
@@ -1380,7 +1407,9 @@ function villager_(v) {
   const age = v.age ?? 30, child = age < 14, elder = age >= 66;
   g.scale.setScalar(child ? 0.85 + age / 14 * 0.35 : 1.3);
   if (child) body.children[2].scale.setScalar(1.18);
-  return { group: g, body, hipL, hipR, armL, armR, tool, sack, toolKind: null, wiz, bed, stage: child ? 'child' : elder ? 'elder' : 'adult' };
+  const m = { group: g, body, hipL, hipR, armL, armR, tool, sack, toolKind: null, wiz, bed, stage: child ? 'child' : elder ? 'elder' : 'adult' };
+  lightMatrixWalk(g); freezeStatic(m);
+  return m;
 }
 
 export function setTool(vm, kind) {

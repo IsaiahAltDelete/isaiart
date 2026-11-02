@@ -1027,6 +1027,31 @@ Tests: `tests/hardship.test.mjs`.
   newcomer (a free bed, some food, good spirits).
 - **Tab title** shows ⏸ while paused and 2× / 3× when sped up.
 
+## Big towns: the frame at 600 villagers (2026-11-02)
+
+Profiled with `devkit.bigTown(40, 60)` grown to 604 villagers (all outdoors, camera at the overview).
+The sim was never the problem (3 ms a frame); the frame went on bookkeeping around the villager models:
+
+| | before | after |
+| --- | --- | --- |
+| Villager spacing (`separate`) | 20 ms | 0.7 ms |
+| Scene-graph matrix pass | 20 ms | 6 ms |
+| CPU per frame without the render call | 47 ms | 18 ms |
+
+- **Spacing:** villagers are binned into half-tile cells and only compare with neighbours, instead of
+  every pair (180k pairs a frame at 600).
+- **Matrix pass:** each villager is ~120 nodes. `models.js lightMatrixWalk` replaces three.js's
+  `updateMatrixWorld` on them with one that skips hidden subtrees (the hats and hair not worn), meshes
+  the batch has baked (it only reads the rigid roots), and villagers outside a generous camera frustum
+  (`userData.cull`, set in the frame loop). `bakeVillager` sets `FULL_WALK` so a rebake still sees
+  every matrix. `freezeStatic` turns `matrixAutoUpdate` off for every node the game never animates
+  (109 of 119): the live pivots are group, body, head, hips, arms, umbrella, bedroll and the tool hand.
+  Dressing only toggles visibility and materials, so frozen matrices stay right.
+- Still to look at: the render call itself (~20 ms at 600 in the hidden preview pane, which is too
+  noisy to trust); BatchedMesh culls ~8k villager parts a frame per pass, so culling per villager and
+  turning `perObjectFrustumCulled` off may be the next win. Settled buildings' original meshes also
+  still recompute their matrices each frame (small until towns reach ~150 buildings).
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:

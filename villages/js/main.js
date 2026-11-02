@@ -487,22 +487,40 @@ class Game {
   villagerLod(m, far) { m.far = far; m.group.traverse(o => { if (o.userData.detail) o.visible = !far; }); }   // (baked villagers swap to their no-detail bake: batch.js)
   // villagers gently push apart so two never stand inside each other
   separate(dt) {
-    // the chibi villagers are wide-headed, so keep a full head's width apart
-    const vs = this.sim.s.villagers.filter(v => !v.indoors), R = 0.42;
-    for (const v of vs) { const m = this.vvis.get(v.id); if (m) { m.px = m.px || 0; m.pz = m.pz || 0; m.fx = 0; m.fz = 0; } }
-    for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) {
-      const a = vs[i], b = vs[j], ma = this.vvis.get(a.id), mb = this.vvis.get(b.id);
-      if (!ma || !mb) continue;
-      let dx = (a.x + ma.px) - (b.x + mb.px), dz = (a.z + ma.pz) - (b.z + mb.pz);
-      const d = Math.hypot(dx, dz);
-      if (d >= R) continue;
-      if (d < 1e-4) { dx = Math.cos(a.id); dz = Math.sin(a.id); } else { dx /= d; dz /= d; }
-      const push = (R - d) * 0.5;
-      ma.fx += dx * push; ma.fz += dz * push; mb.fx -= dx * push; mb.fz -= dz * push;
+    // keep a full head's width apart. Villagers are binned into half-tile cells so each only looks at
+    // its neighbours (checking every pair cost 20 ms a frame in a town of 600)
+    const R = 0.42, CELL = 0.5, vs = [], ms = [];
+    for (const v of this.sim.s.villagers) {
+      if (v.indoors) continue;
+      const m = this.vvis.get(v.id); if (!m) continue;
+      m.px = m.px || 0; m.pz = m.pz || 0; m.fx = 0; m.fz = 0; vs.push(v); ms.push(m);
+    }
+    const grid = this.sepGrid ||= new Map(), cx = new Int32Array(vs.length), cz = new Int32Array(vs.length);
+    grid.clear();
+    for (let i = 0; i < vs.length; i++) {
+      cx[i] = Math.floor((vs[i].x + ms[i].px) / CELL); cz[i] = Math.floor((vs[i].z + ms[i].pz) / CELL);
+      const key = cx[i] * 4096 + cz[i], cell = grid.get(key);
+      if (cell) cell.push(i); else grid.set(key, [i]);
+    }
+    for (let i = 0; i < vs.length; i++) {
+      const a = vs[i], ma = ms[i];
+      for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) {
+        const cell = grid.get((cx[i] + ox) * 4096 + cz[i] + oz);
+        if (!cell) continue;
+        for (const j of cell) {
+          if (j <= i) continue;   // each pair once
+          const b = vs[j], mb = ms[j];
+          let dx = (a.x + ma.px) - (b.x + mb.px), dz = (a.z + ma.pz) - (b.z + mb.pz);
+          const d = Math.hypot(dx, dz);
+          if (d >= R) continue;
+          if (d < 1e-4) { dx = Math.cos(a.id); dz = Math.sin(a.id); } else { dx /= d; dz /= d; }
+          const push = (R - d) * 0.5;
+          ma.fx += dx * push; ma.fz += dz * push; mb.fx -= dx * push; mb.fz -= dz * push;
+        }
+      }
     }
     const k = Math.min(1, dt * 6);
-    for (const v of vs) {
-      const m = this.vvis.get(v.id); if (!m) continue;
+    for (const m of ms) {
       m.px += (m.fx * 1.6 - m.px * 0.25) * k; m.pz += (m.fz * 1.6 - m.pz * 0.25) * k;
       const l = Math.hypot(m.px, m.pz); if (l > 0.6) { m.px *= 0.6 / l; m.pz *= 0.6 / l; }
     }
@@ -1681,7 +1699,15 @@ class Game {
       const near = sim.s.villagers.filter(v => v.talk?.until > now && !v.indoors && !v.asleep).sort((a, b) => Math.hypot(a.x - r.tx, a.z - r.tz) - Math.hypot(b.x - r.tx, b.z - r.tz));
       // at most two cross words at a time, so a quiet moment doesn't read as a riot
       let angry = 0; this.talkShow = new Set(near.filter(v => v.talk.k !== 'angry' || ++angry <= 2).slice(0, 6).map(v => v.id)); }
-    for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
+    // last frame's camera is close enough: the sphere is generous so a villager just off the edge (and the
+    // shadow it throws into view) is still updated
+    const fr = this.frustum ||= new THREE.Frustum();
+    fr.setFromProjectionMatrix(tmpM.multiplyMatrices(view.camera.projectionMatrix, view.camera.matrixWorldInverse));
+    for (const v of sim.s.villagers) {
+      const m = this.vvis.get(v.id); if (!m) continue;
+      this.updateVVis(v, m, dt, t);
+      m.group.userData.cull = !fr.intersectsSphere(tmpS.set(m.group.position, 3));
+    }
     this.effects = this.effects.filter(f => f(dt));
     // bubbles keep a constant on-screen size (px tall) however far you zoom
     const cam = view.camera, pxK = Math.tan(cam.fov * Math.PI / 360) / (view.canvas.clientHeight / 2);
@@ -1849,7 +1875,7 @@ class Game {
   }
 }
 
-const tmpV = new THREE.Vector3();
+const tmpV = new THREE.Vector3(), tmpM = new THREE.Matrix4(), tmpS = new THREE.Sphere();
 const _bb = new THREE.Box3(), _bs = new THREE.Vector3();
 // work and play that need both hands: the umbrella goes away
 const HANDS_BUSY = new Set(['chop', 'mine', 'hammer', 'fight', 'gather', 'plant', 'hoe', 'fish', 'saw', 'work', 'bucket', 'scuffle', 'dance', 'cast', 'play', 'sleep']);
