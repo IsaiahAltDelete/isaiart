@@ -16,7 +16,7 @@ import { snowUniform, frostUniform } from './snow.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
 import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS, SEASON_DAYS, DECOR, HOME_TYPES, LODGING_TYPES } from './data.js';
-import { initAudio, sfx, setSound, ambient, rainSound, setMusic, setMood } from './audio.js';
+import { initAudio, sfx, setSound, ambient, rainSound, setMusic, setMood, setMusicVolume } from './audio.js';
 import { Life } from './life.js';
 import { hookRpg, rpgFrame } from './rpgview.js';
 import './props.js';                                   // trade post, cart, ferry and festive decor models
@@ -28,6 +28,7 @@ import { sanitizeSave } from './share.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
 const SET_KEY = 'isaiart.villages.settings';
+const UNDO_MS = 8000;
 const NEED_ICON = { sawmill: 'wood', windmill: 'wheat', bakery: 'flour', mason: 'stone' };
 const STATUS_ICON = { 'Saving wood for builders': 'hammer', 'Saving stone for builders': 'hammer', 'Storage full': 'bag', 'No trees within reach': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
 const SACK = { wood: 0x9a6a3e, stone: 0xa9adb0, food: 0xd8304a, grain: 0xe6c35c };
@@ -40,7 +41,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 class Game {
   constructor() {
-    this.settings = { sound: true, music: true, quality: matchMedia('(pointer: coarse)').matches ? 'medium' : 'high' };
+    this.settings = { sound: true, music: true, soundVol: 1, musicVol: 1, quality: matchMedia('(pointer: coarse)').matches ? 'medium' : 'high' };
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch { /* defaults */ }
     this.bvis = new Map(); this.vvis = new Map();
     this.tilesDirty = new Set();
@@ -90,7 +91,7 @@ class Game {
     if (this.batches) this.view.scene.matrixWorldAutoUpdate = false;   // updated once a frame, just before the batches copy it
     this.hookEvents();
     this.bindInput();
-    setSound(this.settings.sound);
+    setSound(this.settings.sound, this.settings.soundVol); setMusicVolume(this.settings.musicVol);
     this.frameSettlement('meadow', true);
     await step(90);
     // warm up the GPU behind the loading screen: compile every shader and draw one full frame
@@ -1251,17 +1252,41 @@ class Game {
     const p = this.place; if (!p || PAINT[p.type]) return;
     if (!p.ok) { sfx.error(); this.ui.toast(p.why, 'alert'); return; }
     if (p.moving) {
-      const b = p.moving, r = this.sim.move(b, p.tx, p.tz, p.rot);
+      const b = p.moving, from = { tx: b.tx, tz: b.tz, rot: b.rot }, r = this.sim.move(b, p.tx, p.tz, p.rot);
       if (!r.ok) { sfx.error(); return; }
+      this.offerUndo({ kind: 'move', b, ...from });
       p.moving = null; this.cancelPlace();
       this.select({ kind: 'b', b });
       return;
     }
     const res = this.sim.place(p.type, p.tx, p.tz, p.rot);
     if (!res.ok) { sfx.error(); return; }
+    this.offerUndo({ kind: 'place', b: res.b });
     if (isDecor(p.type) && (defOf(p.type).rare ? this.sim.s.tokens[p.type] > 0 : this.sim.canAfford(defOf(p.type).cost))) { this.refreshGhost(); return; }
     this.cancelPlace();
     this.ui.markCard(null);
+  }
+  // Undo for the last placement or move, offered for a few seconds by the chip and Ctrl+Z.
+  offerUndo(u) {
+    this.undo = { ...u, until: performance.now() + UNDO_MS };
+    this.ui.showUndo(`${defOf(u.b.type).name} ${u.kind === 'move' ? 'moved' : 'placed'}`, UNDO_MS);
+  }
+  undoLast() {
+    const u = this.undo, sim = this.sim;
+    this.undo = null; this.ui.showUndo(null);
+    if (!u || performance.now() > u.until || !sim.bById.has(u.b.id)) return;
+    const b = u.b, name = defOf(b.type).name;
+    if (u.kind === 'move') {
+      if (!sim.move(b, u.tx, u.tz, u.rot).ok) { sfx.error(); this.ui.toast(`The ${name} can't go back there now.`, 'alert'); return; }
+    } else {
+      // a site refunds in full; a decoration is already built, so top demolish's half refund back up
+      const halfBack = b.built;
+      if (this.selected?.b === b) this.select(null);
+      sim.demolish(b);
+      if (halfBack) for (const [k, v] of Object.entries(defOf(b.type).cost || {})) sim.s.res[k] += v - Math.floor(v * 0.5);
+      sim.emit('res');
+    }
+    sfx.click(); this.ui.toast(`Undone: ${name}`, 'back');
   }
   cancelPlace(silent) {
     const p = this.place; if (!p) return;
@@ -1536,7 +1561,8 @@ class Game {
         else if (this.selected) this.select(null);
         else if (this.ui.tray) this.ui.closeTray();
       }
-      if (k === 'r') this.rotatePlace();
+      if (k === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.undoLast(); }
+      if (k === 'r' && !e.ctrlKey && !e.metaKey) this.rotatePlace();
       if (k === ' ') { e.preventDefault(); this.setSpeed(this.sim.s.speed ? 0 : (this.prevSpeed || 1)); }
       if (k === '1' || k === '2' || k === '3') this.setSpeed(+k);
       if (k === 'b') this.ui.tray === 'build' ? this.ui.closeTray() : this.ui.openTray('build');
@@ -1583,8 +1609,9 @@ class Game {
   setSetting(k, v) {
     this.settings[k] = v;
     localStorage.setItem(SET_KEY, JSON.stringify(this.settings));
-    if (k === 'sound') setSound(v);
+    if (k === 'sound' || k === 'soundVol') setSound(this.settings.sound, this.settings.soundVol);
     if (k === 'music') setMusic(v);
+    if (k === 'musicVol') setMusicVolume(v);
   }
 
   save() {

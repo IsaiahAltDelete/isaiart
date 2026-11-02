@@ -162,7 +162,7 @@ const HUD_TIPS = {
   '#dockbar [data-tab=town]': 'Town|Your rank and its goals, government, treasury, safety and wanted posters, and the stores (I).|T',
   '#dockbar [data-tab=journal]': 'Journal|The Story, the yearly Chronicle, news, achievements and festival quests.|N',
   '#dockbar [data-tab=world]': 'World|The map: settle new clearings, see your regions, and trade between them.|M',
-  '#profile': '@xp', '#follow': 'Stop following|The camera is following a villager. Tap to stop, or drag the view.',
+  '#profile': '@xp', '#undo': 'Undo|Takes back your last placement or move. Ctrl+Z works too.', '#follow': 'Stop following|The camera is following a villager. Tap to stop, or drag the view.',
   '#alert': 'Needs attention|The most urgent problem in your village. Tap to fix it.',
 };
 
@@ -217,6 +217,7 @@ export class UI {
       else this.modal === c.dataset.now ? this.closeModal() : this.openModal(c.dataset.now);
     });
     $('#follow').onclick = () => g.follow(null);
+    $('#undo').onclick = () => g.undoLast();
     $('#info').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const b = $('#info [data-act=renameok]'); if (b) b.click(); } });
     // on smaller screens the clock folds to a slim pill; tap the sky for the forecast
     $('#sky').addEventListener('click', () => { $('#speed').classList.toggle('open'); sfx.click(); });
@@ -295,6 +296,12 @@ export class UI {
     $('#modal').addEventListener('pointerdown', e => { if (e.target.id === 'modal') this.closeModal(); });
     $('#modal').addEventListener('click', e => this.modalClick(e));
     $('#modal').addEventListener('change', e => this.modalChange(e));
+    $('#modal').addEventListener('input', e => {   // volume sliders apply while dragging
+      const t = e.target;
+      if (t.dataset.act !== 'vol') return;
+      this.g.setSetting(t.dataset.k, +t.value / 100);
+      t.nextElementSibling.textContent = `${t.value}%`;
+    });
     $('#info').addEventListener('click', e => this.infoClick(e));
     $('#info').addEventListener('change', e => this.modalChange(e));
     this.seenLog = 0;
@@ -458,6 +465,7 @@ export class UI {
       document.querySelectorAll('#speeds button').forEach(b => b.classList.toggle('on', +b.dataset.s === s.speed));
       const th = $('#speeds .thumb'); th.style.transform = `translateX(${s.speed * 100}%)`; th.classList.toggle('paused', !s.speed);
       $('#sky').classList.toggle('paused', !s.speed);
+      document.title = `${!s.speed ? '⏸ ' : s.speed > 1 ? `${s.speed}× ` : ''}Villages | ISAIART`;   // a forgotten tab shows it's paused
     }
   }
 
@@ -1297,6 +1305,7 @@ export class UI {
         <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
         <button class="btn gold" data-act="savenow">Save now</button>
         <button class="btn blue" data-act="r7-share" data-tip="Share code|Turn your village into a line of text to send to a friend, or load someone else's.">${svg('star', 18)} Share / load a village</button></div>
+        <div class="volrows">${[['soundVol', 'Sound', st.sound], ['musicVol', 'Music', st.music]].map(([key, name, on]) => `<label class="volrow${on ? '' : ' off'}"><span>${name}</span><input type="range" min="0" max="100" step="5" value="${Math.round((st[key] ?? 1) * 100)}" data-act="vol" data-k="${key}" aria-label="${name} volume"><output>${Math.round((st[key] ?? 1) * 100)}%</output></label>`).join('')}</div>
         <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or open <b>People</b> to give anyone a job.</p>
         <p><b>Seasons.</b> Each season lasts three days. Spring blossom, summer sun, autumn apples, then snow — fields and berry bushes grow slowly in winter, so stock up. On the second day of every season the village holds a festival at dusk: everyone dances round the campfire, and it lifts their spirits for a whole day.</p>
         <p><b>Weather.</b> The clock shows a three-day forecast. Rain makes crops grow faster. Storms (and winter blizzards) send everyone indoors for a while, so outdoor work and building pause — workshops keep going. You'll get a warning before one arrives.</p>
@@ -1574,6 +1583,14 @@ export class UI {
   // ── toasts & floats ──
   // One toast at a time: a new one waits until the current one has been up briefly, then
   // replaces it once it has faded out (no stacking, no overlap); duplicates merge.
+  showUndo(label, ms) {
+    clearTimeout(this.undoTimer);
+    const el = $('#undo');
+    el.classList.toggle('hidden', !label);
+    if (!label) return;
+    el.innerHTML = `${svg('back', 16)}${esc(label)}<span class="go">Undo</span>`;
+    this.undoTimer = setTimeout(() => this.showUndo(null), ms);
+  }
   toast(msg, icon = 'info', big = false) {
     this.tq = this.tq || [];
     // while the first-time tips are running, family and friendship news waits in the log

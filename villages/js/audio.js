@@ -1,14 +1,17 @@
 // Tiny WebAudio synth for cozy blips. Starts after the first user gesture.
-let ctx = null, master = null, enabled = true, birdTimer = 0;
+let ctx = null, master = null, musicOut = null, enabled = true, sfxVol = 1, musicVol = 1, birdTimer = 0;
 
 export function initAudio() {
   if (ctx) return;
   try {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = enabled ? 0.35 * sfxVol : 0; master.connect(ctx.destination);
+    musicOut = ctx.createGain(); musicOut.gain.value = 0.35 * musicVol; musicOut.connect(ctx.destination);
   } catch { ctx = null; }
 }
-export function setSound(on) { enabled = on; if (master) master.gain.value = on ? 0.35 : 0; }
+// Sound effects and the score have their own volumes (0–1), so muting one leaves the other playing.
+export function setSound(on, vol = sfxVol) { enabled = on; sfxVol = vol; if (master) master.gain.value = on ? 0.35 * vol : 0; }
+export function setMusicVolume(vol) { musicVol = vol; if (musicOut) musicOut.gain.value = 0.35 * vol; }
 
 function tone(freq, dur, { type = 'sine', vol = 0.3, slide = 0, delay = 0, attack = 0.005, at = 0, dest = null } = {}) {
   if (!ctx || !enabled) return;
@@ -98,13 +101,13 @@ export function setMood(m) { if (PIECES[m]) want = m; }
 function makeBus() {
   bus = ctx.createGain(); bus.gain.value = 0.5;
   tone2 = ctx.createBiquadFilter(); tone2.type = 'lowpass'; tone2.frequency.value = 5200;
-  bus.connect(tone2); tone2.connect(master);
+  bus.connect(tone2); tone2.connect(musicOut);
   // a soft hall: decaying stereo noise impulse
   const len = ctx.sampleRate * 2.6, ir = ctx.createBuffer(2, len, ctx.sampleRate);
   for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); let lp = 0; for (let i = 0; i < len; i++) { lp = lp * 0.6 + (Math.random() * 2 - 1) * 0.4; d[i] = lp * Math.pow(1 - i / len, 2.6); } }
   const conv = ctx.createConvolver(); conv.buffer = ir;
   wet = ctx.createGain(); wet.gain.value = 0.38;
-  bus.connect(conv); conv.connect(wet); wet.connect(master);
+  bus.connect(conv); conv.connect(wet); wet.connect(musicOut);
 }
 function startMusic() {
   if (!ctx || musicTimer || !musicOn) return;

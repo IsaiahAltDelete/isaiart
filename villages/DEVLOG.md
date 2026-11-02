@@ -1017,6 +1017,16 @@ Until now only old age removed anyone, and nothing a player did could make the v
 - A year of villager age is now 2 minutes (YEAR 180 -> 120), so a long session sees a generation.
 Tests: `tests/hardship.test.mjs`.
 
+## Quality-of-life pass (2026-11-01)
+
+- **Volume sliders** for sound and music in Settings. The score now has its own output, so muting
+  sound effects no longer silences the music (before, it did, but only once audio had started).
+- **Undo** for the last placement or move: a chip with an Undo button shows for 8 seconds, and
+  Ctrl+Z works too. A site refunds in full; a decoration gets its whole cost back as well.
+- **People board:** a small village now gets a note under the list saying what brings the next
+  newcomer (a free bed, some food, good spirits).
+- **Tab title** shows ⏸ while paused and 2× / 3× when sped up.
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:

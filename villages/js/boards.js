@@ -46,7 +46,17 @@ export function peopleBoardHtml(ui, face) {
     h += `<div class="brow" data-key="resident${v.id}">${face(v, 30)}<div class="bmain"><button class="bname" data-act="vsel" data-id="${v.id}">${esc(v.name)}</button><small>${esc(RACES[v.race]?.name || 'Human')} · ${st !== 'child' ? `${esc(CLASSES[classOf(v)].name)} ${v.lvl || 1} · ${esc(TIERS[sim.eduTier(v)].name)}` : `age ${Math.floor(v.age)}`}${v.hungry ? ' · <b class="bad">hungry</b>' : ''}</small></div>
       ${availableForJob(sim, v) ? `<select class="bsel" data-act="job" data-id="${v.id}" aria-label="Job for ${esc(v.name)}">${ui.workOptions(v, true)}</select>` : `<span class="bbadge">${esc(status || JOBS[v.job]?.name || '')}</span>`}</div>`;
   }
-  return h + '</div>' + (!list.length ? '<p class="board-empty">Nobody matches.</p>' : '');
+  return h + '</div>' + (!list.length ? '<p class="board-empty">Nobody matches.</p>' : '') + (f === 'all' && !ui.boardQuery?.villagers && list.length < 8 ? newcomerNote(sim) : '');
+}
+
+// A small village leaves the board mostly empty, so say what brings the next newcomer (sim.js newcomer rule).
+function newcomerNote(sim) {
+  const s = sim.s, room = sim.housing() - s.villagers.length;
+  const why = room <= 0 ? 'Every bed is taken. Build a <b>Cottage</b> to welcome newcomers.'
+    : s.res.food < 5 ? `There's room for ${plural(room, 'more villager')}, but newcomers want some food in the stores first.`
+    : s.happiness < 35 ? `There's room for ${plural(room, 'more villager')} once spirits lift. Decorations help.`
+    : `There's room for ${plural(room, 'more villager')}. Someone new should wander in soon.`;
+  return `<div class="newcomer">${svg('people', 22)}<p>${why}</p></div>`;
 }
 
 export function jobsBoardHtml(ui) {
@@ -110,6 +120,7 @@ export function boardsInit(ui) {
 .bprog{width:70px;height:7px;border-radius:4px;background:#eadcb6;overflow:hidden;flex:none}.bprog i{display:block;height:100%;background:#7fbf55}
 .mini{border:0;background:#efe2be;border-radius:7px;font:inherit;font-size:11px;padding:1px 6px;margin-left:2px;cursor:pointer;color:var(--ink)}
 .board-empty{text-align:center;padding:20px;font-size:13px;color:var(--ink2)}
+.newcomer{display:flex;align-items:center;gap:10px;margin:14px 4px 0;padding:10px 12px;border:2px dashed var(--edge);border-radius:12px;font-size:13px;color:var(--ink2)}.newcomer p{margin:0}.newcomer b{color:var(--ink)}
 .region-card{border:1px solid #e3cf9f;border-radius:12px;padding:10px 12px;background:#fffaf0;margin-bottom:8px}.region-card.active{border-color:#6d9a4c;background:#f4f6e5}.rc-head{display:flex;align-items:center;gap:10px}.rc-head>div{flex:1}.rc-head small{display:block;font-size:11.5px;color:var(--ink2)}
 #regionQuick{position:fixed;left:12px;bottom:83px;z-index:5;display:flex;gap:6px;align-items:center;background:#fff5db;border:2px solid #caa064;border-radius:12px;padding:5px;box-shadow:0 2px 6px #50361f30}#regionQuick select{max-width:170px;font-size:12px;margin:0}#regionQuick button{font-size:12px;padding:6px}.placing #regionQuick,body.info-open #regionQuick,body:has(#modal:not(.hidden)) #regionQuick{display:none}
 #woodpile{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;white-space:nowrap}#woodpile em{font-style:normal;font-weight:700;margin-left:4px;padding:1px 6px;border-radius:8px;background:#b0412c;color:#fff}#woodpile.low{background:#fbe0d6;border-color:#b0412c;color:#8a2a1c;animation:pulse 1.6s ease-in-out infinite}
