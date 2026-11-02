@@ -20,6 +20,8 @@ const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 export const hardMode = s => s.events?.mode || 'normal';
 export const leavingOn = s => hardMode(s) !== 'off';
 export const harshOn = s => hardMode(s) === 'harsh';
+// a toast that is also a danger: with "Pause on danger" set, the game stops and looks (main.js onDanger)
+const alarm = (sim, sid, msg, icon) => { sim.emit('toast', msg, icon); sim.emit('danger', msg, sid); };
 
 export function installHardship(sim) {
   const s = sim.s, W = sim.world;
@@ -61,7 +63,7 @@ export function installHardship(sim) {
       }
       if (worried.length) {
         const why = worried[0].leaving.why;
-        sim.emit('toast', worried.length === 1 ? `${first(worried[0])} is thinking of leaving (${why}). Put it right within a day.` : `${worried.length} villagers are thinking of leaving (${why}…). Put it right within a day.`, 'bag');
+        alarm(sim, worried[0]?.home, worried.length === 1 ? `${first(worried[0])} is thinking of leaving (${why}). Put it right within a day.` : `${worried.length} villagers are thinking of leaving (${why}…). Put it right within a day.`, 'bag');
         for (const v of worried) sim.log(`${v.name} is thinking of leaving: ${v.leaving.why}.`);
       }
     }
@@ -121,7 +123,7 @@ export function installHardship(sim) {
   const hurt = sim.rpgHurt.bind(sim);
   sim.rpgHurt = (v, n, by) => {
     hurt(v, n, by);
-    if (harshOn(s) && v.hp <= 0 && !v.dying && sim.vById.has(v.id)) { v.dying = { s: 0, f: 0, by, t: s.time }; sim.emit('toast', `${first(v)} is down and dying! A cleric or paladin nearby can steady them.`, 'alert'); }
+    if (harshOn(s) && v.hp <= 0 && !v.dying && sim.vById.has(v.id)) { v.dying = { s: 0, f: 0, by, t: s.time }; alarm(sim, v.home, `${first(v)} is down and dying! A cleric or paladin nearby can steady them.`, 'alert'); }
   };
   sim.deathSaves = () => {
     for (const v of [...s.villagers]) {

@@ -162,7 +162,7 @@ const EV = {
       this.emit('sfx', 'howl');
     }
     s.events.list.push(e);
-    this.log(msg); this.story('hard', msg, [], d.icon);
+    this.log(msg); this.story('hard', msg, [], d.icon); this.emit('danger', msg, sid);
     this.emit('sfx', ['dragon', 'raiders'].includes(type) ? 'howl' : 'pop');
     this.emit('event', e, true);
     return e;
@@ -203,7 +203,7 @@ const EV = {
     if (!b?.built || b.fire || b.damaged || isDecor(b.type) || b.type === 'campfire') return false;
     b.fire = { heat: 0.3, t: 0 };
     const msg = `${why} set the ${defOf(b.type).name} in ${this.sname(b.sid)} on fire!`;
-    this.log(msg); this.story('hard', msg, [], 'fire');
+    this.log(msg); this.story('hard', msg, [], 'fire'); this.emit('danger', msg, b.sid);
     this.emit('sfx', 'howl');
     this.emit('fire', b);
     return true;

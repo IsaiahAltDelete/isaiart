@@ -1052,6 +1052,22 @@ The sim was never the problem (3 ms a frame); the frame went on bookkeeping arou
   turning `perObjectFrustumCulled` off may be the next win. Settled buildings' original meshes also
   still recompute their matrices each frame (small until towns reach ~150 buildings).
 
+## Playability pass (2026-11-02)
+
+- **Staff every open job** on the Jobs board: one tap hires the best-suited idle villager for every
+  vacancy in the region shown, food jobs first when the larder is low (the same order as `autoAssign`).
+- **Stores forecast.** Each good in the inventory, and its tooltip, says where it is heading on the last
+  few minutes' flow: "Runs out in ~20 h", "Full in ~4 days". From autumn, food adds what the three
+  winter days will eat and how short you are (`ui.forecastHtml`).
+- **Pause on danger** (Settings, off by default): beasts, fires, the hard-time events, villagers thinking
+  of leaving and anyone dying stop the clock, frame the village and say why. The sim emits `danger`
+  (text, settlement) beside its usual toast; `main.js onDanger` listens.
+- **Pinned villagers.** Pin from a villager's panel; up to five faces sit in a strip under the quests
+  with a small badge for hungry, sick, asleep, adventuring or dying, and a tap flies to them. Saved in
+  `s.pins`.
+- **Camera marks.** Shift+7/8/9 remembers the view (target, zoom, yaw), 7/8/9 flies back. Saved in
+  `s.camMarks`. Desktop only for now.
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:

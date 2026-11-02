@@ -217,6 +217,11 @@ export class UI {
       else this.modal === c.dataset.now ? this.closeModal() : this.openModal(c.dataset.now);
     });
     $('#follow').onclick = () => g.follow(null);
+    $('#pins').addEventListener('click', e => {
+      const b = e.target.closest('[data-pin]'), v = b && this.sim.vById.get(+b.dataset.pin);
+      if (!v) return;
+      g.select({ kind: 'v', v }); g.view.flyTo(v.x, v.z, Math.min(g.view.rig.dist, 14), 0.7); sfx.click();
+    });
     $('#undo').onclick = () => g.undoLast();
     $('#info').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const b = $('#info [data-act=renameok]'); if (b) b.click(); } });
     // on smaller screens the clock folds to a slim pill; tap the sky for the forecast
@@ -447,6 +452,7 @@ export class UI {
       this.drawCoach();
       this.drawForecast();
       this.drawNow();
+      this.drawPins();
       this.markLog();
       const ae = document.activeElement;
       if (this.modal && ['villagers', 'jobs', 'buildings', 'population', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', 'story', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
@@ -615,11 +621,24 @@ export class UI {
     if (qh !== this.lastQh) { this.lastQh = qh; $('#qhead').innerHTML = qh; }
   }
 
+  // Where a stock is heading on the last few minutes' flow, in village time (a day is four real minutes):
+  // "Runs out in ~2 days", "Full in ~5 h". From autumn, food adds what the three winter days will eat.
+  forecastHtml(k) {
+    const s = this.sim.s, n = s.res[k] || 0, perMin = this.sim.rate(k), perDay = perMin * DAY / 60, lines = [];
+    const when = d => d >= 1.5 ? `~${Math.round(d)} days` : d >= 0.95 ? 'about a day' : `~${Math.max(1, Math.round(d * 24))} h`;
+    if (perMin <= -0.5) lines.push(n <= 0 ? '<b class="bad">Empty</b>' : `<b class="${n / -perDay < 1 ? 'bad' : ''}">Runs out in ${when(n / -perDay)}</b>`);
+    else if (perMin >= 0.5 && GOODS[k].capped && n < this.sim.cap()) lines.push(`Full in ${when((this.sim.cap() - n) / perDay)}`);
+    if (k === 'food' && this.sim.seasonIdx() >= 2) {
+      const need = Math.round(s.villagers.reduce((a, v) => a + ((v.age ?? 30) < 14 ? 0.5 : 1), 0) * 3 * SEASON_DAYS);
+      lines.push(`Winter's ${SEASON_DAYS} days eat ~${need} food${this.sim.seasonIdx() === 3 ? '' : n >= need ? ' — stocked' : ` — ${need - n} short`}`);
+    }
+    return lines.length ? `<div class="small fcast">${lines.join(' · ')}</div>` : '';
+  }
   // what a good is, where it comes from, what uses it
   goodInfo(k, full = true) {
     const g = GOODS[k], s = this.sim.s, rt = Math.round(this.sim.rate(k));
     return `<div class="gi-top">${svg(g.icon, 30)}<div><b>${esc(g.name)}</b><span>${fmt(s.res[k])}${g.capped ? ` / ${this.sim.cap()}` : ''}${g.price ? ` · sells ${g.price}` : ''}${rt ? ` · <i class="${rt > 0 ? 'up' : 'down'}">${rt > 0 ? '+' : ''}${rt}/min</i>` : ''}</span></div></div>
-      <p>${esc(g.desc || '')}</p>
+      <p>${esc(g.desc || '')}</p>${this.forecastHtml(k)}
       ${full && this.resFlags?.[k] ? `<div class="gi-flag ${this.resFlags[k].cls}"><span>${esc(this.resFlags[k].text)}</span><button class="btn sm gold" data-act="flaggo" data-go="${this.resFlags[k].go}">${esc(this.resFlags[k].btn)}</button></div>` : ''}
       ${g.from ? `<div class="gi-row"><em>From</em>${esc(g.from)}</div>` : ''}${g.uses ? `<div class="gi-row"><em>Used for</em>${esc(g.uses)}</div>` : ''}
       ${r7GoodHtml(this, k)}${full ? `<button class="btn sm ghost" data-act="inv">${svg('bag', 14)} Open inventory</button>` : ''}`;
@@ -928,7 +947,7 @@ export class UI {
       ${this.fold('skills', 'Skills & health', 'heart', `${hp}/${mx} HP`, () => rpgVillagerHtml(this, v))}
       ${this.fold('edu', st === 'child' ? 'Schooling' : 'Education', 'cap', v.grade ? `Grade ${v.grade}` : TIERS[tier].name, () => eduVillagerHtml(this, v) + progressVillagerHtml(this, v))}
       ${this.fold('friends', 'Friends & rivals', 'heart', `${sim.friendsOf?.(v).filter(f => f.hearts > 0).length || 0}${sim.rivalsOf?.(v).length ? ` · ${sim.rivalsOf(v).length} rival${sim.rivalsOf(v).length > 1 ? 's' : ''}` : ''}`, () => r7VillagerHtml(this, v) + petRowHtml(this, v))}
-      <div class="actions"><button class="btn ghost sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button><button class="btn ghost sm" data-act="vlist" data-tip="People|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div></div>`;
+      <div class="actions"><button class="btn ghost sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button><button class="btn ${(sim.s.pins || []).includes(v.id) ? 'gold' : 'ghost'} sm" data-act="pin" data-tip="${(sim.s.pins || []).includes(v.id) ? 'Unpin' : 'Pin'}|Pinned villagers sit in a strip under the quests, a tap away. Up to five.">${svg('star', 14)} ${(sim.s.pins || []).includes(v.id) ? 'Pinned' : 'Pin'}</button><button class="btn ghost sm" data-act="vlist" data-tip="People|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div></div>`;
   }
   // a section that opens on tap (remembered while the game runs)
   fold(key, title, icon, hint, body) {
@@ -992,6 +1011,7 @@ export class UI {
     if (act === 'fold') { (this.folds ||= new Set()).has(a.dataset.k) ? this.folds.delete(a.dataset.k) : this.folds.add(a.dataset.k); sfx.click(); this.drawInfo(true); return; }
     if (act === 'selv') { const v = sim.vById.get(+a.dataset.id); if (v) this.g.select({ kind: 'v', v }, true); return; }
     if (act === 'follow') { this.g.follow(this.g.followV === sel.v ? null : sel.v); return; }
+    if (act === 'pin') { this.togglePin(sel.v); return; }
     if (act === 'vlist') { this.openModal('villagers'); return; }
     if (act === 'blist') { this.openModal('buildings'); return; }
     if (act === 'rename') {
@@ -1277,7 +1297,7 @@ export class UI {
         const rt = Math.round(sim.rate(key));
         h += `<div class="tile"><div class="top">${svg(g.icon, 26)}${g.name}<span class="rate ${rt > 0 ? 'up' : rt < 0 ? 'down' : ''}">${rt > 0 ? '+' : ''}${rt}/min</span></div><div class="amt">${fmt(n)}<span class="small"> / ${cap}</span></div>
           <div class="prog" style="margin:0"><i style="width:${Math.min(100, n / cap * 100)}%;background:linear-gradient(90deg,#7dd35a,#4fae32)"></i></div>
-          <div class="small">${esc(g.desc)}</div><div class="small"><b>From:</b> ${esc(g.from)}</div><div class="small"><b>Uses:</b> ${esc(g.uses)}</div>
+          ${this.forecastHtml(key)}<div class="small">${esc(g.desc)}</div><div class="small"><b>From:</b> ${esc(g.from)}</div><div class="small"><b>Uses:</b> ${esc(g.uses)}</div>
           <button class="btn gold sm" data-act="sell10" data-k="${key}" ${n < 10 ? 'disabled' : ''}>Sell 10 · ${svg('coin', 12)}${half * 10}</button></div>`;
       }
       const tok = [...RARE, ...Object.values(FESTIVE).flat()].filter(t => s.tokens?.[t] > 0);
@@ -1302,6 +1322,7 @@ export class UI {
       const st = this.g.settings;
       h += `<div class="summary"><button class="btn ${st.sound ? '' : 'ghost'}" data-act="sound">${svg(st.sound ? 'sound' : 'mute', 18)} Sound ${st.sound ? 'on' : 'off'}</button>
         <button class="btn ${st.music ? '' : 'ghost'}" data-act="music">${svg('star', 18)} Music ${st.music ? 'on' : 'off'}</button>
+        <button class="btn ${st.autoPause ? '' : 'ghost'}" data-act="autopause" data-tip="Pause on danger|Beasts, fires, raiders, fevers and villagers in trouble pause the game and show you where. Space resumes.">${svg('pause', 18)} Pause on danger ${st.autoPause ? 'on' : 'off'}</button>
         <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
         <button class="btn gold" data-act="savenow">Save now</button>
         <button class="btn blue" data-act="r7-share" data-tip="Share code|Turn your village into a line of text to send to a friend, or load someone else's.">${svg('star', 18)} Share / load a village</button></div>
@@ -1312,7 +1333,7 @@ export class UI {
         <p><b>Gift chests</b> appear in the woods now and then — tap one to open it. Tap the campfire to rename your village, and the pencil next to anyone's name to rename them. Double-tap a villager to follow them around; the house button brings you home.</p>
         <p>Cottages bring new villagers, as long as there is food and folks are happy. Decorations raise happiness, which makes everyone work faster. Level up to unlock new buildings, then settle more clearings from the World map.</p>
         <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> set the speed · <kbd>Esc</kbd> closes or cancels.</p>
-        <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> people · <kbd>T</kbd> town · <kbd>N</kbd> journal · <kbd>M</kbd> world · <kbd>L</kbd> buildings · <kbd>I</kbd> stores · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
+        <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> people · <kbd>T</kbd> town · <kbd>N</kbd> journal · <kbd>M</kbd> world · <kbd>L</kbd> buildings · <kbd>I</kbd> stores · <kbd>H</kbd> home · <kbd>Shift</kbd>+<kbd>7</kbd>–<kbd>9</kbd> remember the view, <kbd>7</kbd>–<kbd>9</kbd> fly back to it · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
         <p>Your village saves automatically in this browser.</p></div>
         ${eventsSettingsHtml(this)}${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button><a class="btn ghost" href="/">${svg('back', 16)} Back to isaiart.com</a></div>`;
     } else if (k === 'story') {
@@ -1434,6 +1455,7 @@ export class UI {
     }
     if (act === 'sound') { this.g.setSetting('sound', !this.g.settings.sound); }
     if (act === 'music') { this.g.setSetting('music', !this.g.settings.music); }
+    if (act === 'autopause') { this.g.setSetting('autoPause', !this.g.settings.autoPause); }
     if (act === 'quality') { const q = this.g.settings.quality; this.g.setSetting('quality', q === 'high' ? 'medium' : q === 'medium' ? 'low' : 'high'); this.g.save(); location.reload(); return; }
     if (act === 'savenow') { this.g.save(); this.toast('Village saved', 'star'); }
     if (act === 'reset') {
@@ -1583,6 +1605,28 @@ export class UI {
   // ── toasts & floats ──
   // One toast at a time: a new one waits until the current one has been up briefly, then
   // replaces it once it has faded out (no stacking, no overlap); duplicates merge.
+  // Up to five villagers you care about, as faces in a strip under the quests. Saved with the village.
+  togglePin(v) {
+    const pins = this.sim.s.pins ||= [];
+    const i = pins.indexOf(v.id);
+    if (i >= 0) pins.splice(i, 1);
+    else if (pins.length >= 5) { this.toast('Five pins is plenty — unpin someone first.', 'star'); return; }
+    else pins.push(v.id);
+    sfx.click(); this.drawPins(); this.drawInfo(true);
+  }
+  drawPins() {
+    const s = this.sim.s, el = $('#pins');
+    if (!s.pins?.length) { el.classList.add('hidden'); el.dataset.h = ''; return; }
+    const live = s.pins.filter(id => this.sim.vById.has(id));
+    if (live.length !== s.pins.length) s.pins = live;
+    const html = live.map(id => {
+      const v = this.sim.vById.get(id), now = s.time;
+      const st = v.dying ? 'alert' : v.hungry ? 'apple' : v.sick > now ? 'warn' : v.quest ? 'map' : v.asleep ? 'zzz' : null;
+      return `<button class="pin${this.g.selected?.v === v ? ' sel' : ''}" data-pin="${id}" aria-label="${esc(v.name)}" data-tip="${esc(v.name)}|${esc(this.doingOf(v))} Tap to fly there.">${faceSvg(v, 36)}${st ? `<span class="md ${st}">${svg(st, 10)}</span>` : ''}</button>`;
+    }).join('');
+    el.classList.remove('hidden');
+    if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; }
+  }
   showUndo(label, ms) {
     clearTimeout(this.undoTimer);
     const el = $('#undo');

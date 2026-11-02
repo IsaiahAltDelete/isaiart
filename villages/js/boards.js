@@ -63,7 +63,8 @@ export function jobsBoardHtml(ui) {
   const sim = ui.sim, sid = boardRegion(ui), jobs = sim.s.buildings.filter(b => b.built && defOf(b.type).workers && (!sid || b.sid === sid));
   const open = jobs.reduce((n, b) => n + Math.max(0, workersOf(b) - b.workers.length), 0);
   const show = `<select data-act="board-open-only" aria-label="Show"><option value="open" ${ui.onlyOpen !== false ? 'selected' : ''}>Open jobs</option><option value="all" ${ui.onlyOpen === false ? 'selected' : ''}>All workplaces</option></select>`;
-  let h = toolbar(ui, 'jobs', show) + `<div class="bstat">${plural(open, 'open job')} · ${plural(jobs.length, 'workplace')} · best-suited idle villagers listed first</div><div class="blist">`;
+  const hireable = open > 0 && jobs.some(b => b.workers.length < workersOf(b) && jobCandidates(sim, b).length);
+  let h = toolbar(ui, 'jobs', show) + `<div class="bstat">${plural(open, 'open job')} · ${plural(jobs.length, 'workplace')} · best-suited idle villagers listed first${hireable ? `<button class="btn gold sm staffall" data-act="board-staff-all" data-tip="Staff every open job|Hires the best-suited idle villager for each vacancy shown here, food jobs first when the larder is low.">${svg('people', 13)} Staff every open job</button>` : ''}</div><div class="blist">`;
   const list = jobs.filter(b => (ui.onlyOpen === false || b.workers.length < workersOf(b)) && queryMatch(ui, 'jobs', `${sim.homeName(b)} ${JOBS[defOf(b.type).job].name} ${sim.sname(b.sid)}`));
   for (const b of list) {
     const job = defOf(b.type).job, cands = jobCandidates(sim, b), need = JOB_EDU[job] || 0, free = Math.max(0, workersOf(b) - b.workers.length);
@@ -109,7 +110,7 @@ export function worldRegionsHtml(ui, rowExtra) {
 export function boardsInit(ui) {
   const style = document.createElement('style'); style.textContent = `
 .btool{display:flex;gap:6px;margin:0 0 8px}.btool select,.btool input{min-width:0;flex:1;margin:0;font-size:13px}.btool input{padding:7px 10px;border:1px solid #ceb27d;border-radius:8px;background:#fffaf0;color:var(--ink)}
-.bstat{font-size:12px;color:var(--ink2);margin:2px 0 8px}.bstat b{color:var(--ink)}.bad{color:#b0412c}
+.bstat{font-size:12px;color:var(--ink2);margin:2px 0 8px}.bstat .staffall{margin-left:10px;vertical-align:middle}.bstat b{color:var(--ink)}.bad{color:#b0412c}
 .blist{display:flex;flex-direction:column;border:1px solid #e3cf9f;border-radius:12px;overflow:hidden;background:#fffaf0}
 .brow{display:flex;align-items:center;gap:10px;padding:6px 10px;border-top:1px solid #efe1bd;min-height:44px}.brow:first-child{border-top:0}.brow:hover{background:#fff4dc}
 .brow>img{width:36px;height:32px;object-fit:contain;flex:none}.brow .face{flex:none}
@@ -169,6 +170,15 @@ export function boardClick(ui, act, a) {
     const b = sim.bById.get(+a.dataset.bid), cands = b ? jobCandidates(sim, b) : [], pick = ui.jobPicks?.[b?.id], v = pick ? cands.find(v => v.id === pick) : cands[0];
     if (!b || !v || !sim.assign(b, v)) ui.toast('That candidate or position is no longer available.', 'person'); else { delete ui.jobPicks?.[b.id]; ui.toast(`${v.name} now works at ${sim.homeName(b)}.`, 'people'); }
   }
-  if (act === 'board-upgrade' || act === 'board-hire') ui.drawModal(true);
+  if (act === 'board-staff-all') {
+    // the same order as sim.autoAssign: food jobs first when stores are low, then the emptiest workplaces
+    const sid = boardRegion(ui), s = sim.s, foodJobs = ['forager', 'fisher', 'farmer', 'baker'], short = s.res.food < s.villagers.length * 4;
+    const open = s.buildings.filter(b => b.built && !b.up && defOf(b.type).workers && (!sid || b.sid === sid) && b.workers.length < workersOf(b))
+      .sort((a, b) => short ? foodJobs.includes(defOf(b.type).job) - foodJobs.includes(defOf(a.type).job) : a.workers.length - b.workers.length);
+    let n = 0;
+    for (const b of open) { let v; while (b.workers.length < workersOf(b) && (v = jobCandidates(sim, b)[0]) && sim.assign(b, v)) n++; }
+    ui.toast(n ? `${n} villager${n > 1 ? 's' : ''} started work` : 'No one free to hire here', 'people');
+  }
+  if (act === 'board-upgrade' || act === 'board-hire' || act === 'board-staff-all') ui.drawModal(true);
   return true;
 }

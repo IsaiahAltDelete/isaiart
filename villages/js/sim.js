@@ -688,6 +688,7 @@ export class Sim {
         for (let k = 0; k < n; k++) this.spawnBeast(kind, sid, toWorld(tx) + (k - n / 2) * 0.6, toWorld(tz) + k * 0.4);
         this.log(`${n > 1 ? `${n} ${BEASTS[kind].name.toLowerCase()}s are` : `A ${BEASTS[kind].name.toLowerCase()} is`} prowling toward ${this.sname(sid)}!`);
         this.emit('toast', `${BEASTS[kind].name}${n > 1 ? 's' : ''} spotted near ${this.sname(sid)}!`, 'alert');
+        this.emit('danger', `${BEASTS[kind].name}${n > 1 ? 's' : ''} near ${this.sname(sid)}`, sid);
         this.emit('sfx', 'howl');
         break;
       }

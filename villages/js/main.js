@@ -41,7 +41,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 class Game {
   constructor() {
-    this.settings = { sound: true, music: true, soundVol: 1, musicVol: 1, quality: matchMedia('(pointer: coarse)').matches ? 'medium' : 'high' };
+    this.settings = { sound: true, music: true, soundVol: 1, musicVol: 1, autoPause: false, quality: matchMedia('(pointer: coarse)').matches ? 'medium' : 'high' };
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch { /* defaults */ }
     this.bvis = new Map(); this.vvis = new Map();
     this.tilesDirty = new Set();
@@ -955,6 +955,7 @@ class Game {
     const sim = this.sim, ui = this.ui, view = this.view;
     sim.on('res', () => { ui.dirty.res = true; });
     sim.on('xp', () => { ui.dirty.res = true; });
+    sim.on('danger', (text, sid) => this.onDanger(text, sid));
     sim.on('building', b => {
       const vis = this.bvis.get(b.id);
       if (!vis) this.addBVis(b); else { this.applyBuild(vis); if (b.type === 'farm') this.applyFarm(vis); }
@@ -1583,6 +1584,7 @@ class Game {
       if (k === 'r' && !e.ctrlKey && !e.metaKey) this.rotatePlace();
       if (k === ' ') { e.preventDefault(); this.setSpeed(this.sim.s.speed ? 0 : (this.prevSpeed || 1)); }
       if (k === '1' || k === '2' || k === '3') this.setSpeed(+k);
+      if (/^Digit[789]$/.test(e.code)) this.camMark(e.code.slice(-1), e.shiftKey);
       if (k === 'b') this.ui.tray === 'build' ? this.ui.closeTray() : this.ui.openTray('build');
     });
     addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
@@ -1624,6 +1626,22 @@ class Game {
     sfx.click();
   }
   setSpeed(n) { if (this.sim.s.speed) this.prevSpeed = this.sim.s.speed; this.sim.s.speed = n; }
+  // With "Pause on danger" set, trouble (beasts, fire, raiders, a fever, someone dying) stops the clock
+  // and brings the camera to the village it is in.
+  onDanger(text, sid) {
+    if (!this.settings.autoPause || !this.sim.s.speed) return;
+    this.setSpeed(0);
+    if (sid && CENTERS[sid]) { this.followV = null; this.frameSettlement(sid); }
+    this.ui.toast(`Paused: ${text}`, 'pause', true);
+  }
+  // Shift+7/8/9 remembers the current view; 7/8/9 flies back to it. Saved with the village.
+  camMark(n, save) {
+    const rig = this.view.rig, marks = this.sim.s.camMarks ||= {};
+    if (save) { marks[n] = { tx: +rig.tx.toFixed(2), tz: +rig.tz.toFixed(2), dist: +rig.dist.toFixed(2), yaw: +rig.yaw.toFixed(3) }; this.ui.toast(`View ${n} saved — press ${n} to come back`, 'map'); sfx.click(); return; }
+    const m = marks[n];
+    if (!m) { this.ui.toast(`Nothing saved on ${n} yet — hold Shift and press ${n} to remember this view`, 'map'); return; }
+    this.followV = null; rig.yaw = m.yaw; this.view.flyTo(m.tx, m.tz, m.dist, 0.7); sfx.click();
+  }
   setSetting(k, v) {
     this.settings[k] = v;
     localStorage.setItem(SET_KEY, JSON.stringify(this.settings));
