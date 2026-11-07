@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem("khr-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enrollment Demo Reference Sheet | Key HR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1513;--slide:#f6f8f7;--surface:#fff;--sunk:#edf1ef;--ink:#17201d;--ink-2:#4a5752;--ink-3:#77837e;
+  --line:#d9e0dc;--red:#b8322c;--marsh:#1e5b4c;--marsh-soft:#e0eeea;--dark:#16302b;
+  --fd:"Zilla Slab",Rockwell,Georgia,serif;--fb:"Public Sans","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--fb);overflow:hidden}
+a{color:var(--marsh);font-weight:600;text-decoration:none;word-break:break-all}
+a:hover{text-decoration:underline}
+
+/* ---------- stage ---------- */
+#deck{position:fixed;inset:0 0 56px 0;display:grid;place-items:center}
+.slide{position:absolute;width:1280px;height:720px;background:var(--slide);border-radius:14px;overflow:hidden;
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transform:translateX(40px) scale(var(--s,1));transition:opacity .35s ease,transform .45s cubic-bezier(.22,.61,.36,1)}
+.slide.on{opacity:1;pointer-events:auto;transform:translateX(0) scale(var(--s,1))}
+.slide.prev{transform:translateX(-40px) scale(var(--s,1))}
+.demo-tag{position:absolute;top:22px;right:28px;background:var(--red);color:#fff;font:700 11px/1 var(--fb);letter-spacing:.12em;padding:7px 10px;border-radius:5px}
+.hd{padding:40px 56px 0}
+.kicker{font:700 12px/1 var(--fb);letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+h1{font:700 64px/1.02 var(--fd);letter-spacing:-.01em}
+h2{font:700 40px/1.1 var(--fd)}
+h3{font:600 20px/1.2 var(--fd);margin-bottom:4px}
+.sub{color:var(--ink-2);font-size:18px;margin-top:8px;max-width:900px}
+.bd{flex:1;min-height:0;padding:26px 56px 40px;display:flex;gap:32px}
+.ft{position:absolute;left:56px;bottom:18px;font-size:12px;color:var(--ink-3)}
+
+/* title */
+.title{background:var(--dark);color:#fff}
+.title .bd{flex-direction:column;justify-content:center;padding:0 80px}
+.title h1{font-size:76px;color:#fff}
+.title .sub{color:#c9d8d2;font-size:22px;max-width:720px}
+.title .kicker{color:#f08a80}
+.title .row{display:flex;gap:16px;margin-top:40px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:10px 18px;color:#fff;font-weight:600}
+.title .ft{color:#8fa79f}
+.logo{position:absolute;right:80px;top:50%;transform:translateY(-50%);background:#fff;border-radius:16px;padding:22px;text-align:center}
+.logo img{width:200px;height:200px;display:block}
+.logo span{display:block;margin-top:10px;font:600 14px/1.2 var(--fb);color:#17201d}
+
+/* link cards */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;align-content:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.card .lbl{font:700 11px/1 var(--fb);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.card a{font-size:17px}
+.card p{color:var(--ink-2);font-size:14px;margin-top:6px}
+.card.hero{border:2px solid var(--marsh);background:var(--marsh-soft)}
+.key{display:inline-block;font:700 30px/1 ui-monospace,Consolas,monospace;letter-spacing:.08em;background:var(--ink);color:var(--surface);border-radius:8px;padding:10px 16px;margin-top:2px}
+.side-qr{width:250px;flex:none;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.side-qr img{width:100%;display:block}
+.side-qr b{display:block;margin-top:10px;font-size:15px}
+.side-qr small{color:var(--ink-3)}
+
+/* flow */
+.flow{display:flex;align-items:stretch;gap:0;width:100%}
+.node{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column}
+.node .n{width:34px;height:34px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font:700 16px/1 var(--fd);margin-bottom:12px}
+.node p{color:var(--ink-2);font-size:15px}
+.node.out{background:var(--marsh-soft);border-color:var(--out-line,#b9d6cd)}
+.arrow{width:36px;display:grid;place-items:center;color:var(--ink-3);font-size:26px;flex:none}
+.stack2{display:flex;flex-direction:column;gap:12px;flex:1}
+.stack2 .node{flex:1}
+
+/* steps */
+ol.try{list-style:none;counter-reset:s;display:grid;grid-template-columns:1fr 1fr;gap:14px 28px;flex:1;align-content:start}
+ol.try li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px 16px 64px;position:relative;font-size:16px}
+ol.try li::before{content:counter(s);position:absolute;left:18px;top:15px;width:32px;height:32px;border-radius:50%;background:var(--dark);color:#fff;display:grid;place-items:center;font:700 15px/1 var(--fd)}
+ol.try b{display:block;font-size:17px;margin-bottom:2px}
+ol.try span{color:var(--ink-2);font-size:14.5px}
+
+/* screenshot slides */
+.shot{flex:1;min-width:0;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:0 14px 30px -18px rgba(23,32,29,.45)}
+.shot img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.shot.contain img{object-fit:contain;background:var(--sunk)}
+.notes{width:300px;flex:none;display:flex;flex-direction:column;gap:12px}
+.notes .card{padding:14px 16px}
+.notes .card p{margin:0;font-size:14.5px}
+.pair{display:flex;gap:16px;flex:1;min-width:0}
+.pair .shot{flex:1}
+.pair .shot.narrow{flex:.42}
+.cap{font-size:12px;color:var(--ink-3);margin-top:6px}
+
+/* table */
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:700 11px/1 var(--fb);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+.muted{color:var(--ink-3);font-size:13px}
+ul.chk{list-style:none;display:grid;gap:10px}
+ul.chk li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px 12px 44px;position:relative;font-size:15.5px}
+ul.chk li::before{content:"";position:absolute;left:16px;top:16px;width:14px;height:14px;border:2px solid var(--marsh);border-radius:3px}
+
+/* ---------- controls ---------- */
+#bar{position:fixed;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;justify-content:center;gap:10px;color:#b4c0bb;font-size:14px}
+#bar button,#bar a{background:#1d2724;color:#e8eeeb;border:1px solid #2f3b37;border-radius:8px;height:36px;padding:0 14px;font:600 14px/1 var(--fb);cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
+#bar button:hover,#bar a:hover{background:#26332f}
+#count{min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+#prog{position:fixed;left:0;top:0;height:3px;background:#ec6a60;transition:width .35s ease}
+
+/* ---------- one-page sheet view + print ---------- */
+body.sheet{overflow:auto;background:var(--sheet-bg,#d9e0dc)}
+body.sheet #deck{position:static;display:block;padding:24px 0 80px}
+body.sheet .slide{position:relative;opacity:1;pointer-events:auto;transform:none!important;margin:0 auto 24px;zoom:var(--z,1)}
+body.sheet #bar{background:rgba(15,21,19,.92)}
+body.sheet #prog{display:none}
+body.sheet #prevBtn,body.sheet #nextBtn,body.sheet #count{display:none}
+@media print{
+  @page{size:1280px 720px;margin:0}
+  body,body.sheet{background:#fff;overflow:visible}
+  #bar,#prog{display:none}
+  #deck{position:static;display:block;padding:0}
+  .slide{position:relative;opacity:1;transform:none!important;margin:0;border-radius:0;box-shadow:none;break-after:page;zoom:1!important}
+}
+@media (max-width:700px){#bar .hide-sm{display:none}}
+.theme-toggle{display:inline-flex;align-items:center;gap:8px;font:600 .84rem/1 var(--fb,system-ui),system-ui,sans-serif;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer}
+.theme-toggle:hover{border-color:var(--ink-3)}
+.theme-toggle:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.tt-icon{width:14px;height:14px;border-radius:50%;background:var(--ink);box-shadow:inset -4px -2px 0 0 var(--surface);flex:none}
+.theme-toggle.is-dark .tt-icon{box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 30%,transparent)}
+:root[data-theme="dark"]{--slide:#141b18;--surface:#18201d;--sunk:#1d2522;--ink:#e8eeeb;--ink-2:#b4c0bb;--ink-3:#85928d;--line:#2a3532;--red:#ec6a60;--marsh:#6cc2a8;--marsh-soft:#173029;--out-line:#2c5a4d;--sheet-bg:#0b100e;color-scheme:dark}
+@media print{:root[data-theme="dark"]{--slide:#f6f8f7;--surface:#fff;--sunk:#edf1ef;--ink:#17201d;--ink-2:#4a5752;--ink-3:#77837e;--line:#d9e0dc;--red:#b8322c;--marsh:#1e5b4c;--marsh-soft:#e0eeea;--out-line:#b9d6cd;color-scheme:light}}
+#bar .theme-toggle{gap:8px}#bar .tt-icon{background:#e8eeeb;box-shadow:inset -4px -2px 0 0 #1d2724}#bar .theme-toggle.is-dark .tt-icon{box-shadow:0 0 0 3px rgba(232,238,235,.3)}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.35s}
+</style>
+</head>
+<body data-view="sheet">
+<div id="prog"></div>
+<main id="deck">
+
+<!-- 1 -->
+<section class="slide title">
+  <div class="bd">
+    <div class="kicker">Key HR · Demo reference</div>
+    <h1>Gator's Dockside<br>Benefits Enrollment</h1>
+    <p class="sub">Online open enrollment with signed PDFs, a private spreadsheet, and a Key HR admin view.</p>
+    <div class="row">
+      <span class="pill">Live and working</span>
+      <span class="pill">Fake data only</span>
+      <span class="pill">Desktop and mobile</span>
+    </div>
+  </div>
+  <div class="logo"><img src="../ref/qr.png" alt="QR code to the demo form"><span>Scan to try it</span></div>
+  <div class="ft">keyhrsales.github.io/demo/gatorsdockside</div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Quick reference</div><h2>Links and admin key</h2></div>
+  <div class="bd">
+    <div class="grid">
+      <div class="card hero"><div class="lbl">Employee form</div><a href="https://keyhrsales.github.io/demo/gatorsdockside/" target="_blank">keyhrsales.github.io/demo/gatorsdockside</a><p>Share this with the room. No sign-in needed.</p></div>
+      <div class="card hero"><div class="lbl">Key HR admin</div><a href="https://keyhrsales.github.io/demo/gatorsdockside/admin/" target="_blank">keyhrsales.github.io/demo/gatorsdockside/admin</a><p>Also linked as "Key HR admin" in the form footer.</p></div>
+      <div class="card"><div class="lbl">Temporary admin key</div><span class="key">keyhro</span><p>Demo only. Replaced with a long key before real use.</p></div>
+      <div class="card"><div class="lbl">Source code</div><a href="https://github.com/KeyHRSales/demo" target="_blank">github.com/KeyHRSales/demo</a><p>Slideshow: /demo/slideshow &nbsp;·&nbsp; Reference sheet: /demo/reference</p></div>
+      <div class="card"><div class="lbl">Backup: Google-hosted form</div><a href="https://script.google.com/macros/s/AKfycbxGtKLyhOXjI1LT7npwTpVj-3w37hwYybX0PVf5SEEoag4h_bdDsGuKqqU7SwvYn3V1/exec" target="_blank">Apps Script web app</a><p>Same form. Can fail for people signed into several Google accounts.</p></div>
+      <div class="card"><div class="lbl">Backup: Google-hosted admin</div><a href="https://script.google.com/macros/s/AKfycbxGtKLyhOXjI1LT7npwTpVj-3w37hwYybX0PVf5SEEoag4h_bdDsGuKqqU7SwvYn3V1/exec?page=admin" target="_blank">Apps Script admin</a><p>Same admin key.</p></div>
+    </div>
+    <div class="side-qr"><img src="../ref/qr.png" alt="QR code to the demo form"><b>Employee form</b><small>Point a phone camera here</small></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">How it works</div><h2>From employee to Key HR in one submit</h2></div>
+  <div class="bd" style="align-items:stretch">
+    <div class="flow">
+      <div class="node"><div class="n">1</div><h3>Employee fills out the form</h3><p>Ten guided steps: about you, family, every plan, other coverage, review and sign. Running cost per paycheck the whole way.</p></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><div class="n">2</div><h3>Signs and submits</h3><p>A signed PDF is built in the browser. The employee downloads their own copy right away.</p></div>
+      <div class="arrow">&rarr;</div>
+      <div class="stack2">
+        <div class="node out"><div class="n">3</div><h3>Google Sheet</h3><p>One row per enrollment, every field in its own column.</p></div>
+        <div class="node out"><div class="n">4</div><h3>Private Drive folder</h3><p>The signed PDF is saved and linked from the row.</p></div>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><div class="n">5</div><h3>Key HR admin</h3><p>Admin key unlocks every submission, search, Excel export, and each PDF.</p></div>
+    </div>
+  </div>
+  <div class="ft">Runs on Google Apps Script (free) with the pages hosted on GitHub Pages.</div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Live demo</div><h2>Try it in about three minutes</h2><p class="sub">Use made-up details only. Anything entered is visible on the admin page.</p></div>
+  <div class="bd">
+    <ol class="try">
+      <li><b>Open the form</b><span>keyhrsales.github.io/demo/gatorsdockside, or scan the QR code.</span></li>
+      <li><b>About you</b><span>Try typing letters in salary or ZIP. The form blocks them.</span></li>
+      <li><b>Pick plans or waive</b><span>"Waive all" is a checkbox. Uncheck it and earlier choices come back.</span></li>
+      <li><b>Watch the total</b><span>Cost per paycheck updates as each plan changes.</span></li>
+      <li><b>Review and sign</b><span>Check the three consents and sign with a mouse or finger.</span></li>
+      <li><b>Download the PDF</b><span>Then open the admin page with key <b style="display:inline">keyhro</b> to see it arrive.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">What employees see</div><h2>Start page</h2></div>
+  <div class="bd">
+    <div class="shot"><img src="../ref/start.jpg" alt="Start page" loading="lazy"></div>
+    <div class="notes">
+      <div class="card"><p>Welcome, plan year, and deadline up front.</p></div>
+      <div class="card"><p>Progress bar across all ten steps.</p></div>
+      <div class="card"><p>"Waive all" checkbox can be undone any time.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">What employees see</div><h2>About you, with input rules</h2></div>
+  <div class="bd">
+    <div class="shot"><img src="../ref/about.jpg" alt="About you step" loading="lazy"></div>
+    <div class="notes">
+      <div class="card"><p>Numbers only for salary, ZIP, and phone.</p></div>
+      <div class="card"><p>Letters only for names. State is a two-letter code.</p></div>
+      <div class="card"><p>Missing required fields are flagged before moving on.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">What employees see</div><h2>Choosing plans</h2></div>
+  <div class="bd">
+    <div class="shot"><img src="../ref/medical.jpg" alt="Medical plan step" loading="lazy"></div>
+    <div class="notes">
+      <div class="card"><p>Plan options with tier pricing per paycheck.</p></div>
+      <div class="card"><p>Sidebar keeps a live total of every election.</p></div>
+      <div class="card"><p>Same layout for dental, vision, life, disability, supplemental, FSA and HSA.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">What employees see</div><h2>Review, sign, and phone view</h2></div>
+  <div class="bd">
+    <div class="pair">
+      <div class="shot"><img src="../ref/review.jpg" alt="Review and sign" loading="lazy"></div>
+      <div class="shot narrow contain"><img src="../ref/mobile.jpg" alt="Form on a phone" loading="lazy"></div>
+    </div>
+  </div>
+  <div class="ft">Left: consents and signature pad. Right: the same form on a phone.</div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Output</div><h2>Signed PDF and confirmation</h2></div>
+  <div class="bd">
+    <div class="pair">
+      <div class="shot narrow contain" style="flex:.55"><img src="../ref/pdf.jpg" alt="Signed elections PDF" loading="lazy"></div>
+      <div class="shot"><img src="../ref/done.jpg" alt="Confirmation screen" loading="lazy"></div>
+    </div>
+  </div>
+  <div class="ft">Left: the employee's signed elections PDF. Right: the confirmation screen with their download.</div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Key HR side</div><h2>Admin view</h2></div>
+  <div class="bd">
+    <div class="shot"><img src="../ref/admin.jpg" alt="Admin list" loading="lazy"></div>
+    <div class="notes">
+      <div class="card"><p>Every submission with plans and total per pay.</p></div>
+      <div class="card"><p>Search by name or confirmation number.</p></div>
+      <div class="card"><p>Download all as Excel, or one row's PDF.</p></div>
+      <div class="card"><p>Key: <b>keyhro</b> (demo only)</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Behind the scenes</div><h2>Where the data lands</h2></div>
+  <div class="bd">
+    <div class="pair">
+      <div class="shot contain"><img src="../ref/sheet.jpg" alt="Google Sheet of enrollments" loading="lazy"></div>
+      <div class="shot contain"><img src="../ref/drive.jpg" alt="Drive folder of signed PDFs" loading="lazy"></div>
+    </div>
+  </div>
+  <div class="ft">Left: the private Enrollments sheet, one row per submission. Right: signed PDFs saved to Drive automatically.</div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Owner links</div><h2>Behind-the-scenes links</h2><p class="sub">These open only for the Google account that owns the demo.</p></div>
+  <div class="bd" style="display:block">
+    <table>
+      <tr><th>What</th><th>Link</th></tr>
+      <tr><td>Enrollments sheet</td><td><a href="https://docs.google.com/spreadsheets/d/17TniQ8ueAwac_PzSpvULwwgOugX4ys4lB-Oam7M_R8Q/edit" target="_blank">Gator's Dockside Enrollments (DEMO)</a></td></tr>
+      <tr><td>Demo Drive folder</td><td><a href="https://drive.google.com/drive/folders/1qkRgYy-NxO4iP2INJDzJrC2wMz_36VtN" target="_blank">Key HR Enrollment Demo</a> <span class="muted">sheet, page files, PDFs folder</span></td></tr>
+      <tr><td>Signed PDFs</td><td><a href="https://drive.google.com/drive/folders/1czKw6SDSKGqDm_UaqMiWYcrErRstDlax" target="_blank">Gator's Dockside Enrollment PDFs</a></td></tr>
+      <tr><td>Server script</td><td><a href="https://script.google.com/home/projects/1xBQBi0Md7ACFk14waJz-de2QGdZhzLMcFNQCOHRjCDc42CN0aFLoKw0H/edit" target="_blank">Apps Script project</a> <span class="muted">Code.gs, deployments</span></td></tr>
+      <tr><td>Pages hosting</td><td><a href="https://github.com/KeyHRSales/demo/settings/pages" target="_blank">GitHub Pages settings</a></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <span class="demo-tag">DEMO</span>
+  <div class="hd"><div class="kicker">Next</div><h2>Before it goes live</h2></div>
+  <div class="bd" style="display:block">
+    <ul class="chk">
+      <li>Move the Drive folder and script to a Key HR Google account and redeploy.</li>
+      <li>Replace the demo admin key with a long private key.</li>
+      <li>Load the real plan rates, carriers, deadlines, and plan documents.</li>
+      <li>Point the form at a Key HR domain or page.</li>
+      <li>Clear all demo rows and PDFs, and remove the DEMO banners.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<div id="bar">
+  <button id="prevBtn" aria-label="Previous slide">&larr;</button>
+  <span id="count">1 / 1</span>
+  <button id="nextBtn" aria-label="Next slide">&rarr;</button>
+  <a id="viewBtn" href="../slideshow/">Slideshow</a>
+  <button id="printBtn" class="hide-sm">Save as PDF</button>
+  <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false"><span class="tt-icon" aria-hidden="true"></span><span class="tt-label">Dark mode</span></button>
+  <a class="hide-sm" href="../" target="_blank">Open form</a>
+</div>
+<script>
+/* Light / dark mode toggle. The choice is saved on this device and shared across the Key HR demo pages. */
+(function(){var r=document.documentElement,b=document.getElementById("theme-toggle"),l=b.querySelector(".tt-label"),mq=matchMedia("(prefers-color-scheme: dark)"),FOLLOW=false;
+var s=null;try{s=localStorage.getItem("khr-theme")}catch(e){}if(s==="light"||s==="dark")r.dataset.theme=s;
+function dark(){return r.dataset.theme?r.dataset.theme==="dark":(FOLLOW&&mq.matches)}
+function render(){var d=dark();b.setAttribute("aria-pressed",String(d));l.textContent=d?"Light mode":"Dark mode";b.classList.toggle("is-dark",d)}
+b.addEventListener("click",function(){var n=dark()?"light":"dark",go=function(){r.dataset.theme=n;try{localStorage.setItem("khr-theme",n)}catch(e){}render()};if(document.startViewTransition&&!matchMedia("(prefers-reduced-motion: reduce)").matches)document.startViewTransition(go);else go()});
+if(mq.addEventListener)mq.addEventListener("change",render);render();})();
+</script>
+
+<script>
+const S=[...document.querySelectorAll('.slide')];let i=0;
+const count=document.getElementById('count'),prog=document.getElementById('prog');
+function fit(){
+  const sheet=document.body.classList.contains('sheet');
+  const w=innerWidth,h=innerHeight-56;
+  const s=Math.min((w-32)/1280,(h-24)/720);
+  const z=Math.min(1,(w-32)/1280);
+  S.forEach(el=>{el.style.setProperty('--s',s);el.style.setProperty('--z',z);});
+}
+function go(n){
+  i=Math.max(0,Math.min(S.length-1,n));
+  S.forEach((el,k)=>{el.classList.toggle('on',k===i);el.classList.toggle('prev',k<i);});
+  count.textContent=(i+1)+' / '+S.length;prog.style.width=((i+1)/S.length*100)+'%';
+  try{history.replaceState(null,'','#'+(i+1));}catch(e){}
+}
+function setSheet(on){
+  document.body.classList.toggle('sheet',on);
+  
+  fit();if(!on)go(i);
+}
+document.getElementById('prevBtn').onclick=()=>go(i-1);
+document.getElementById('nextBtn').onclick=()=>go(i+1);
+
+document.getElementById('printBtn').onclick=()=>print();
+addEventListener('keydown',e=>{
+  if(document.body.classList.contains('sheet'))return;
+  if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();go(i+1);}
+  if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();go(i-1);}
+  if(e.key==='Home')go(0);if(e.key==='End')go(S.length-1);
+  if(e.key==='f'&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
+});
+let tx=null;
+addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+addEventListener('touchend',e=>{if(tx===null||document.body.classList.contains('sheet'))return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)go(i+(d<0?1:-1));tx=null;});
+addEventListener('resize',fit);
+fit();
+const start=parseInt(location.hash.slice(1),10);go(isNaN(start)?0:start-1);
+if(document.body.dataset.view==='sheet'||/[?&]view=sheet/.test(location.search))setSheet(true);
+</script>
+</body>
+</html>
