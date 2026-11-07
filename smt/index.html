@@ -72,23 +72,27 @@
             transition: background-color 0.3s ease, color 0.3s ease;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            overflow: hidden;
+            overflow-x: hidden;
         }
+        @media (min-width: 768px) and (min-height: 620px) { body { overflow: hidden; } }
         
         #scene {
             perspective: 1500px;
-            width: 100vw;
-            height: 100vh;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            padding: 1rem;
+            padding: 5rem 1rem 2rem;
         }
+        @media (min-width: 768px) { #scene { padding: 1rem; } }
 
         #hubPanel {
             width: 100%;
-            max-width: 700px;
+            max-width: 1000px;
             padding: 2.5rem;
             transform-style: preserve-3d;
             transition: transform 720ms var(--ease-out), background-color 0.3s ease, border-color 0.3s ease;
@@ -136,10 +140,70 @@
             transform: translateX(4px);
         }
         #themeToggle { transition: background-color 150ms ease, transform 200ms var(--ease-out); }
+
+        /* ── Ambient aurora ──────────────────────────────────────────────
+           Three soft blobs, one per app colour, drifting on long offset
+           loops behind the panel. Transform/opacity only, so it costs the
+           compositor almost nothing. */
+        #aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        #aurora i { position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%;
+            filter: blur(70px); opacity: 0.22; will-change: transform; }
+        html.light-mode #aurora i { opacity: 0.28; }
+        #aurora i:nth-child(1) { background: #F59E0B; left: -12vmax; top: -14vmax; animation: drift1 26s var(--ease-in-out) infinite alternate; }
+        #aurora i:nth-child(2) { background: #3B82F6; right: -14vmax; top: 10vh;  animation: drift2 31s var(--ease-in-out) infinite alternate; }
+        #aurora i:nth-child(3) { background: #10B981; left: 22vw;  bottom: -22vmax; animation: drift3 36s var(--ease-in-out) infinite alternate; }
+        #aurora i:nth-child(4) { background: #6366F1; left: 40vw; top: 30vh; width: 30vmax; height: 30vmax; opacity: 0.14; animation: drift2 40s var(--ease-in-out) -12s infinite alternate-reverse; }
+        @keyframes drift1 { to { transform: translate(18vw, 14vh) scale(1.15); } }
+        @keyframes drift2 { to { transform: translate(-16vw, 18vh) scale(0.9); } }
+        @keyframes drift3 { to { transform: translate(-10vw, -20vh) scale(1.2); } }
+
+        /* ── Title shimmer: one light sweep across the heading on arrival ── */
+        .hub-title { background: linear-gradient(100deg, var(--text-color) 0%, var(--text-color) 40%, var(--accent-color) 50%, var(--text-color) 60%, var(--text-color) 100%);
+            background-size: 250% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .hub-title.shine { animation: shine 1600ms var(--ease-out) 350ms both; }
+        @keyframes shine { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+
+        /* ── Cards: lean toward the pointer, with a light that follows it ──
+           --rx/--ry/--lift are written by the pointer handler and eased by
+           the transition, so the card glides rather than jitters. */
+        .app-card { --rx: 0deg; --ry: 0deg; --lift: 1; --hue: 99,102,241;
+            transform: translateZ(20px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--lift)); }
+        .app-card:hover { transform: translateZ(20px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--lift)); --lift: 1.04; }
+        .app-card:active { transform: translateZ(20px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.01); }
+        .app-card::after { box-shadow: 0 0 28px 0 rgba(var(--hue), 0.35); }
+        .app-card:hover { border-color: rgb(var(--hue)); }
+        .app-card::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+            background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--hue), 0.18), transparent 70%);
+            transition: opacity 360ms var(--ease-out); }
+        .app-card:hover::before { opacity: 1; }
+        .app-card > * { position: relative; }
+
+        /* Each icon does its own small thing on hover. */
+        .app-card .icon-box { transition: transform 420ms var(--ease-out), background-color 300ms ease; }
+        .app-card:hover .icon-box { transform: rotate(-6deg) scale(1.08); }
+        .app-card .icon-glyph { display: inline-block; }
+        .app-card:hover .icon-glyph.swap   { animation: iconSwap 900ms var(--ease-in-out) infinite; }
+        .app-card:hover .icon-glyph.check  { animation: iconNod 1100ms var(--ease-in-out) infinite; }
+        .app-card:hover .icon-glyph.rocket { animation: iconLift 1200ms var(--ease-in-out) infinite; }
+        @keyframes iconSwap { 0%,100% { transform: translateX(0); } 50% { transform: translateX(3px); } 25%,75% { transform: translateX(-2px); } }
+        @keyframes iconNod  { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-3px) rotate(-4deg); } }
+        @keyframes iconLift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(2px,-4px); } }
+
+        .new-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+            padding: 0.12rem 0.45rem; border-radius: 999px; color: #fff; background: rgb(var(--hue));
+            box-shadow: 0 0 0 0 rgba(var(--hue), 0.6); animation: pulse 2.4s var(--ease-out) infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--hue), 0.55); } 70%,100% { box-shadow: 0 0 0 8px rgba(var(--hue), 0); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            #aurora i, .new-badge, .hub-title.shine, .app-card:hover .icon-glyph { animation: none !important; }
+            .hub-title { color: var(--text-color); background: none; }
+        }
         #themeToggle:active { transform: scale(0.94); transition-duration: 90ms; }
     </style>
 </head>
 <body>
+    <div id="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
     <!-- Top Right Controls -->
     <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
         <button id="themeToggle" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
@@ -152,16 +216,17 @@
         <main id="hubPanel">
             <!-- Header -->
             <header class="text-center mb-8" style="transform: translateZ(40px);">
-                <h1 class="text-4xl font-bold mb-2">Self Management Tools</h1>
+                <h1 class="hub-title text-4xl font-bold mb-2">Self Management Tools</h1>
+                <p class="subtle-text text-sm">Pick a tracker. Your stats stay on this device.</p>
             </header>
 
             <!-- App Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <!-- Transfer Tracker Card -->
-                <a href="https://isaiart.com/transfer" class="app-card block p-6 rounded-xl space-y-4">
+                <a href="https://isaiart.com/transfer" class="app-card block p-6 rounded-xl space-y-4" style="--hue: 245,158,11">
                     <div class="flex items-center gap-4">
-                        <div class="p-3 rounded-lg" style="background-color: rgba(245, 158, 11, 0.1);">
-                            <span class="material-symbols-outlined text-3xl" style="color: #F59E0B;">swap_horiz</span>
+                        <div class="icon-box p-3 rounded-lg" style="background-color: rgba(245, 158, 11, 0.1);">
+                            <span class="icon-glyph swap material-symbols-outlined text-3xl" style="color: #F59E0B;">swap_horiz</span>
                         </div>
                         <h2 class="text-xl font-semibold">Transfer Tracker</h2>
                     </div>
@@ -172,15 +237,29 @@
                 </a>
 
                 <!-- Call Flow Tracker Card -->
-                <a href="https://isaiart.com/flow" class="app-card block p-6 rounded-xl space-y-4">
+                <a href="https://isaiart.com/flow" class="app-card block p-6 rounded-xl space-y-4" style="--hue: 59,130,246">
                     <div class="flex items-center gap-4">
-                        <div class="p-3 rounded-lg" style="background-color: rgba(59, 130, 246, 0.1);">
-                            <span class="material-symbols-outlined text-3xl" style="color: #3B82F6;">checklist_rtl</span>
+                        <div class="icon-box p-3 rounded-lg" style="background-color: rgba(59, 130, 246, 0.1);">
+                            <span class="icon-glyph check material-symbols-outlined text-3xl" style="color: #3B82F6;">checklist_rtl</span>
                         </div>
                         <h2 class="text-xl font-semibold">Call Flow Tracker</h2>
                     </div>
                     <p class="subtle-text text-sm">Track call completion progress with a live graph, reminders, and a simple checklist.</p>
                     <p class="launch-text font-semibold flex items-center gap-2" style="color: #3B82F6;">
+                        Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
+                    </p>
+                </a>
+
+                <!-- Internet 300 Tracker Card -->
+                <a href="https://isaiart.com/i300" class="app-card block p-6 rounded-xl space-y-4" style="--hue: 16,185,129">
+                    <div class="flex items-center gap-4">
+                        <div class="icon-box p-3 rounded-lg" style="background-color: rgba(16, 185, 129, 0.1);">
+                            <span class="icon-glyph rocket material-symbols-outlined text-3xl" style="color: #10B981;">rocket_launch</span>
+                        </div>
+                        <h2 class="text-xl font-semibold">Internet 300 <span class="new-badge align-middle">New</span></h2>
+                    </div>
+                    <p class="subtle-text text-sm">Track calls, eligible, offers and sales as a live funnel, plus VAS toward your Spark Points.</p>
+                    <p class="launch-text font-semibold flex items-center gap-2" style="color: #10B981;">
                         Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
                     </p>
                 </a>
@@ -273,6 +352,27 @@
                 [{ opacity: 0, translate: '0 10px' }, { opacity: 1, translate: '0 0' }],
                 { duration: 480, easing: ease, delay: 140 + i * 70, fill: 'backwards' })));
         }
+
+        // --- Card lean + spotlight ---
+        // Each card leans a few degrees toward the pointer and carries a soft
+        // light under it. Written once per frame; the CSS transition eases it.
+        if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
+            document.querySelectorAll('.app-card').forEach(card => {
+                let f = 0, ev = null;
+                const apply = () => {
+                    f = 0; if (!ev) return;
+                    const r = card.getBoundingClientRect();
+                    const x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height;
+                    card.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+                    card.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+                    card.style.setProperty('--ry', ((x - 0.5) * 10).toFixed(2) + 'deg');
+                    card.style.setProperty('--rx', ((0.5 - y) * 8).toFixed(2) + 'deg');
+                };
+                card.addEventListener('pointermove', e => { ev = e; if (!f) f = requestAnimationFrame(apply); });
+                card.addEventListener('pointerleave', () => { ev = null; card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); });
+            });
+        }
+        if (!reduceMotion) document.querySelector('.hub-title').classList.add('shine');
 
         // --- THEME MANAGEMENT ---
         const themeToggle = document.getElementById('themeToggle');

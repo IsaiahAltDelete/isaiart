@@ -3401,6 +3401,32 @@ function wireRipples() {
 }
 
 
+/* Cursor spotlight: in the soft styles a faint accent light follows the
+   pointer across whichever card it is over (theme.css draws it from --mx /
+   --my). One listener, written at most once per frame; the hard-edged and
+   period themes don't get it. */
+var SPOT_STYLES = ['default', 'glass', 'goop', 'neumorphic'];
+function wireSpotlight() {
+    if (reduceMotion || !global.matchMedia('(hover: hover)').matches) return;
+    var pending = null, frame = 0, lastCard = null;
+    function apply() {
+        frame = 0;
+        var e = pending; pending = null;
+        if (!e || SPOT_STYLES.indexOf(state.style) < 0) return;
+        var card = e.target.closest ? e.target.closest('.tt-card') : null;
+        if (lastCard && lastCard !== card) lastCard.classList.remove('tt-spot');
+        lastCard = card;
+        if (!card) return;
+        var r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+        card.classList.add('tt-spot');
+    }
+    document.addEventListener('pointermove', function (e) { pending = e; if (!frame) frame = raf(apply); }, { passive: true });
+    document.addEventListener('pointerleave', function () { if (lastCard) lastCard.classList.remove('tt-spot'); lastCard = null; });
+}
+
+
 /* ═══════════ INIT ═══════════════════════════════════════════════════════ */
 function init(options) {
     cfg = options || {};
@@ -3408,6 +3434,7 @@ function init(options) {
     buildLayers();
     buildUI();
     wireRipples();
+    wireSpotlight();
     watchIcons();
     commit();
     arrive($('trackerPanel'));

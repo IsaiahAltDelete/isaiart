@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" data-style="default" data-color="auto" data-mode="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internet 300 Tracker</title>
+
+    <!-- Restore the saved theme before first paint so there's no flash. -->
+    <script>
+    (function () {
+        try {
+            var s = JSON.parse(localStorage.getItem('smt-theme') || 'null') || {};
+            var d = document.documentElement;
+            if (s.style) d.setAttribute('data-style', s.style);
+            if (s.color) d.setAttribute('data-color', s.color);
+            if (s.mode)  d.setAttribute('data-mode',  s.mode);
+        } catch (e) {}
+    })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <!-- Shared theme system — same files the Transfer and Call Flow trackers
+         load. Bump the ?v= stamp in every app whenever smt/theme.* changes. -->
+    <link rel="stylesheet" href="../smt/theme.css?v=20261107">
+
+    <style>
+        /* ── App-specific layout only. Everything themed lives in theme.css. ── */
+        body { overflow: hidden; }
+
+        #scene {
+            perspective: 1500px;
+            width: 100vw; height: 100vh; height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; padding: 1rem;
+            transition: padding var(--dur-mid) var(--ease-out);
+        }
+
+        #trackerPanel {
+            width: 100%; max-width: 760px; height: 88vh; height: 88dvh; max-height: 900px;
+            padding: 1.5rem 0.5rem 1.25rem 1.5rem;
+            cursor: grab; user-select: none;
+            border-radius: var(--panel-radius);
+            box-shadow: 0 25px 60px -10px var(--shadow);
+            background: var(--card-bg);
+            backdrop-filter: blur(var(--panel-blur));
+            -webkit-backdrop-filter: blur(var(--panel-blur));
+            border: var(--panel-border-width) solid var(--border);
+            display: flex; flex-direction: column;
+        }
+        #trackerPanel:active { cursor: grabbing; }
+        @media (max-width: 640px) { #trackerPanel { padding: 1.1rem 0.35rem 1rem 1rem; height: calc(100dvh - 5.2rem); } #scene { padding: 4.6rem 0.6rem 0.6rem; } }
+
+        #trackerPanel.tt-lifted .depth-1 { transform: translateZ(10px); }
+        #trackerPanel.tt-lifted .depth-2 { transform: translateZ(20px); }
+        #trackerPanel.tt-lifted .depth-3 { transform: translateZ(30px); }
+        .depth-1, .depth-2, .depth-3 { transition: transform var(--dur-settle) var(--ease-out); }
+
+        #panelBody { overflow-y: auto; overscroll-behavior: contain; padding-right: 1rem; }
+        #panelBody::-webkit-scrollbar { width: 5px; }
+        #panelBody::-webkit-scrollbar-track { background: transparent; }
+        #panelBody::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+        /* ── Scope switch: a pill that slides under the active tab ── */
+        .seg-switch { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
+            background: var(--input-bg); border: 1px solid var(--border); }
+        .seg-switch button { position: relative; z-index: 1; padding: 0.35rem 0.8rem; font-size: 0.78rem; font-weight: 600;
+            border-radius: 999px; color: var(--subtle); transition: color var(--dur-mid) var(--ease-out); white-space: nowrap; }
+        .seg-switch button.on { color: var(--accent-text); }
+        .seg-switch .seg-pill { position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
+            background: var(--accent); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent);
+            transition: transform 420ms var(--ease-out), width 420ms var(--ease-out); }
+
+        /* ── Stat cards ── */
+        .stat-card { position: relative; overflow: hidden; }
+        .stat-card .stat-ico { font-size: 1.15rem; }
+        .stat-card .stat-sub { font-size: 0.7rem; min-height: 1rem; }
+        /* A soft flash behind the figure when it changes. */
+        .stat-card::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+            background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--hue, var(--accent)) 35%, transparent), transparent 70%); }
+        .stat-card.bump::before { animation: statFlash 700ms var(--ease-out); }
+        @keyframes statFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* ── Funnel ── */
+        .funnel-row { display: grid; grid-template-columns: 5.6rem 1fr 4.2rem; align-items: center; gap: 0.75rem; }
+        @media (max-width: 480px) { .funnel-row { grid-template-columns: 4.6rem 1fr 3.6rem; gap: 0.5rem; } }
+        .funnel-track { position: relative; height: 1.6rem; border-radius: 0.5rem; background: var(--hover-bg); overflow: hidden; }
+        .funnel-fill { position: absolute; inset: 0; overflow: hidden; transform-origin: left center; transform: scaleX(0);
+            border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--hue) 70%, transparent), var(--hue));
+            transition: transform 760ms var(--ease-out); }
+        /* A sheen that sweeps across a bar when it grows. */
+        .funnel-fill::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+            background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.35) 50%, transparent 80%); }
+        .funnel-fill.sweep::after { animation: sheen 900ms var(--ease-out); }
+        @keyframes sheen { to { transform: translateX(100%); } }
+        .funnel-count { position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; font-weight: 700; color: var(--text); }
+        .funnel-pct { text-align: right; font-weight: 700; font-size: 0.95rem; transition: color 200ms linear; }
+        .funnel-pct small { display: block; font-size: 0.6rem; font-weight: 500; color: var(--subtle); letter-spacing: 0.04em; text-transform: uppercase; }
+
+        /* ── Outcome buttons ── */
+        .outcome-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+        @media (max-width: 560px) { .outcome-grid { grid-template-columns: repeat(2, 1fr); } }
+        .outcome-btn { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem;
+            padding: 0.85rem 0.4rem; border-radius: var(--btn-radius); border: 1px solid var(--border);
+            background: var(--input-bg); color: var(--text); cursor: pointer; font-family: var(--font-main);
+            transition: transform 220ms var(--ease-out), border-color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-mid); }
+        .outcome-btn .material-symbols-outlined { font-size: 1.6rem; color: var(--hue); transition: transform 320ms var(--ease-out); }
+        .outcome-btn .o-label { font-size: 0.82rem; font-weight: 600; line-height: 1.1; }
+        .outcome-btn .o-sub { font-size: 0.64rem; color: var(--subtle); }
+        .outcome-btn:hover { border-color: var(--hue); transform: translateY(-2px);
+            box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--hue) 70%, transparent);
+            background: color-mix(in srgb, var(--hue) 9%, var(--input-bg)); }
+        .outcome-btn:hover .material-symbols-outlined { transform: translateY(-2px) scale(1.12); }
+        .outcome-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--dur-press); }
+        .outcome-btn.sold { background: color-mix(in srgb, var(--hue) 16%, var(--input-bg)); border-color: color-mix(in srgb, var(--hue) 55%, var(--border)); }
+        .outcome-btn .tt-ripple { background: var(--hue); }
+
+        /* ── VAS chips ── */
+        .vas-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.7rem; border-radius: 999px;
+            border: 1px solid var(--border); background: var(--input-bg); color: var(--subtle); font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast), transform 200ms var(--ease-out); }
+        .vas-chip .material-symbols-outlined { font-size: 1rem; transition: transform 360ms var(--ease-out); }
+        .vas-chip:hover { border-color: var(--hue); color: var(--text); }
+        .vas-chip:active { transform: scale(0.95); }
+        .vas-chip.on { color: var(--text); border-color: var(--hue); background: color-mix(in srgb, var(--hue) 18%, var(--input-bg)); }
+        .vas-chip.on .material-symbols-outlined { color: var(--hue); transform: rotate(-12deg) scale(1.15); font-variation-settings: 'FILL' 1, 'wght' 400; }
+
+        /* ── Spark points ── */
+        .spark-total { font-size: 2.2rem; font-weight: 800; line-height: 1; }
+        .award { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.7rem; border-radius: 0.7rem;
+            border: 1px dashed var(--border); transition: border-color var(--dur-mid), background-color var(--dur-mid); }
+        .award .a-pts { margin-left: auto; font-weight: 700; font-size: 0.85rem; color: var(--subtle); transition: color var(--dur-mid); }
+        .award .a-ico { width: 1.9rem; height: 1.9rem; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%;
+            background: var(--hover-bg); color: var(--subtle); transition: background-color var(--dur-mid), color var(--dur-mid), transform 420ms var(--ease-out); }
+        .award.won { border-style: solid; border-color: color-mix(in srgb, var(--rate-green) 55%, var(--border)); background: color-mix(in srgb, var(--rate-green) 8%, transparent); }
+        .award.won .a-ico { background: var(--rate-green); color: #fff; transform: rotate(360deg); }
+        .award.won .a-pts { color: var(--rate-green); }
+        .vas-tally { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .vas-tally > div { text-align: center; padding: 0.5rem 0.25rem; border-radius: 0.6rem; background: var(--hover-bg); }
+        .vas-tally .material-symbols-outlined { color: var(--hue); font-size: 1.15rem; }
+
+        /* ── Log rows ── */
+        .o-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700;
+            color: var(--hue); background: color-mix(in srgb, var(--hue) 14%, transparent); }
+        .o-badge .material-symbols-outlined { font-size: 0.85rem; }
+        .vas-tag { font-size: 0.62rem; font-weight: 700; padding: 0.05rem 0.4rem; border-radius: 0.35rem;
+            color: var(--hue); border: 1px solid color-mix(in srgb, var(--hue) 45%, transparent); }
+
+        .glass-input  { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); transition: box-shadow var(--dur-fast), border-color var(--dur-fast); }
+        .focus-accent:focus { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+        .modal-backdrop { background-color: rgba(0,0,0,0.7); }
+        .modal-border-accent { border-color: var(--accent); }
+        .modal-border-danger { border-color: var(--danger); }
+        .danger-bg { background-color: var(--danger); color: #fff; }
+        .danger-bg:hover { background-color: var(--danger-hover); }
+        .fixed-modal { z-index: 70; }
+
+        /* Hues are fixed per funnel step so they read the same in every theme. */
+        .h-call  { --hue: #94A3B8; }
+        .h-elig  { --hue: #38BDF8; }
+        .h-offer { --hue: #F59E0B; }
+        .h-sold  { --hue: #22C55E; }
+        .h-es    { --hue: #818CF8; }
+        .h-whw   { --hue: #22D3EE; }
+        .h-iw    { --hue: #F472B6; }
+
+        /* Confetti burst from the Sold button. */
+        .burst { position: fixed; z-index: 80; width: 8px; height: 8px; border-radius: 2px; pointer-events: none; }
+
+        #toast { position: fixed; bottom: 22px; left: 50%; z-index: 90; transform: translate(-50%, 24px); opacity: 0; pointer-events: none;
+            display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 14px;
+            background: var(--dropdown-bg); color: var(--text); border: 1px solid var(--border); box-shadow: 0 10px 30px var(--shadow);
+            font-weight: 600; font-size: 0.88rem; transition: transform 240ms var(--ease-in), opacity 200ms var(--ease-in); }
+        #toast.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; transition: transform 460ms var(--ease-out), opacity 260ms var(--ease-out); }
+        #toast button { color: var(--accent); font-weight: 700; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .funnel-fill, .seg-switch .seg-pill, .award .a-ico { transition: none !important; }
+            .funnel-fill.sweep::after, .stat-card.bump::before { animation: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"><span class="material-symbols-outlined accent-text">undo</span><span id="toastText">Logged</span><button id="toastUndo">Undo</button></div>
+
+    <div id="scene">
+        <main id="trackerPanel">
+            <!-- Header -->
+            <header class="pr-4 pb-4 depth-2 flex flex-wrap items-center justify-between gap-3" style="border-bottom:1px solid var(--border)">
+                <div>
+                    <h1 class="text-2xl font-bold leading-tight">Internet 300 Tracker</h1>
+                    <p id="scopeLabel" class="text-xs subtle-text mt-0.5">Today</p>
+                </div>
+                <div class="seg-switch tt-no-drag" id="scopeSwitch" role="tablist" aria-label="Time range">
+                    <span class="seg-pill"></span>
+                    <button data-scope="today" role="tab">Today</button>
+                    <button data-scope="month" role="tab">Month</button>
+                    <button data-scope="all" role="tab">All</button>
+                </div>
+            </header>
+
+            <div id="panelBody" class="flex-grow pt-4 space-y-5">
+
+                <!-- Funnel stats -->
+                <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center depth-2">
+                    <div class="stat-card h-call tt-card rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center">
+                        <h2 class="text-xs font-medium subtle-text uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined stat-ico" style="color:var(--hue)">call</span>Calls</h2>
+                        <p id="statCalls" class="num text-3xl sm:text-4xl font-bold mt-1">0</p>
+                        <p id="subCalls" class="stat-sub subtle-text">&nbsp;</p>
+                    </div>
+                    <div class="stat-card h-elig tt-card rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center">
+                        <h2 class="text-xs font-medium subtle-text uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined stat-ico" style="color:var(--hue)">verified</span>Eligible</h2>
+                        <p id="statElig" class="num text-3xl sm:text-4xl font-bold mt-1">0</p>
+                        <p id="subElig" class="stat-sub subtle-text">&nbsp;</p>
+                    </div>
+                    <div class="stat-card h-offer tt-card rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center">
+                        <h2 class="text-xs font-medium subtle-text uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined stat-ico" style="color:var(--hue)">campaign</span>Offers</h2>
+                        <p id="statOffer" class="num text-3xl sm:text-4xl font-bold mt-1">0</p>
+                        <p id="subOffer" class="stat-sub subtle-text">&nbsp;</p>
+                    </div>
+                    <div class="stat-card h-sold tt-card rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center">
+                        <h2 class="text-xs font-medium subtle-text uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined stat-ico" style="color:var(--hue)">workspace_premium</span>Sales</h2>
+                        <p id="statSold" class="num text-3xl sm:text-4xl font-bold mt-1">0</p>
+                        <p id="subSold" class="stat-sub subtle-text">&nbsp;</p>
+                    </div>
+                </section>
+
+                <!-- Log a call -->
+                <section class="tt-card rounded-xl p-4 space-y-3 depth-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">add_call</span>Log a call</h3>
+                        <div class="flex flex-wrap gap-1.5" id="vasPicker" aria-label="Value-added services sold on this call">
+                            <button class="vas-chip h-es"  data-vas="es"  aria-pressed="false"><span class="material-symbols-outlined">shield</span>Security</button>
+                            <button class="vas-chip h-whw" data-vas="whw" aria-pressed="false"><span class="material-symbols-outlined">wifi</span>Whole Home</button>
+                            <button class="vas-chip h-iw"  data-vas="iw"  aria-pressed="false"><span class="material-symbols-outlined">battery_charging_full</span>Invincible</button>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 subtle-text">edit_note</span>
+                        <input type="text" id="noteInput" maxlength="120" placeholder="Optional note (tier, objection, account…)" class="w-full pl-10 pr-4 py-2.5 glass-input tt-input rounded-lg focus-accent text-inherit text-sm">
+                    </div>
+                    <div class="outcome-grid">
+                        <button class="outcome-btn h-call"  data-outcome="call"><span class="material-symbols-outlined">block</span><span class="o-label">Not eligible</span><span class="o-sub">call only</span></button>
+                        <button class="outcome-btn h-elig"  data-outcome="eligible"><span class="material-symbols-outlined">verified</span><span class="o-label">Eligible</span><span class="o-sub">no offer made</span></button>
+                        <button class="outcome-btn h-offer" data-outcome="offered"><span class="material-symbols-outlined">campaign</span><span class="o-label">Offered</span><span class="o-sub">declined</span></button>
+                        <button class="outcome-btn h-sold sold" data-outcome="sold"><span class="material-symbols-outlined">celebration</span><span class="o-label">Sold!</span><span class="o-sub">confirmed sale</span></button>
+                    </div>
+                </section>
+
+                <!-- Conversion funnel -->
+                <section class="tt-card rounded-xl p-4 space-y-2.5 depth-1">
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">filter_alt</span>Conversion</h3>
+                        <p class="text-xs subtle-text">% of the step before</p>
+                    </div>
+                    <div class="funnel-row h-call"><p class="text-sm font-medium">Calls</p><div class="funnel-track"><div class="funnel-fill" data-step="calls"></div><span class="funnel-count num" data-count="calls">0</span></div><p class="funnel-pct num subtle-text" data-pct="calls">—</p></div>
+                    <div class="funnel-row h-elig"><p class="text-sm font-medium">Eligible</p><div class="funnel-track"><div class="funnel-fill" data-step="elig"></div><span class="funnel-count num" data-count="elig">0</span></div><p class="funnel-pct num" data-pct="elig">—</p></div>
+                    <div class="funnel-row h-offer"><p class="text-sm font-medium">Offered</p><div class="funnel-track"><div class="funnel-fill" data-step="offer"></div><span class="funnel-count num" data-count="offer">0</span></div><p class="funnel-pct num" data-pct="offer">—</p></div>
+                    <div class="funnel-row h-sold"><p class="text-sm font-medium">Sold</p><div class="funnel-track"><div class="funnel-fill" data-step="sold"></div><span class="funnel-count num" data-count="sold">0</span></div><p class="funnel-pct num" data-pct="sold">—</p></div>
+                </section>
+
+                <!-- Spark points (calendar month) -->
+                <section class="tt-card rounded-xl p-4 space-y-3 depth-1">
+                    <div class="flex items-end justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">bolt</span>Spark Points · <span id="sparkMonth">this month</span></h3>
+                            <p class="text-xs subtle-text mt-0.5">VAS sold on SPP4 Internet, counted for the calendar month</p>
+                        </div>
+                        <p class="text-right"><span id="sparkTotal" class="num spark-total accent-text">0</span><span class="subtle-text font-semibold"> / 40</span></p>
+                    </div>
+                    <div class="vas-tally">
+                        <div class="h-es"><span class="material-symbols-outlined">shield</span><p id="tallyEs" class="num text-xl font-bold">0</p><p class="text-[0.65rem] subtle-text">Enhanced Security</p></div>
+                        <div class="h-whw"><span class="material-symbols-outlined">wifi</span><p id="tallyWhw" class="num text-xl font-bold">0</p><p class="text-[0.65rem] subtle-text">Whole Home WiFi</p></div>
+                        <div class="h-iw"><span class="material-symbols-outlined">battery_charging_full</span><p id="tallyIw" class="num text-xl font-bold">0</p><p class="text-[0.65rem] subtle-text">Invincible WiFi</p></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5"><span class="subtle-text">Monthly target · 10 VAS</span><span id="vasProgressText" class="num font-semibold">0 / 10</span></div>
+                        <div id="vasMeter" class="tt-meter"></div>
+                    </div>
+                    <div class="grid gap-2">
+                        <div class="award" id="awardEach"><span class="a-ico"><span class="material-symbols-outlined text-base">person</span></span><div><p class="text-sm font-semibold">Individual award</p><p class="text-xs subtle-text">1 of each VAS</p></div><span class="a-pts">+10</span></div>
+                        <div class="award" id="awardTarget"><span class="a-ico"><span class="material-symbols-outlined text-base">target</span></span><div><p class="text-sm font-semibold">Monthly target</p><p class="text-xs subtle-text">10 VAS of any type</p></div><span class="a-pts">+20</span></div>
+                        <div class="award" id="awardTeam"><span class="a-ico"><span class="material-symbols-outlined text-base">groups</span></span><div><p class="text-sm font-semibold">Team incentive</p><p class="text-xs subtle-text">Whole team sold 1 of each</p></div>
+                            <label class="toggle-switch ml-auto mr-1" title="Mark when your team hits it"><input type="checkbox" id="teamToggle"><span class="slider"></span></label><span class="a-pts" style="margin-left:0">+10</span></div>
+                    </div>
+                </section>
+
+                <!-- Call log -->
+                <section class="space-y-2 depth-1">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">history</span>Call log</h3>
+                        <p id="logCount" class="text-xs subtle-text"></p>
+                    </div>
+                    <div id="logList" class="space-y-2 p-1">
+                        <p id="emptyState" class="text-center subtle-text py-8 text-sm">No calls logged in this range yet.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Footer -->
+            <footer class="pr-4 pt-3 mt-1 flex flex-wrap justify-between items-center gap-2 text-sm" style="border-top:1px solid var(--border)">
+                <div class="flex items-center gap-1">
+                    <button id="resetDataBtn" class="flex items-center gap-1.5 subtle-text hover:text-red-500 transition-colors py-2 px-2.5 rounded-lg custom-hover">
+                        <span class="material-symbols-outlined text-base">restart_alt</span>Reset
+                    </button>
+                    <button id="copyBtn" class="flex items-center gap-1.5 subtle-text transition-colors py-2 px-2.5 rounded-lg custom-hover">
+                        <span class="material-symbols-outlined text-base">content_copy</span>Copy stats
+                    </button>
+                </div>
+                <div id="lastUpdatedEl" class="flex items-center gap-2 subtle-text text-xs">
+                    <span class="material-symbols-outlined text-base">schedule</span><span></span>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Edit modal -->
+    <div id="editModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="glass-effect tt-surface rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-accent shadow-2xl">
+            <h3 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">edit</span> Edit call</h3>
+            <div class="grid grid-cols-2 gap-2" id="editOutcomes">
+                <button class="vas-chip h-call justify-center" data-outcome="call">Not eligible</button>
+                <button class="vas-chip h-elig justify-center" data-outcome="eligible">Eligible</button>
+                <button class="vas-chip h-offer justify-center" data-outcome="offered">Offered</button>
+                <button class="vas-chip h-sold justify-center" data-outcome="sold">Sold</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5" id="editVas">
+                <button class="vas-chip h-es"  data-vas="es"><span class="material-symbols-outlined">shield</span>Security</button>
+                <button class="vas-chip h-whw" data-vas="whw"><span class="material-symbols-outlined">wifi</span>Whole Home</button>
+                <button class="vas-chip h-iw"  data-vas="iw"><span class="material-symbols-outlined">battery_charging_full</span>Invincible</button>
+            </div>
+            <input type="text" id="editNoteInput" maxlength="120" placeholder="Note" class="w-full p-3 glass-input tt-input rounded-lg focus-accent text-inherit">
+            <div class="flex justify-end gap-3">
+                <button id="cancelEditBtn" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
+                <button id="saveEditBtn" class="accent-bg tt-btn font-bold px-4 py-2 rounded-lg">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset confirmation modal -->
+    <div id="resetConfirmModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="glass-effect tt-surface rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-danger shadow-2xl">
+            <h3 class="text-lg font-semibold flex items-center gap-2 text-red-500"><span class="material-symbols-outlined">warning</span> Reset everything?</h3>
+            <p class="subtle-text">This deletes every logged call (all time, not just this view) and the team toggle. It can't be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
+                <button id="confirmResetBtn" class="danger-bg font-bold px-4 py-2 rounded-lg transition-colors">Yes, reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../smt/theme.js?v=20261107"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const $ = (id) => document.getElementById(id);
+        const panel = $('trackerPanel');
+        const body = $('panelBody');
+        const reduceMotion = SMTTheme.reduceMotion;
+
+        // ════════════════════ DATA ════════════════════
+        // Every call is one entry; the funnel is derived from outcomes, so the
+        // four numbers can never disagree with each other.
+        //   call     → not eligible (counts as a call only)
+        //   eligible → eligible, no offer made
+        //   offered  → offered, customer declined
+        //   sold     → confirmed sale
+        const RANK = { call: 0, eligible: 1, offered: 2, sold: 3 };
+        const OUT = {
+            call:     { label: 'Not eligible', icon: 'block',       hue: 'h-call'  },
+            eligible: { label: 'Eligible',     icon: 'verified',    hue: 'h-elig'  },
+            offered:  { label: 'Offered',      icon: 'campaign',    hue: 'h-offer' },
+            sold:     { label: 'Sold',         icon: 'celebration', hue: 'h-sold'  }
+        };
+        const VAS = { es: { short: 'SEC', hue: 'h-es' }, whw: { short: 'WHW', hue: 'h-whw' }, iw: { short: 'INV', hue: 'h-iw' } };
+        const KEY = 'i300TrackerState';
+
+        const fresh = () => ({ entries: [], scope: 'today', team: {}, lastUpdated: null });
+        let state = fresh();
+        try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) state = { ...fresh(), ...s }; } catch (e) {}
+        const save = () => { state.lastUpdated = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+        let pendingVas = { es: false, whw: false, iw: false };
+        let editingId = null, editDraft = null, lastLoggedId = null;
+        let shown = null;              // last figures drawn, to know what changed
+        let pageReady = false;
+
+        const monthKey = (d) => d.getFullYear() + '-' + (d.getMonth() + 1);
+        const sameDay = (a, b) => a.toDateString() === b.toDateString();
+        function inScope(e, scope, now) {
+            const d = new Date(e.ts);
+            if (scope === 'today') return sameDay(d, now);
+            if (scope === 'month') return monthKey(d) === monthKey(now);
+            return true;
+        }
+        function tally(list) {
+            const t = { calls: list.length, elig: 0, offer: 0, sold: 0 };
+            list.forEach(e => { const r = RANK[e.outcome]; if (r >= 1) t.elig++; if (r >= 2) t.offer++; if (r >= 3) t.sold++; });
+            return t;
+        }
+        const pct = (a, b) => b > 0 ? (a / b) * 100 : null;
+
+        // ════════════════════ RENDER ════════════════════
+        const statEls = { calls: $('statCalls'), elig: $('statElig'), offer: $('statOffer'), sold: $('statSold') };
+        const subEls  = { calls: $('subCalls'),  elig: $('subElig'),  offer: $('subOffer'),  sold: $('subSold') };
+        const SCOPE_LABEL = { today: () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }),
+                              month: () => new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+                              all:   () => 'All time' };
+
+        function rateColor(v) {
+            const cs = getComputedStyle(document.documentElement);
+            return v == null ? cs.getPropertyValue('--subtle').trim()
+                 : v >= 60 ? cs.getPropertyValue('--rate-green').trim()
+                 : v >= 30 ? cs.getPropertyValue('--accent').trim()
+                 : cs.getPropertyValue('--rate-red').trim();
+        }
+
+        function render() {
+            const now = new Date();
+            const list = state.entries.filter(e => inScope(e, state.scope, now));
+            const t = tally(list);
+
+            $('scopeLabel').textContent = SCOPE_LABEL[state.scope]();
+            placePill();
+
+            // Counters roll like an odometer; the card glows when its figure moves.
+            Object.keys(statEls).forEach(k => {
+                SMTTheme.roll(statEls[k], t[k]);
+                if (pageReady && shown && shown[k] !== t[k] && !reduceMotion) {
+                    const card = statEls[k].closest('.stat-card');
+                    card.classList.remove('bump'); void card.offsetWidth; card.classList.add('bump');
+                }
+            });
+            const eR = pct(t.elig, t.calls), oR = pct(t.offer, t.elig), sR = pct(t.sold, t.offer), close = pct(t.sold, t.calls);
+            subEls.calls.textContent = t.calls ? (t.calls - t.elig) + ' not eligible' : ' ';
+            subEls.elig.textContent  = eR == null ? ' ' : eR.toFixed(0) + '% of calls';
+            subEls.offer.textContent = oR == null ? ' ' : oR.toFixed(0) + '% offer rate';
+            subEls.sold.textContent  = sR == null ? ' ' : sR.toFixed(0) + '% close rate';
+
+            // Funnel: bars scale against total calls; % is vs the step before.
+            const steps = [['calls', t.calls, null], ['elig', t.elig, eR], ['offer', t.offer, oR], ['sold', t.sold, sR]];
+            steps.forEach(([k, n, r], i) => {
+                const fill = panel.querySelector(`[data-step="${k}"]`);
+                const scale = t.calls ? n / t.calls : 0;
+                const prevScale = parseFloat(fill.dataset.s || '0');
+                fill.style.transitionDelay = pageReady ? '0ms' : (120 + i * 90) + 'ms';
+                fill.style.transform = `scaleX(${scale})`;
+                if (scale > prevScale + 0.001 && !reduceMotion) { fill.classList.remove('sweep'); void fill.offsetWidth; fill.classList.add('sweep'); }
+                fill.dataset.s = scale;
+                SMTTheme.roll(panel.querySelector(`[data-count="${k}"]`), n);
+                const pEl = panel.querySelector(`[data-pct="${k}"]`);
+                if (k === 'calls') { pEl.innerHTML = t.calls ? '100%<small>base</small>' : '—'; return; }
+                const label = { elig: 'eligible', offer: 'offered', sold: 'closed' }[k];
+                pEl.innerHTML = r == null ? '—' : `${r.toFixed(0)}%<small>${label}</small>`;
+                pEl.style.color = rateColor(r);
+            });
+
+            renderSpark(now);
+
+            // Newest first; rows are keyed so only the touched row animates.
+            SMTTheme.list($('logList'), [...list].reverse(), {
+                key: e => e.id, create: logRow, update: patchRow, empty: $('emptyState')
+            });
+            $('logCount').textContent = list.length ? `${list.length} call${list.length === 1 ? '' : 's'}` + (close != null ? ` · ${close.toFixed(1)}% sold/calls` : '') : '';
+
+            $('lastUpdatedEl').querySelector('span:last-child').textContent =
+                state.lastUpdated ? 'Updated ' + relTime(new Date(state.lastUpdated)) : 'No calls yet';
+
+            shown = t;
+        }
+
+        function renderSpark(now) {
+            const mk = monthKey(now);
+            const month = state.entries.filter(e => monthKey(new Date(e.ts)) === mk);
+            const v = { es: 0, whw: 0, iw: 0 };
+            month.forEach(e => { if (e.vas) Object.keys(v).forEach(k => { if (e.vas[k]) v[k]++; }); });
+            const total = v.es + v.whw + v.iw;
+            SMTTheme.roll($('tallyEs'), v.es); SMTTheme.roll($('tallyWhw'), v.whw); SMTTheme.roll($('tallyIw'), v.iw);
+            $('vasProgressText').textContent = `${Math.min(total, 10)} / 10` + (total > 10 ? ` (+${total - 10})` : '');
+            SMTTheme.renderMeter($('vasMeter'), Math.min(100, total * 10), { segments: 10, hearts: 5 });
+            const each = v.es > 0 && v.whw > 0 && v.iw > 0, target = total >= 10, team = !!state.team[mk];
+            $('awardEach').classList.toggle('won', each);
+            $('awardTarget').classList.toggle('won', target);
+            $('awardTeam').classList.toggle('won', team);
+            $('teamToggle').checked = team;
+            const pts = (each ? 10 : 0) + (target ? 20 : 0) + (team ? 10 : 0);
+            SMTTheme.countUp($('sparkTotal'), pts, {});
+            $('sparkMonth').textContent = now.toLocaleDateString(undefined, { month: 'long' });
+        }
+
+        function logRow(e) {
+            const o = OUT[e.outcome];
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between gap-2 py-2 px-3 list-item-bg tt-card rounded-lg shadow';
+            row.dataset.id = e.id;
+            row.innerHTML = `
+                <div class="flex-grow min-w-0 flex items-center gap-2">
+                    <span class="o-badge ${o.hue} flex-shrink-0"><span class="material-symbols-outlined">${o.icon}</span>${o.label}</span>
+                    <span class="vas-tags flex gap-1 flex-shrink-0"></span>
+                    <p class="row-note text-sm truncate min-w-0"></p>
+                </div>
+                <p class="text-xs subtle-text num flex-shrink-0">${new Date(e.ts).toLocaleString(undefined, state.scope === 'today' ? { hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                <div class="flex items-center flex-shrink-0">
+                    <button class="edit-btn p-2 rounded-full custom-hover transition-colors" aria-label="Edit call"><span class="material-symbols-outlined text-sm">edit</span></button>
+                    <button class="delete-btn p-2 rounded-full custom-hover transition-colors" aria-label="Delete call"><span class="material-symbols-outlined text-sm">delete</span></button>
+                </div>`;
+            fillRow(row, e);
+            return row;
+        }
+        function fillRow(row, e) {
+            const o = OUT[e.outcome], badge = row.querySelector('.o-badge');
+            badge.className = 'o-badge ' + o.hue;
+            badge.innerHTML = `<span class="material-symbols-outlined">${o.icon}</span>${o.label}`;
+            row.querySelector('.vas-tags').innerHTML = Object.keys(VAS).filter(k => e.vas && e.vas[k])
+                .map(k => `<span class="vas-tag ${VAS[k].hue}">${VAS[k].short}</span>`).join('');
+            const note = row.querySelector('.row-note');
+            note.textContent = e.note || '';
+            note.style.display = e.note ? '' : 'none';
+            row.__sig = sig(e);
+        }
+        const sig = (e) => e.outcome + '|' + (e.note || '') + '|' + JSON.stringify(e.vas || {});
+        function patchRow(row, e) { if (row.__sig !== sig(e)) { fillRow(row, e); SMTTheme.reveal(row.firstElementChild, 40); } }
+
+        // ════════════════════ ACTIONS ════════════════════
+        function logCall(outcome, btn) {
+            const entry = { id: Date.now(), ts: new Date().toISOString(), outcome, note: $('noteInput').value.trim() };
+            if (pendingVas.es || pendingVas.whw || pendingVas.iw) entry.vas = { ...pendingVas };
+            state.entries.push(entry);
+            lastLoggedId = entry.id;
+            $('noteInput').value = '';
+            pendingVas = { es: false, whw: false, iw: false };
+            syncChips($('vasPicker'), pendingVas);
+            save();
+            render();
+            if (outcome === 'sold') burst(btn);
+            toast(`${OUT[outcome].label} logged` + (entry.vas ? ` · ${Object.keys(entry.vas).filter(k => entry.vas[k]).length} VAS` : ''));
+        }
+
+        function syncChips(wrap, vas) {
+            wrap.querySelectorAll('[data-vas]').forEach(c => { const on = !!vas[c.dataset.vas]; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); });
+        }
+
+        // Accent-coloured confetti from the Sold button. Short, no overshoot,
+        // gone in under a second. Skipped under reduced motion.
+        function burst(btn) {
+            if (reduceMotion || !btn) return;
+            const r = btn.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            const colors = ['#22C55E', '#4ADE80', '#F59E0B', '#38BDF8', '#F472B6', '#FFFFFF'];
+            for (let i = 0; i < 26; i++) {
+                const p = document.createElement('span');
+                p.className = 'burst';
+                p.style.left = cx + 'px'; p.style.top = cy + 'px';
+                p.style.background = colors[i % colors.length];
+                document.body.appendChild(p);
+                const a = (Math.PI * 2 * i) / 26 + Math.random() * 0.4, d = 60 + Math.random() * 90;
+                const x = Math.cos(a) * d, y = Math.sin(a) * d - 40;
+                p.animate([
+                    { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1 },
+                    { transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(0.9) rotate(${180 + Math.random() * 360}deg)`, opacity: 1, offset: 0.6 },
+                    { transform: `translate(calc(-50% + ${x * 1.1}px), calc(-50% + ${y + 70}px)) scale(0.4) rotate(${360 + Math.random() * 360}deg)`, opacity: 0 }
+                ], { duration: 820 + Math.random() * 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }).finished.then(() => p.remove(), () => p.remove());
+            }
+        }
+
+        let toastTimer = null;
+        function toast(text) {
+            $('toastText').textContent = text;
+            $('toast').classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => $('toast').classList.remove('show'), 3200);
+        }
+        $('toastUndo').addEventListener('click', () => {
+            if (lastLoggedId == null) return;
+            state.entries = state.entries.filter(e => e.id !== lastLoggedId);
+            lastLoggedId = null; save(); render();
+            $('toast').classList.remove('show');
+        });
+
+        // Outcome buttons
+        panel.querySelectorAll('.outcome-btn').forEach(b => b.addEventListener('click', () => logCall(b.dataset.outcome, b)));
+        $('noteInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+        // VAS chips for the next logged call
+        $('vasPicker').addEventListener('click', (e) => {
+            const c = e.target.closest('[data-vas]'); if (!c) return;
+            pendingVas[c.dataset.vas] = !pendingVas[c.dataset.vas];
+            syncChips($('vasPicker'), pendingVas);
+        });
+        // Keyboard shortcuts: 1–4 log an outcome, S/W/I toggle VAS (not while typing).
+        document.addEventListener('keydown', (e) => {
+            if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+            if (!$('editModal').classList.contains('hidden') || !$('resetConfirmModal').classList.contains('hidden')) return;
+            const map = { '1': 'call', '2': 'eligible', '3': 'offered', '4': 'sold' };
+            if (map[e.key]) { logCall(map[e.key], panel.querySelector(`[data-outcome="${map[e.key]}"]`)); return; }
+            const v = { s: 'es', w: 'whw', i: 'iw' }[e.key.toLowerCase()];
+            if (v) { pendingVas[v] = !pendingVas[v]; syncChips($('vasPicker'), pendingVas); }
+        });
+
+        // Scope switch with a sliding pill
+        function placePill() {
+            const sw = $('scopeSwitch'), pill = sw.querySelector('.seg-pill');
+            sw.querySelectorAll('button').forEach(b => {
+                const on = b.dataset.scope === state.scope;
+                b.classList.toggle('on', on); b.setAttribute('aria-selected', on);
+                if (on) { pill.style.width = b.offsetWidth + 'px'; pill.style.transform = `translateX(${b.offsetLeft}px)`; }
+            });
+        }
+        $('scopeSwitch').addEventListener('click', (e) => {
+            const b = e.target.closest('button'); if (!b || b.dataset.scope === state.scope) return;
+            state.scope = b.dataset.scope;
+            try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) {}
+            render();
+        });
+
+        $('teamToggle').addEventListener('change', (e) => {
+            state.team[monthKey(new Date())] = e.target.checked; save(); render();
+        });
+
+        // Log list: edit / delete
+        $('logList').addEventListener('click', (e) => {
+            const btn = e.target.closest('button'); if (!btn) return;
+            const row = btn.closest('[data-id]'); if (!row) return;
+            const id = Number(row.dataset.id);
+            if (btn.classList.contains('delete-btn')) { state.entries = state.entries.filter(x => x.id !== id); save(); render(); return; }
+            if (btn.classList.contains('edit-btn')) {
+                const entry = state.entries.find(x => x.id === id); if (!entry) return;
+                editingId = id;
+                editDraft = { outcome: entry.outcome, vas: { es: false, whw: false, iw: false, ...(entry.vas || {}) } };
+                $('editNoteInput').value = entry.note || '';
+                syncEdit();
+                SMTTheme.showModal($('editModal'), btn);
+            }
+        });
+        function syncEdit() {
+            $('editOutcomes').querySelectorAll('[data-outcome]').forEach(c => c.classList.toggle('on', c.dataset.outcome === editDraft.outcome));
+            syncChips($('editVas'), editDraft.vas);
+        }
+        $('editOutcomes').addEventListener('click', (e) => { const c = e.target.closest('[data-outcome]'); if (c) { editDraft.outcome = c.dataset.outcome; syncEdit(); } });
+        $('editVas').addEventListener('click', (e) => { const c = e.target.closest('[data-vas]'); if (c) { editDraft.vas[c.dataset.vas] = !editDraft.vas[c.dataset.vas]; syncEdit(); } });
+        function closeEdit() { editingId = null; return SMTTheme.hideModal($('editModal')); }
+        function saveEdit() {
+            const entry = state.entries.find(x => x.id === editingId);
+            if (entry) {
+                entry.outcome = editDraft.outcome;
+                const v = editDraft.vas;
+                if (v.es || v.whw || v.iw) entry.vas = { ...v }; else delete entry.vas;
+                entry.note = $('editNoteInput').value.trim();
+                save();
+            }
+            closeEdit().then(render);
+        }
+        $('saveEditBtn').addEventListener('click', saveEdit);
+        $('cancelEditBtn').addEventListener('click', closeEdit);
+        $('editModal').addEventListener('click', (e) => { if (e.target === $('editModal')) closeEdit(); });
+        $('editNoteInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveEdit(); });
+
+        // Reset
+        const closeReset = () => SMTTheme.hideModal($('resetConfirmModal'));
+        $('resetDataBtn').addEventListener('click', (e) => SMTTheme.showModal($('resetConfirmModal'), e.currentTarget));
+        $('cancelResetBtn').addEventListener('click', closeReset);
+        $('resetConfirmModal').addEventListener('click', (e) => { if (e.target === $('resetConfirmModal')) closeReset(); });
+        $('confirmResetBtn').addEventListener('click', () => {
+            const scope = state.scope;
+            state = fresh(); state.scope = scope;
+            try { localStorage.removeItem(KEY); } catch (e) {}
+            state.lastUpdated = null;
+            closeReset().then(render);
+        });
+
+        // Copy a plain-text summary of the current range
+        $('copyBtn').addEventListener('click', async () => {
+            const now = new Date(), list = state.entries.filter(e => inScope(e, state.scope, now)), t = tally(list);
+            const f = (v) => v == null ? '—' : v.toFixed(0) + '%';
+            const text = `Internet 300 · ${SCOPE_LABEL[state.scope]()}\n` +
+                `Calls ${t.calls} | Eligible ${t.elig} (${f(pct(t.elig, t.calls))}) | Offers ${t.offer} (${f(pct(t.offer, t.elig))}) | Sales ${t.sold} (${f(pct(t.sold, t.offer))} close)`;
+            try { await navigator.clipboard.writeText(text); toast('Stats copied'); } catch (e) { toast('Copy failed'); }
+        });
+
+        function relTime(d) {
+            const s = Math.round((Date.now() - d) / 1000), m = Math.round(s / 60), h = Math.round(m / 60), dd = Math.round(h / 24);
+            if (s < 10) return 'just now'; if (s < 60) return s + 's ago'; if (m < 60) return m + 'm ago';
+            if (h < 24) return h + 'h ago'; if (dd < 2) return 'yesterday'; return dd + 'd ago';
+        }
+        setInterval(() => { if (state.lastUpdated) $('lastUpdatedEl').querySelector('span:last-child').textContent = 'Updated ' + relTime(new Date(state.lastUpdated)); }, 30000);
+        window.addEventListener('resize', placePill);
+
+        // ════════════════════ THEME ════════════════════
+        SMTTheme.init({
+            app: 'i300',
+            title: 'Internet 300 Tracker',
+            emoji: '🚀',
+            sibling: { label: 'Transfer Tracker', href: 'https://isaiart.com/transfer' },
+            onChange: render
+        });
+        SMTTheme.tilt(panel, { max: 22, excludeScroll: () => body });
+
+        render();
+        pageReady = true;
+        // fonts change the tab widths once they land
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(placePill);
+    });
+    </script>
+</body>
+</html>

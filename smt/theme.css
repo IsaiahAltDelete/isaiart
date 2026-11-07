@@ -1977,6 +1977,22 @@ html.tt-reveal::view-transition-new(root) { animation: ttReveal 560ms var(--ease
                       to   { clip-path: circle(var(--tt-vt-r) at var(--tt-vt-x) var(--tt-vt-y)); } }
 
 
+/* Cursor spotlight (theme.js wireSpotlight): a faint accent light under the
+   pointer on the soft styles' cards. It fades in and out rather than
+   appearing, and sits above the card's fill but never intercepts clicks. */
+html[data-style="default"] .tt-card, html[data-style="glass"] .tt-card,
+html[data-style="goop"] .tt-card, html[data-style="neumorphic"] .tt-card { position: relative; }
+html[data-style="default"] .tt-card::after, html[data-style="glass"] .tt-card::after,
+html[data-style="goop"] .tt-card::after, html[data-style="neumorphic"] .tt-card::after {
+    content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:0;
+    background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+    transition: opacity 420ms var(--ease-out);
+}
+html[data-style="default"] .tt-card.tt-spot::after, html[data-style="glass"] .tt-card.tt-spot::after,
+html[data-style="goop"] .tt-card.tt-spot::after, html[data-style="neumorphic"] .tt-card.tt-spot::after { opacity:1; }
+html[data-mode="light"] .tt-card::after { mix-blend-mode: multiply; }
+
+
 /* ═══════════ 10. REDUCED MOTION ═════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
