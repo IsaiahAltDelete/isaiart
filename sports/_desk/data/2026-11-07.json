@@ -1,0 +1,464 @@
+{
+ "date": "2026-11-07",
+ "updated": "2026-11-07T07:58:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 1 Miami at No. 4 Notre Dame (7:30 PM ET, NBC)",
+  "No. 2 Georgia at No. 12 Ole Miss (7:30 PM ET, ABC)",
+  "No. 7 BYU at No. 3 Utah (12:00 PM ET, ABC)"
+ ],
+ "leagues": [
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 11",
+   "note": "Saturday games with AP Top 25 teams • ranks from the Nov. 1 AP poll"
+  }
+ ],
+ "footer_note": "Fifteen qualifying events fall inside Saturday’s Eastern calendar day: every Saturday game involving an AP Top 25 team. Regional NHL and NBA games, NBA TV and NHL Network games, ranked college basketball games without a national TV window, MLS regular-season matches and UFC Fight Night are excluded. Sunday brings NASCAR’s Cup race in Miami and the NFL slate.",
+ "sources": [
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261107"
+  },
+  {
+   "label": "AP Top 25, Week 10",
+   "url": "https://www.espn.com/college-football/rankings"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261107"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-07"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-byu-utah",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 7 • 7–1"
+    },
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 3 • 8–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T12:00:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Rice-Eccles Stadium, Salt Lake City",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Top-10 matchup; unbeaten Utah hosts BYU at 10 a.m. local.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-tex-miz",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 10 • 6–2"
+    },
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "No. 19 • 6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T12:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Memorial Stadium, Columbia, Mo.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Ranked SEC matchup; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ucla-minn",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 5 • 8–0"
+    },
+    {
+     "name": "Minnesota Golden Gophers",
+     "abbr": "MINN",
+     "detail": "5–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T12:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Huntington Bank Stadium, Minneapolis",
+   "venue_tz": "Central Standard Time",
+   "notes": "Unbeaten No. 5 UCLA on the road; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-tamu-sc",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas A&M Aggies",
+     "abbr": "TA&M",
+     "detail": "4–4"
+    },
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": "No. 23 • 5–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T15:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Williams-Brice Stadium, Columbia, S.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 23 South Carolina at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ala-lsu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 9 • 6–2"
+    },
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "No. 15 • 6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T15:30:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Tiger Stadium, Baton Rouge, La.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Ranked rivals; 2:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ore-osu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oregon Ducks",
+     "abbr": "ORE",
+     "detail": "5–3"
+    },
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 11 • 6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T15:30:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "venue": "Ohio Stadium, Columbus, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 11 Ohio State hosts Oregon.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-mrmk-wake",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Merrimack Warriors",
+     "abbr": "MRMK",
+     "detail": "4–5"
+    },
+    {
+     "name": "Wake Forest Demon Deacons",
+     "abbr": "WAKE",
+     "detail": "No. 14 • 7–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T15:30:00-05:00",
+   "watch": "ACC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ACC Network window.",
+   "venue": "Allegacy Federal Credit Union Stadium, Winston-Salem, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 14 Wake Forest hosts FCS Merrimack.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-cin-hou",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Cincinnati Bearcats",
+     "abbr": "CIN",
+     "detail": "5–3"
+    },
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 17 • 6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T15:30:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "TDECU Stadium, Houston",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 17 Houston at home; 2:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-bois-csu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BOIS",
+     "detail": "No. 20 • 7–1"
+    },
+    {
+     "name": "Colorado State Rams",
+     "abbr": "CSU",
+     "detail": "3–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T18:00:00-05:00",
+   "watch": "USA Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National USA Network window.",
+   "venue": "Canvas Stadium, Fort Collins, Colo.",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 20 Boise State on the road; 4 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-uk-tenn",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kentucky Wildcats",
+     "abbr": "UK",
+     "detail": "No. 8 • 7–1"
+    },
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 16 • 6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T18:15:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Neyland Stadium, Knoxville, Tenn.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Ranked SEC matchup in Knoxville.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-mia-nd",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 1 • 8–0"
+    },
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 4 • 7–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T19:30:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Notre Dame Stadium, Notre Dame, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Unbeaten No. 1 Miami visits No. 4 Notre Dame.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-uga-miss",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 2 • 7–1"
+    },
+    {
+     "name": "Ole Miss Rebels",
+     "abbr": "MISS",
+     "detail": "No. 12 • 6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T19:30:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Vaught-Hemingway Stadium, Oxford, Miss.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 2 Georgia on the road; 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-iowa-nu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 21 • 6–2"
+    },
+    {
+     "name": "Northwestern Wildcats",
+     "abbr": "NU",
+     "detail": "6–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T19:30:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Ryan Field, Evanston, Ill.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 21 Iowa on the road; 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ou-fla",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oklahoma Sooners",
+     "abbr": "OU",
+     "detail": "4–4"
+    },
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 25 • 5–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T19:45:00-05:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Ben Hill Griffin Stadium, Gainesville, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 25 Florida at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-wvu-ttu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "West Virginia Mountaineers",
+     "abbr": "WVU",
+     "detail": "5–3"
+    },
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 13 • 7–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-07T21:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Galaxy Stadium, Lubbock, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 13 Texas Tech closes the night; 8:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
