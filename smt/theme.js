@@ -2224,19 +2224,20 @@ var retro = (function () {
 
 
 /* ── Newsroom chrome ──────────────────────────────────────────────────────
-   Data comes from free, key-less, CORS-enabled endpoints and is cached for
-   10 minutes. Every fetch is wrapped — if the network is down, rate-limited
-   or blocked, the bands fall back to canned copy and the theme still looks
-   right. Nothing here is required for the app to work. */
+   Data comes from free, key-less, CORS-enabled endpoints (listed above
+   loadWikipedia), is cached for 10 minutes, and refreshes on that clock
+   while the page stays open. Every fetch is wrapped — if the network is
+   down, rate-limited or blocked, the bands fall back to canned copy and the
+   theme still looks right. Nothing here is required for the app to work. */
 var news = (function () {
-    var built = false, clockTimer = null, TTL = 10 * 60 * 1000;
-    var CACHE_H = 'smt-news-headlines-v3', CACHE_T = 'smt-news-ticker-v2';
+    var built = false, clockTimer = null, liveTimer = null, TTL = 10 * 60 * 1000;
+    var CACHE_H = 'smt-news-headlines-v4', CACHE_T = 'smt-news-ticker-v3';
     // This desk sits beside a sales tracker that plays celebration chimes, so
     // hard news (deaths, attacks, disasters) stays off it. Items that match
     // are dropped; the curated rest still fills the crawl and story box.
     var GRIM = /\b(kill(s|ed|ing|ings|er|ers)?|dead|deadly|deaths?|dies|died|dying|shoot(s|ing|ings)?|gunm[ae]n|gunfire|attack(s|ed|er|ers)?|bomb(s|ed|ing|ings|er|ers)?|blasts?|explosions?|wars?|wartime|battles?|massacres?|murder(s|ed|er|ers)?|assassinat(ed|ion|ions)|terror(ism|ist|ists)?|hostages?|stabb(ed|ing|ings)|missiles?|airstrikes?|invasion|invade[sd]?|crash(es|ed)?|collisions?|derail(ed|ment)|earthquakes?|tsunamis?|floods?|flooding|hurricanes?|typhoons?|cyclones?|tornado(es)?|wildfires?|famine|genocide|casualt(y|ies)|victims?|injur(ed|ies|y|ing)|wounded|abuse[sd]?|executed|execution|suicide|drown(ed|ing|s)?|disasters?|riots?)\b/i;
     function calm(s) { return !GRIM.test(String(s || '')); }
-    var CACHE_W = 'smt-news-weather', CACHE_G = 'smt-news-geo';
+    var CACHE_W = 'smt-news-weather-v2', CACHE_G = 'smt-news-geo';
     var WEATHER_TTL = 15 * 60 * 1000, GEO_TTL = 24 * 60 * 60 * 1000;
 
     /* Pin a location here to skip the IP lookup entirely, e.g.
@@ -2294,8 +2295,8 @@ var news = (function () {
             '<span class="wx-cond" id="wxCond">Loading…</span></div>' +
             '<div class="wx-days" id="wxDays"></div>' }));
 
-        // Top stories: the day's most-read Wikipedia articles with their lead
-        // photo, rotating like the box beside an anchor's shoulder.
+        // Top stories: Wikipedia's picks, sports and space stories, each with
+        // its photo, rotating like the box beside an anchor's shoulder.
         document.body.appendChild(el('div', { id:'newsStory', class:'tt-clash', 'aria-hidden':'true', html:
             '<div class="ns-head"><span>Top Stories</span><span class="ns-count" id="nsCount"></span></div>' +
             '<div class="ns-media"><img id="nsImg" alt="" referrerpolicy="no-referrer"><div class="ns-ph"><b>SMT</b>NEWS 24</div>' +
@@ -2349,16 +2350,29 @@ var news = (function () {
     }
 
     /* ── Top stories ── */
-    var CACHE_S = 'smt-news-stories-v3', stories = [], storyI = 0, storyTimer = null;
+    var CACHE_S = 'smt-news-stories-v4', stories = [], storyI = 0, storyTimer = null;
     var FALLBACK_STORIES = [
         { beat:'DESK', title:'Every call logged, every number honest', desc:'The suite keeps your stats on this device.' },
         { beat:'MARKETS', title:'Flat ahead of the close', desc:'Traders wait on the afternoon queue.' },
         { beat:'WEATHER', title:'Mild, with a chance of hold music', desc:'Clear skies over the call floor.' }
     ];
+    /* The box rotates Wikipedia's picks with sports and space stories, each
+       with its own photo; the picture of the day closes the set. */
     function loadStories() {
-        var d = new Date();
-        var ymd = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
-        return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/featured/' + ymd).then(function (j) {
+        return Promise.allSettled([loadWikiStories(), loadSportsNews(), loadSpace()]).then(function (res) {
+            var w = settled(res[0]);
+            var pic = function (x) { return !!x.img; };
+            var asStory = function (x) { return { beat: x.beat, title: x.text, desc: clip(x.desc, 110), img: x.img }; };
+            var potd = w.filter(function (s) { return s.beat === 'PICTURE OF THE DAY'; });
+            var rest = w.filter(function (s) { return s.beat !== 'PICTURE OF THE DAY'; });
+            var out = roundRobin([rest, settled(res[1]).filter(pic).slice(0, 3).map(asStory), settled(res[2]).filter(pic).slice(0, 2).map(asStory)])
+                .slice(0, 9).concat(potd);
+            if (!out.length) throw 0;
+            return out;
+        });
+    }
+    function loadWikiStories() {
+        return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/featured/' + ymd('/')).then(function (j) {
             // Curated sources only (Wikipedia's editors pick these): today's
             // featured article, the "In the news" stories with their lead
             // article's photo, and the picture of the day. Most-read is left
@@ -2368,18 +2382,21 @@ var news = (function () {
                 out.push({ beat:'FEATURED', title: tfa.normalizedtitle || tfa.title, desc: tfa.description || '', img: tfa.thumbnail.source });
             (j.news || []).forEach(function (n) {
                 var link = (n.links || []).filter(function (l) { return l.thumbnail; })[0];
-                var story = String(n.story || '').replace(/<[^>]+>/g, '').trim();
+                var story = String(n.story || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
                 if (out.length < 6 && story && calm(story)) out.push({ beat:'WORLD', title: story, desc: link ? (link.normalizedtitle || '') : '', img: link ? link.thumbnail.source : null });
             });
-            if (j.image && j.image.thumbnail) out.push({ beat:'PICTURE OF THE DAY', title: (j.image.description && j.image.description.text ? String(j.image.description.text).replace(/<[^>]+>/g, '').slice(0, 120) : 'Picture of the day'), desc: j.image.artist ? String(j.image.artist.text || '').replace(/<[^>]+>/g, '') : '', img: j.image.thumbnail.source });
+            if (j.image && j.image.thumbnail) out.push({ beat:'PICTURE OF THE DAY', title: (j.image.description && j.image.description.text ? String(j.image.description.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').slice(0, 120) : 'Picture of the day'), desc: j.image.artist ? String(j.image.artist.text || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ') : '', img: j.image.thumbnail.source });
             if (!out.length) throw 0;
             return out;
         });
     }
-    function setStories(list) {
+    function setStories(list, keepPlace) {
         stories = list && list.length ? list : FALLBACK_STORIES;
         var dots = $('nsDots');
         if (dots) dots.innerHTML = stories.map(function () { return '<i></i>'; }).join('');
+        // A timed refresh keeps the rotation where it is instead of jumping
+        // back to story one; the next tick shows the new set.
+        if (keepPlace) { storyI = storyI % stories.length; Array.prototype.forEach.call(dots ? dots.children : [], function (d, k) { d.classList.toggle('on', k === storyI); }); $('nsCount').textContent = (storyI + 1) + '/' + stories.length; return; }
         showStory(0);
     }
     function showStory(i) {
@@ -2414,6 +2431,10 @@ var news = (function () {
     function setTicker(list) {
         var track = $('stockTrack'); if (!track) return;
         var body = list.map(function (q) {
+            if (q.kind === 'tag') return '<span class="stock-item tag">' + esc(q.text) + '</span>';
+            // Scores sit behind their league's flag, so each game shows only teams and status.
+            if (q.kind === 'score') return '<span class="stock-item score"><span class="val">' + esc(q.val) + '</span>' +
+                   '<span class="st ' + esc(q.state || '') + '">' + esc(q.status || '') + '</span></span>';
             var dir = q.chg > 0 ? 'up' : q.chg < 0 ? 'down' : '';
             var arrow = q.chg > 0 ? '▲' : q.chg < 0 ? '▼' : '▬';
             return '<span class="stock-item"><span class="sym">' + esc(q.sym) + '</span>' +
@@ -2421,6 +2442,17 @@ var news = (function () {
                    '<span class="chg ' + dir + '">' + arrow + ' ' + Math.abs(q.chg).toFixed(2) + '%</span></span>';
         }).join('');
         track.innerHTML = body + body;
+        // Same reading speed however many quotes and scores are on the rail.
+        track.style.animationDuration = Math.max(42, list.length * 3.4) + 's';
+    }
+    /* A timed refresh swaps a rail's contents at the end of a loop, when the
+       track is back at its start, so new items never jump into view. */
+    function atLoop(track, fn) {
+        if (!track || reduceMotion || !track.getAnimations || !track.getAnimations().length) return fn();
+        var done = false;
+        var go = function () { if (done) return; done = true; track.removeEventListener('animationiteration', go); fn(); };
+        track.addEventListener('animationiteration', go);
+        setTimeout(go, 8 * 60 * 1000);
     }
     function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -2442,60 +2474,183 @@ var news = (function () {
         try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), data: data })); } catch (e) {}
     }
 
+    // The crawl and the story box share sources, so one refresh fetches each
+    // URL once: a response is reused for a minute.
+    var fetched = {};
     function fetchJSON(url) {
-        return fetch(url, { mode:'cors' }).then(function (r) { if (!r.ok) throw 0; return r.json(); });
+        var hit = fetched[url];
+        if (hit && Date.now() - hit.at < 60000) return hit.p;
+        var p = fetch(url, { mode:'cors' }).then(function (r) { if (!r.ok) throw 0; return r.json(); });
+        fetched[url] = { at: Date.now(), p: p };
+        p.catch(function () { delete fetched[url]; });
+        return p;
+    }
+    function ymd(sep) {
+        var d = new Date();
+        return d.getFullYear() + sep + String(d.getMonth() + 1).padStart(2, '0') + sep + String(d.getDate()).padStart(2, '0');
+    }
+    function settled(r) { return r && r.status === 'fulfilled' && r.value ? r.value : []; }
+    function clip(s, n) { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; }
+    // One item from each desk in turn, so no single source runs the crawl.
+    function roundRobin(lists) {
+        var out = [], n = 0;
+        lists.forEach(function (l) { n = Math.max(n, l.length); });
+        for (var i = 0; i < n; i++) lists.forEach(function (l) { if (l[i]) out.push(l[i]); });
+        return out;
     }
 
-    /* Two independent open feeds, both key-less and CORS-enabled:
-         • Wikipedia "most read today"  — what the world is actually reading
-         • Hacker News top stories      — the tech desk
-       Interleaved so the crawl has variety, and either one failing still
-       leaves a populated ticker. */
+    /* The desks. Every source is free, key-less and readable from a browser
+       (CORS), and each fails on its own without taking the others down:
+         • Wikipedia     — "In the news", the featured article, on this day,
+                           and who was born today (editor-curated only)
+         • ESPN          — league headlines with photos, and the scoreboards
+                           for the rail (an unofficial but long-stable API)
+         • /sports/      — this site's own Sports Desk, when it ran today
+         • Spaceflight News API — space and science, with photos
+         • Hacker News (Algolia) — front-page tech, 100+ points only
+         • TVmaze        — tonight's prime-time TV
+       Everything passes the calm() filter above. */
     function loadWikipedia() {
-        var d = new Date();
-        var ymd = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
-        return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/featured/' + ymd).then(function (j) {
+        return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/featured/' + ymd('/')).then(function (j) {
             var out = [];
             // "In the news" is only published on some days — use it when it's there.
-            (j.news || []).map(function (n) { return String(n.story || '').replace(/<[^>]+>/g, '').trim(); })
+            (j.news || []).map(function (n) { return String(n.story || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); })
                 .filter(function (txt) { return txt && calm(txt); }).slice(0, 5)
                 .forEach(function (txt) { out.push({ beat:'WORLD', text: txt }); });
             // Editorially curated items only: the featured article and "on
             // this day". (Most-read is unfiltered and not safe for a work screen.)
             if (j.tfa && j.tfa.normalizedtitle && calm(j.tfa.normalizedtitle + ' ' + (j.tfa.description || '') + ' ' + (j.tfa.extract || '')))
                 out.push({ beat:'FEATURED', text: j.tfa.normalizedtitle + (j.tfa.description ? ' — ' + j.tfa.description : '') });
-            ((j.onthisday) || []).filter(function (o) { return o.text && calm(o.text); }).slice(0, 4).forEach(function (o) {
-                out.push({ beat:'ON THIS DAY', text: (o.year ? o.year + ': ' : '') + String(o.text).replace(/<[^>]+>/g, '') });
+            ((j.onthisday) || []).filter(function (o) { return o.text && calm(o.text); }).slice(0, 2).forEach(function (o) {
+                out.push({ beat:'ON THIS DAY', text: (o.year ? o.year + ': ' : '') + String(o.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ') });
             });
             if (!out.length) throw 0;
             return out;
         });
     }
-    function loadHN() {
-        return fetchJSON('https://hacker-news.firebaseio.com/v0/topstories.json')
-            .then(function (ids) {
-                return Promise.all(ids.slice(0, 7).map(function (id) {
-                    return fetchJSON('https://hacker-news.firebaseio.com/v0/item/' + id + '.json').catch(function () { return null; });
-                }));
-            })
-            .then(function (items) {
-                var out = items.filter(Boolean).filter(function (i) { return i.title && calm(i.title); })
-                               .map(function (i) { return { beat:'TECH', text: i.title }; });
-                if (!out.length) throw 0;
+    function loadBorn() {
+        var d = new Date();
+        return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/onthisday/births/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0'))
+            .then(function (j) {
+                // People with a photo on their article (a rough proxy for "known"),
+                // spread across the centuries instead of the newest three.
+                var pool = (j.births || []).map(function (b) {
+                    return { year: b.year, page: b.pages && b.pages[0], text: String(b.text || '').replace(/\s*\((died|d\.)[^)]*\)/i, '').trim() };
+                }).filter(function (b) { return b.text && b.year && b.year < 1990 && b.page && b.page.thumbnail && calm(b.text); });
+                var out = [], step = Math.max(1, Math.floor(pool.length / 3));
+                for (var i = 0; i < pool.length && out.length < 3; i += step) out.push({ beat:'BORN TODAY', text: pool[i].year + ' · ' + pool[i].text });
                 return out;
             });
     }
+    function loadTech() {
+        return fetchJSON('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20').then(function (j) {
+            return (j.hits || []).filter(function (h) { return h.title && h.points >= 100 && calm(h.title); })
+                .sort(function (a, b) { return b.points - a.points; }).slice(0, 4)
+                .map(function (h) { return { beat:'TECH', text: h.title }; });
+        });
+    }
+    function loadSpace() {
+        return fetchJSON('https://api.spaceflightnewsapi.net/v4/articles/?limit=8').then(function (j) {
+            return (j.results || []).filter(function (a) { return a.title && calm(a.title + ' ' + (a.summary || '')); }).slice(0, 4)
+                .map(function (a) {
+                    return { beat:'SPACE', text: a.title.replace(/^APOD:\s*\d{4}\s+\w+\s+\d{1,2}\s*[–-]\s*/, 'Astronomy picture of the day: '),
+                             desc: a.news_site || '', img: a.image_url || null };
+                });
+        });
+    }
+    var ESPN = 'https://site.api.espn.com/apis/site/v2/sports/';
+    var LEAGUES = [
+        { path:'football/nfl', tag:'NFL' },
+        { path:'basketball/nba', tag:'NBA' },
+        { path:'football/college-football', tag:'NCAAF', ranked:true },
+        { path:'hockey/nhl', tag:'NHL' }
+    ];
+    // ESPN's own resizer, so the story box loads a 480px photo, not a 1296px one.
+    function espnImg(u) {
+        try { var p = new URL(u); return p.hostname === 'a.espncdn.com' ? 'https://a.espncdn.com/combiner/i?img=' + encodeURIComponent(p.pathname) + '&w=480&h=270' : u; }
+        catch (e) { return u; }
+    }
+    function loadSportsNews() {
+        return Promise.allSettled(LEAGUES.slice(0, 3).map(function (L) {
+            return fetchJSON(ESPN + L.path + '/news?limit=8').then(function (j) {
+                return (j.articles || []).filter(function (a) { return a.headline && a.type !== 'Media' && calm(a.headline + ' ' + (a.description || '')); })
+                    .slice(0, 3).map(function (a) {
+                        var im = (a.images || [])[0];
+                        return { beat: L.tag, text: a.headline, desc: a.description || '', img: im && im.url ? espnImg(im.url) : null };
+                    });
+            });
+        })).then(function (res) { return roundRobin(res.map(settled)); });
+    }
+    // This site's own daily Sports Desk (isaiart.com/sports), used only on
+    // the day it was written.
+    function loadGameDay() {
+        return fetchJSON('/sports/status.json').then(function (s) {
+            if (!s || s.date !== ymd('-')) return [];
+            return (s.headlines || []).slice(0, 3).map(function (h) { return { beat:'GAME DAY', text: h }; });
+        });
+    }
+    function loadTV() {
+        return fetchJSON('https://api.tvmaze.com/schedule?country=US&date=' + ymd('-')).then(function (list) {
+            var seen = {};
+            return (list || []).filter(function (e) {
+                    return e.show && e.airstamp && e.airtime >= '19:00' && e.airtime <= '22:30' && calm(e.show.name + ' ' + (e.name || ''));
+                })
+                .sort(function (a, b) { return (b.show.weight || 0) - (a.show.weight || 0); })
+                .filter(function (e) { if (seen[e.show.name]) return false; seen[e.show.name] = 1; return true; })
+                .slice(0, 3)
+                .sort(function (a, b) { return a.airstamp < b.airstamp ? -1 : 1; })
+                .map(function (e) {
+                    var net = (e.show.network || e.show.webChannel || {}).name;
+                    var at = new Date(e.airstamp).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+                    return { beat:'TONIGHT', text: at + ' · ' + e.show.name + (net ? ' (' + net + ')' : '') };
+                });
+        });
+    }
     function loadHeadlines() {
-        return Promise.allSettled([loadWikipedia(), loadHN()]).then(function (res) {
-            var a = res[0].status === 'fulfilled' ? res[0].value : [];
-            var b = res[1].status === 'fulfilled' ? res[1].value : [];
-            var out = [], n = Math.max(a.length, b.length);
-            for (var i = 0; i < n; i++) {            // interleave the two desks
-                if (a[i]) out.push(a[i]);
-                if (b[i]) out.push(b[i]);
-            }
+        var desks = [loadWikipedia(), loadGameDay(), loadSportsNews(), loadSpace(), loadTech(), loadTV(), loadBorn()];
+        return Promise.allSettled(desks).then(function (res) {
+            var out = roundRobin(res.map(settled)).slice(0, 26).map(function (h) { return { beat: h.beat, text: h.text }; });
             if (!out.length) throw 0;
-            return out.slice(0, 14);
+            out.push({ beat:'SOURCES', text:'Wikipedia · ESPN · Spaceflight News · Hacker News · TVmaze · Open-Meteo · CoinGecko · Frankfurter' });
+            return out;
+        });
+    }
+    /* Scores for the rail: live games first, then today's start times, then
+       the latest finals. College football keeps only games with a ranked team. */
+    function loadScores() {
+        var now = Date.now(), today = new Date().toDateString();
+        return Promise.allSettled(LEAGUES.map(function (L) {
+            return fetchJSON(ESPN + L.path + '/scoreboard').then(function (j) {
+                var order = { 'in':0, pre:1, post:2 };
+                return (j.events || []).map(function (e) {
+                    var c = (e.competitions || [])[0], st = (e.status && e.status.type) || {};
+                    if (!c || !c.competitors || c.competitors.length !== 2) return null;
+                    var home = c.competitors.filter(function (t) { return t.homeAway === 'home'; })[0] || c.competitors[0];
+                    var away = c.competitors.filter(function (t) { return t.homeAway === 'away'; })[0] || c.competitors[1];
+                    var rank = function (t) { var r = t.curatedRank && t.curatedRank.current; return r && r <= 25 ? r : 0; };
+                    if (L.ranked && !rank(home) && !rank(away)) return null;
+                    var t = new Date(e.date).getTime();
+                    if (st.state !== 'in' && Math.abs(t - now) > 30 * 3600000) return null;
+                    var name = function (x) { return (rank(x) ? '#' + rank(x) + ' ' : '') + ((x.team && x.team.abbreviation) || '?'); };
+                    var pre = st.state === 'pre';
+                    var when = new Date(e.date);
+                    var status = pre ? (when.toDateString() === today ? '' : when.toLocaleDateString([], { weekday:'short' }) + ' ') + when.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })
+                                     : (st.shortDetail || st.detail || '');
+                    return { kind:'score', sym: L.tag, state: st.state || 'pre', status: status, t: t,
+                             val: name(away) + (pre ? '' : ' ' + away.score) + ' @ ' + name(home) + (pre ? '' : ' ' + home.score) };
+                }).filter(Boolean).sort(function (a, b) {
+                    return (order[a.state] - order[b.state]) || (a.state === 'post' ? b.t - a.t : a.t - b.t);
+                }).slice(0, 5);
+            });
+        })).then(function (res) {
+            // Grouped by league behind its own flag, the way a sports
+            // bottom line reads, rather than shuffled together.
+            var out = [];
+            res.forEach(function (r, i) {
+                var games = settled(r);
+                if (games.length) out = out.concat([{ kind:'tag', text: LEAGUES[i].tag }], games);
+            });
+            return out;
         });
     }
     // CoinGecko (crypto) + Frankfurter (FX). Both key-less and CORS-enabled.
@@ -2517,8 +2672,10 @@ var news = (function () {
                     return { sym:'USD/' + k, val: last[k].toFixed(k === 'JPY' ? 2 : 4), chg: prev[k] ? (last[k] - prev[k]) / prev[k] * 100 : 0 };
                 });
             }).catch(function () { return []; });
-        return Promise.all([crypto, fx]).then(function (r) {
-            var all = r[0].concat(r[1]);
+        var scores = loadScores().catch(function () { return []; });
+        return Promise.all([crypto, fx, scores]).then(function (r) {
+            var mk = r[0].concat(r[1]), sc = r[2];
+            var all = (mk.length && sc.length ? [{ kind:'tag', text:'MARKETS' }] : []).concat(mk).concat(sc);
             if (!all.length) throw 0;
             return all;
         });
@@ -2556,7 +2713,11 @@ var news = (function () {
                 + '&current=temperature_2m,weather_code'
                 + '&daily=weather_code,temperature_2m_max,temperature_2m_min'
                 + '&timezone=auto&forecast_days=5&temperature_unit=' + p.unit;
-            return fetchJSON(url).then(function (w) {
+            var aq = fetchJSON('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + p.lat + '&longitude=' + p.lon + '&current=us_aqi')
+                .then(function (a) { return a.current && a.current.us_aqi != null ? Math.round(a.current.us_aqi) : null; })
+                .catch(function () { return null; });
+            return Promise.all([fetchJSON(url), aq]).then(function (r) {
+                var w = r[0];
                 if (!w.current) throw 0;
                 var days = [], d = w.daily || {};
                 for (var i = 1; i < Math.min(5, (d.time || []).length); i++) {
@@ -2572,7 +2733,8 @@ var news = (function () {
                     temp: Math.round(w.current.temperature_2m),
                     code: w.current.weather_code,
                     unit: p.unit === 'fahrenheit' ? 'F' : 'C',
-                    days: days
+                    days: days,
+                    aqi: r[1]
                 };
                 cache(CACHE_W, out);
                 return out;
@@ -2580,7 +2742,7 @@ var news = (function () {
         });
     }
 
-    function setWeather(w) {
+    function setWeather(w, quiet) {
         var city = $('wxCity'); if (!city) return;
         var cond = wmo(w.code);
         city.textContent = w.city;
@@ -2594,8 +2756,14 @@ var news = (function () {
         }).join('');
         // …and read it out in the crawl too.
         wxItem = { beat:'WEATHER', text: w.city + ' ' + w.temp + '°' + w.unit + ' · ' + cond[0] +
-                   (w.days[0] ? ' · ' + w.days[0].label + ' high ' + w.days[0].hi + '°' : '') };
-        renderCrawl();
+                   (w.days[0] ? ' · ' + w.days[0].label + ' high ' + w.days[0].hi + '°' : '') +
+                   (w.aqi != null ? ' · Air quality ' + w.aqi + ' (' + aqiWord(w.aqi) + ')' : '') };
+        if (!quiet) renderCrawl();
+    }
+    // US EPA bands for the AQI number.
+    function aqiWord(n) {
+        return n <= 50 ? 'good' : n <= 100 ? 'moderate' : n <= 150 ? 'unhealthy for sensitive groups'
+             : n <= 200 ? 'unhealthy' : n <= 300 ? 'very unhealthy' : 'hazardous';
     }
 
     function refresh() {
@@ -2614,15 +2782,37 @@ var news = (function () {
         var cs = cached(CACHE_S);
         setStories(cs || FALLBACK_STORIES);
         if (!cs) loadStories().then(function (s) { setStories(s); cache(CACHE_S, s); }).catch(function () {});
-        if (label) label.textContent = ct ? 'MARKETS · LIVE' : 'MARKETS';
+        if (label) label.textContent = ct ? railLabel(ct) : 'MARKETS';
 
         if (!ch) loadHeadlines().then(function (h) { setHeadlines(h); cache(CACHE_H, h); })
                                 .catch(function () { /* canned copy stays up */ });
         if (!ct) loadTicker().then(function (t) {
                                 setTicker(t); cache(CACHE_T, t);
-                                if (label) label.textContent = 'MARKETS · LIVE';
+                                if (label) label.textContent = railLabel(t);
                              })
                              .catch(function () { if (label) label.textContent = 'MARKETS · OFFLINE'; });
+    }
+    function railLabel(t) {
+        return (t.some(function (q) { return q.kind === 'score'; }) ? 'MARKETS · SCORES' : 'MARKETS') + ' · LIVE';
+    }
+    /* Every ten minutes, fetch whatever has gone stale and slot it in at the
+       end of a loop, so a tracker left open all day keeps live scores and
+       fresh headlines without a reload. */
+    function refreshLive() {
+        var same = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
+        if (!cached(CACHE_H)) loadHeadlines().then(function (h) {
+            cache(CACHE_H, h);
+            if (!same(h, curHeadlines)) atLoop($('newsTrack'), function () { setHeadlines(h); });
+        }).catch(function () {});
+        if (!cached(CACHE_T)) loadTicker().then(function (t) {
+            cache(CACHE_T, t);
+            atLoop($('stockTrack'), function () { setTicker(t); var l = $('newsSrcLabel'); if (l) l.textContent = railLabel(t); });
+        }).catch(function () {});
+        if (!cached(CACHE_S)) loadStories().then(function (s) { cache(CACHE_S, s); setStories(s, true); }).catch(function () {});
+        if (!cachedFor(CACHE_W, WEATHER_TTL)) loadWeather().then(function (w) {
+            setWeather(w, true);
+            atLoop($('newsTrack'), renderCrawl);
+        }).catch(function () {});
     }
     function tickClock() {
         var c = $('newsClock');
@@ -2634,10 +2824,11 @@ var news = (function () {
             if (!clockTimer) clockTimer = setInterval(tickClock, 1000);
             if (!storyTimer) storyTimer = setInterval(function () { showStory(storyI + 1); }, 9000);
             if (!deskTimer) deskTimer = setInterval(function () { if (desk.length > 1) { deskI++; showDesk(); } }, 6500);
+            if (!liveTimer) liveTimer = setInterval(refreshLive, TTL);
         },
         stop:  function () {
-            [clockTimer, storyTimer, deskTimer].forEach(function (t) { if (t) clearInterval(t); });
-            clockTimer = storyTimer = deskTimer = null;
+            [clockTimer, storyTimer, deskTimer, liveTimer].forEach(function (t) { if (t) clearInterval(t); });
+            clockTimer = storyTimer = deskTimer = liveTimer = null;
         },
         setDesk: setDesk
     };

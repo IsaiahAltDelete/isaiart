@@ -1215,6 +1215,13 @@ html[data-style="newsroom"] .tt-meter { border-radius:0 !important; }
 .stock-item .chg { font-size:0.68rem; font-weight:700; }
 .stock-item .chg.up   { color:#31D67A; }
 .stock-item .chg.down { color:#FF6B6B; }
+/* Section flags on the rail (MARKETS, SCORES), and the scores themselves:
+   live games in the flag red with a pulsing dot, finals and start times muted. */
+.stock-item.tag { align-self:stretch; align-items:center; padding:0 10px; margin-right:6px; background: var(--news-red); color: var(--news-flag-text);
+    font-family:'Bebas Neue',Impact,sans-serif; font-size:0.86rem; letter-spacing:1.6px; border-right:none; }
+.stock-item.score .st { font-size:0.64rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; opacity:0.62; }
+.stock-item.score .st.in { opacity:1; color: color-mix(in srgb, var(--news-red) 55%, #FFFFFF); display:inline-flex; align-items:center; gap:5px; }
+.stock-item.score .st.in::before { content:''; width:6px; height:6px; border-radius:50%; background: var(--news-red); animation: livePulse 1.6s ease-in-out infinite; }
 .news-src { padding:0 14px; font-size:0.55rem; letter-spacing:0.14em; text-transform:uppercase; opacity:0.55; white-space:nowrap; }
 
 /* ── Weather bug ── */
