@@ -34,12 +34,12 @@ var THEMES = [
     { id:'glass',      name:'Glassmorphic', preview:'<div style="position:absolute;inset:0;background:linear-gradient(135deg,#6366F1,#06B6D4,#A855F7)"></div><div style="position:absolute;inset:5px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.32);border-radius:3px"></div>' },
     { id:'goop',       name:'Goop',         preview:'<div style="position:absolute;inset:0;background:linear-gradient(135deg,#12103A,#241A55)"></div><div style="position:absolute;width:19px;height:19px;border-radius:50%;background:#7C5CFF;top:4px;left:5px;filter:blur(.4px)"></div><div style="position:absolute;width:15px;height:15px;border-radius:50%;background:#22D3EE;top:12px;left:16px;filter:blur(.4px)"></div><div style="position:absolute;width:10px;height:10px;border-radius:50%;background:#F472B6;top:5px;left:32px;filter:blur(.4px)"></div>' },
     { id:'neumorphic', name:'Neumorphic',   preview:'<div style="position:absolute;inset:0;background:#E2E7EE"></div><div style="position:absolute;inset:6px;border-radius:5px;background:#E2E7EE;box-shadow:3px 3px 6px rgba(163,177,198,.75),-3px -3px 6px #fff"></div>' },
-    { id:'minimal',    name:'Minimal',      preview:'<div style="position:absolute;inset:0;background:#fff;border:1px solid #DDD"></div><div style="position:absolute;top:8px;left:7px;right:18px;height:1px;background:#BBB"></div><div style="position:absolute;top:14px;left:7px;right:26px;height:1px;background:#DDD"></div><div style="position:absolute;bottom:7px;left:7px;width:14px;height:2px;background:#111"></div>' },
+    { id:'space',      name:'Space',        preview:'<div style="position:absolute;inset:0;background:#06070B;background-image:radial-gradient(1px 1px at 8px 6px,#fff,transparent),radial-gradient(1px 1px at 30px 22px,#cfd8ff,transparent),radial-gradient(1px 1px at 44px 9px,#fff,transparent),radial-gradient(1px 1px at 16px 27px,#9aa,transparent)"></div><div style="position:absolute;width:30px;height:30px;right:-6px;top:-8px;border-radius:50%;border:1px solid transparent;background:conic-gradient(#8FB4FF,#F0A8FF,#FFE1A8,#8FB4FF) border-box;-webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude"></div><div style="position:absolute;left:6px;bottom:6px;font:700 7px Orbitron,sans-serif;letter-spacing:1px;color:#F4F4F2">SMT</div>' },
     { id:'blueprint',  name:'Blueprint',    preview:'<div style="position:absolute;inset:0;background:#0A1A2F;background-image:linear-gradient(rgba(126,190,255,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(126,190,255,.3) 1px,transparent 1px);background-size:7px 7px"></div><div style="position:absolute;inset:7px;border:1px solid #7EBEFF"></div>' },
     { id:'cyberpunk',  name:'Cyberpunk',    preview:'<div style="position:absolute;inset:0;background:#07090A;background-image:linear-gradient(rgba(51,255,102,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(51,255,102,.16) 1px,transparent 1px);background-size:8px 8px;border:2px solid #33FF66"></div><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#33FF66;box-shadow:0 0 5px #33FF66"></div>' },
     { id:'pixelart',   name:'Pixel Art',    preview:'<div style="position:absolute;inset:0;background:#1A1C2C;border:3px solid #6B6BAE"></div><div style="position:absolute;top:4px;left:4px;width:5px;height:5px;background:#FFA300"></div><div style="position:absolute;top:4px;left:11px;width:5px;height:5px;background:#FFF1E8"></div><div style="position:absolute;bottom:4px;left:4px;width:6px;height:6px;background:#00E436"></div><div style="position:absolute;bottom:4px;left:13px;width:6px;height:6px;background:#29ADFF"></div><div style="position:absolute;bottom:4px;right:4px;width:6px;height:6px;background:#FF77A8"></div>' },
     { id:'retro',      name:'Retro Win',    preview:'<div style="position:absolute;inset:0;background:#008080"></div><div style="position:absolute;top:4px;left:4px;right:4px;bottom:9px;background:#C0C0C0;box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff"></div><div style="position:absolute;top:5px;left:5px;right:5px;height:6px;background:#000080"></div><div style="position:absolute;bottom:0;left:0;right:0;height:7px;background:#C0C0C0;box-shadow:inset 0 1px 0 #fff"></div><div style="position:absolute;bottom:1px;left:1px;width:11px;height:5px;background:#C0C0C0;box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff"></div>' },
-    { id:'medieval',   name:'Medieval',     preview:'<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,#A87A3A,#3A2410)"></div><div style="position:absolute;inset:3px;background:#F4E7C4;border:1px solid #9A6A32"></div><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#8A5F14">&#9876;</div>' },
+    { id:'medieval',   name:'Handbook',     preview:'<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 40% 30%,#4A2A1A,#120D0A)"></div><div style="position:absolute;inset:4px 6px;background:#EEE5CE;box-shadow:0 1px 3px rgba(0,0,0,.5)"></div><div style="position:absolute;left:10px;top:8px;width:22px;height:3px;background:#58180D"></div><div style="position:absolute;left:10px;right:10px;top:13px;height:1px;background:#C9AD6A"></div><div style="position:absolute;left:10px;top:17px;width:14px;height:9px;border:1px solid #B8A27A;border-radius:2px"></div><div style="position:absolute;left:27px;top:17px;width:14px;height:9px;border:1px solid #B8A27A;border-radius:2px"></div>' },
     { id:'brutalist',  name:'Brutalist',    preview:'<div style="position:absolute;inset:0;background:#E8E8E0;border:3px solid #0A0A0A"></div><div style="position:absolute;top:4px;left:4px;right:4px;height:7px;background:#FF2D2D"></div><div style="position:absolute;bottom:5px;left:4px;right:12px;height:3px;background:#0A0A0A"></div>' },
     { id:'newsroom',   name:'Newsroom',     preview:'<div style="position:absolute;inset:0;background:#0B1220"></div><div style="position:absolute;top:0;left:0;right:0;height:9px;background:#D7141A"></div><div style="position:absolute;top:13px;left:4px;right:10px;height:2px;background:rgba(255,255,255,.65)"></div><div style="position:absolute;top:18px;left:4px;right:20px;height:2px;background:rgba(255,255,255,.35)"></div><div style="position:absolute;bottom:0;left:0;right:0;height:8px;background:#101B2C;border-top:1px solid rgba(255,255,255,.25)"></div>' }
 ];
@@ -55,7 +55,8 @@ var COLORS = [
     { id:'white',  title:'Indigo',  swatch:'linear-gradient(135deg,#4338CA,#818CF8)' },
     { id:'blue',   title:'Sky',     swatch:'linear-gradient(135deg,#0369A1,#38BDF8)' },
     { id:'green',  title:'Emerald', swatch:'linear-gradient(135deg,#047857,#34D399)' },
-    { id:'pink',   title:'Pink',    swatch:'linear-gradient(135deg,#9D174D,#F472B6)' }
+    { id:'pink',   title:'Pink',    swatch:'linear-gradient(135deg,#9D174D,#F472B6)' },
+    { id:'red',    title:'Crimson', swatch:'linear-gradient(135deg,#7F1D1D,#EF4444)' }
 ];
 
 var VALID_STYLES = THEMES.map(function (t) { return t.id; });
@@ -102,6 +103,9 @@ function load() {
         } catch (e) {}
     }
     saved = saved || {};
+    // Minimal was retired (it was Default without the glow); its people land
+    // on Default rather than a theme they never picked.
+    if (saved.style === 'minimal') saved.style = 'default';
     if (VALID_STYLES.indexOf(saved.style) > -1) state.style = saved.style;
     if (VALID_COLORS.indexOf(saved.color) > -1) state.color = saved.color;
     if (saved.mode === 'light' || saved.mode === 'dark') state.mode = saved.mode;
@@ -114,7 +118,7 @@ function save() {
 /* ═══════════ BACKGROUND LAYERS ══════════════════════════════════════════ */
 function buildLayers() {
     var f = document.createDocumentFragment();
-    ['ambientBg','gradientBg','goopBg','pixelArtBg','medievalBg','brutalistBg','blueprintBg'].forEach(function (id) {
+    ['ambientBg','gradientBg','goopBg','pixelArtBg','medievalBg','brutalistBg','blueprintBg','spaceBg'].forEach(function (id) {
         if (!$(id)) f.appendChild(el('div', { id:id, 'aria-hidden':'true' }));
     });
     if (!$('matrixCanvas')) f.appendChild(el('canvas', { id:'matrixCanvas', 'aria-hidden':'true' }));
@@ -127,8 +131,17 @@ function buildLayers() {
     goop.innerHTML =
         '<div class="goop-tint"></div><div class="goop-stage"></div>' +
         '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>' +
-        '<filter id="smtGoo"><feGaussianBlur in="SourceGraphic" stdDeviation="18" result="b"/>' +
-        '<feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11"/>' +
+        // A wide blur under a steep alpha cut: blobs reach for each other from
+        // further away and pull thick, stringy necks before they let go. The
+        // second pass is a soft specular so the goo reads wet, not flat.
+        '<filter id="smtGoo" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="26" result="b"/>' +
+        '<feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 38 -15" result="goo"/>' +
+        '<feGaussianBlur in="goo" stdDeviation="5" result="soft"/>' +
+        '<feSpecularLighting in="soft" surfaceScale="5" specularConstant="0.75" specularExponent="22" lighting-color="#ffffff" result="spec">' +
+        '<feDistantLight azimuth="235" elevation="48"/></feSpecularLighting>' +
+        '<feComposite in="spec" in2="goo" operator="in" result="shine"/>' +
+        '<feComposite in="shine" in2="goo" operator="arithmetic" k1="0" k2="0.55" k3="1" k4="0"/>' +
         '</filter></defs></svg>';
 
     var px = $('pixelArtBg');
@@ -147,6 +160,22 @@ function buildLayers() {
         '</svg>';
     document.body.appendChild(el('div', { id:'medievalCorners', 'aria-hidden':'true', html: flourish + flourish + flourish + flourish }));
 
+    // Handbook: candle embers drifting up off the desk (CSS animates them).
+    var embers = '';
+    for (var e = 0; e < 18; e++) embers += '<i style="--x:' + (Math.random() * 100).toFixed(1) + 'vw;--d:' + (9 + Math.random() * 11).toFixed(1) +
+        's;--delay:-' + (Math.random() * 20).toFixed(1) + 's;--s:' + (1 + Math.random() * 2.2).toFixed(1) + 'px;--sway:' + ((Math.random() - .5) * 90).toFixed(0) + 'px"></i>';
+    $('medievalBg').innerHTML = '<div class="hb-embers">' + embers + '</div>';
+
+    // Space: a starfield canvas, the eclipse ring from isaiart.com, horizon
+    // arcs and HUD readouts in the corners (theme.css places them).
+    $('spaceBg').innerHTML =
+        '<canvas id="spaceCanvas"></canvas>' +
+        '<div class="sp-ring"><i></i></div>' +
+        '<svg class="sp-arc sp-arc-top" viewBox="0 0 1000 60" preserveAspectRatio="none"><path d="M0 58 Q500 -40 1000 58"/></svg>' +
+        '<svg class="sp-arc sp-arc-bot" viewBox="0 0 1000 60" preserveAspectRatio="none"><path d="M0 2 Q500 100 1000 2"/></svg>' +
+        '<div class="sp-hud sp-hud-bl"><span>Path</span> /' + String(cfg.app || 'smt').toUpperCase() + '</div>' +
+        '<div class="sp-hud sp-hud-br"><span>&copy;</span> 2026 Isaiah</div>';
+
     // Blueprint title block
     // Pixel-art icons: sample the glyph on a 2px grid and harden the alpha,
     // so the icon font renders as real pixels (theme.css applies it).
@@ -155,7 +184,7 @@ function buildLayers() {
         '<feFlood x="0" y="0" width="1" height="1" flood-color="#000"/><feComposite width="2" height="2"/><feTile result="grid"/>' +
         '<feComposite in="SourceGraphic" in2="grid" operator="in"/><feMorphology operator="dilate" radius="1"/>' +
         '<feComponentTransfer><feFuncA type="discrete" tableValues="0 1"/></feComponentTransfer></filter></svg>' }));
-    document.body.appendChild(el('div', { id:'blueprintTitleBlock', 'aria-hidden':'true', html:
+    document.body.appendChild(el('div', { id:'blueprintTitleBlock', class:'tt-clash', 'aria-hidden':'true', html:
         '<div class="bp-row"><span class="bp-k">Title</span><span class="bp-v">' + (cfg.title || '') + '</span></div>' +
         '<div class="bp-row"><span class="bp-k">Drawn</span><span class="bp-v">isaiart</span></div>' +
         '<div class="bp-row"><span class="bp-k">Scale</span><span class="bp-v">1:1</span></div>' +
@@ -215,32 +244,38 @@ var matrix = (function () {
    then peel apart again. Repulsion at close range stops them collapsing
    into a single permanent blob. */
 var goop = (function () {
-    var stage, balls = [], id = null, W = 0, H = 0, last = 0;
+    var stage, balls = [], id = null, W = 0, H = 0, last = 0, ox = 0, oy = 0;
+    var ptr = { x: -9999, y: -9999, on: false };
     var PALETTE = ['#7C5CFF','#22D3EE','#F472B6','#34D399','#F59E0B','#818CF8'];
+
+    // The goop follows a finger: blobs near the pointer lean toward it and
+    // drag their neighbours along by the necks. Listened once, cheap.
+    global.addEventListener('pointermove', function (e) { ptr.x = e.clientX - ox; ptr.y = e.clientY - oy; ptr.on = true; }, { passive: true });
+    document.addEventListener('mouseleave', function () { ptr.on = false; });
 
     function build() {
         stage = document.querySelector('#goopBg .goop-stage');
         stage.innerHTML = '';
         balls = [];
-        var r = stage.getBoundingClientRect(); W = r.width; H = r.height;
-        var n = innerWidth < 720 ? 7 : 11;
-        for (var i = 0; i < n; i++) {
-            var rad = 26 + Math.random() * (innerWidth < 720 ? 52 : 84);
+        var r = stage.getBoundingClientRect(); W = r.width; H = r.height; ox = r.left; oy = r.top;
+        var small = innerWidth < 720, n = small ? 7 : 11, drops = small ? 4 : 7;
+        for (var i = 0; i < n + drops; i++) {
+            var isDrop = i >= n;
+            var rad = isDrop ? 12 + Math.random() * 14 : 34 + Math.random() * (small ? 46 : 78);
             var node = el('div', { class:'goop-ball' });
             node.style.width = node.style.height = (rad * 2) + 'px';
             node.style.background = PALETTE[i % PALETTE.length];
             stage.appendChild(node);
             balls.push({
-                node: node, r: rad,
+                node: node, r: rad, drop: isDrop,
                 x: rad + Math.random() * Math.max(1, W - rad * 2),
                 y: rad + Math.random() * Math.max(1, H - rad * 2),
                 vx: (Math.random() - 0.5) * 0.5,
                 vy: (Math.random() - 0.5) * 0.5,
-                // Each ball breathes between "sticky" and "repelled" on its own
-                // slow cycle. Pairs whose cycles line up clump and weld; as the
-                // cycles drift out of phase they actively shove apart again.
+                // Mood cycle, biased toward sticky: pairs spend most of their
+                // time welded and only occasionally tear, slowly and stringily.
                 phase:  Math.random() * Math.PI * 2,
-                period: 6500 + Math.random() * 9000,
+                period: 9000 + Math.random() * 12000,
                 wander: Math.random() * Math.PI * 2
             });
         }
@@ -252,20 +287,35 @@ var goop = (function () {
             b.node.style.transform = 'translate3d(' + (b.x - b.r) + 'px,' + (b.y - b.r) + 'px,0)';
         }
     }
-    function step(ts) {
-        var dt = last ? Math.min(3, (ts - last) / 16.67) : 1; last = ts;
-        var i, j, a, b;
-
-        // Refresh each ball's mood for this frame.
+    // The panel is a no-go zone (inset a little, so goo can lap at its edges):
+    // blobs drifting under the text are what made it hard to read.
+    var zone = null, zoneT = -1e9;
+    function panelZone(ts) {
+        if (ts - zoneT < 500 && zone) return zone;
+        zoneT = ts;
+        var p = $('trackerPanel'); if (!p) return (zone = null);
+        var b = p.getBoundingClientRect(), k = 28;
+        zone = { l: b.left - ox + k, r: b.right - ox - k, t: b.top - oy + k, b: b.bottom - oy - k };
+        return zone;
+    }
+    function physics(ts, dt) {
+        var i, j, a, b, z = panelZone(ts);
         for (i = 0; i < balls.length; i++) {
             a = balls[i];
-            a.bond = Math.sin(ts / a.period + a.phase);        // -1 = repel, +1 = stick
-            // Persistent wander so nothing ever just parks in a corner.
-            a.wander += (Math.random() - 0.5) * 0.28 * dt;
-            a.vx += Math.cos(a.wander) * 0.020 * dt;
-            a.vy += Math.sin(a.wander) * 0.020 * dt;
+            if (z && a.x > z.l && a.x < z.r && a.y > z.t && a.y < z.b) {
+                var el_ = a.x - z.l, er = z.r - a.x, et = a.y - z.t, eb = z.b - a.y, m = Math.min(el_, er, et, eb), pf = 0.06 * dt;
+                if (m === el_) a.vx -= pf; else if (m === er) a.vx += pf; else if (m === et) a.vy -= pf; else a.vy += pf;
+            }
+            a.bond = 0.35 + 0.65 * Math.sin(ts / a.period + a.phase);   // mostly > 0: sticky
+            a.wander += (Math.random() - 0.5) * 0.24 * dt;
+            var push = a.drop ? 0.03 : 0.018;
+            a.vx += Math.cos(a.wander) * push * dt;
+            a.vy += Math.sin(a.wander) * push * dt;
+            if (ptr.on) {                                   // the sticky finger
+                var px = ptr.x - a.x, py = ptr.y - a.y, pd = Math.sqrt(px * px + py * py) || 1;
+                if (pd < 260) { var pf = 0.05 * (1 - pd / 260) * dt; a.vx += px / pd * pf; a.vy += py / pd * pf; }
+            }
         }
-
         for (i = 0; i < balls.length; i++) {
             a = balls[i];
             for (j = i + 1; j < balls.length; j++) {
@@ -274,50 +324,137 @@ var goop = (function () {
                 var d = Math.sqrt(dx * dx + dy * dy) || 0.001;
                 var touch = a.r + b.r;
                 var nx = dx / d, ny = dy / d;
-
-                // Hard core — always on. Stops a cluster collapsing into one
-                // permanent lump, which is what made them stick before.
-                if (d < touch * 0.6) {
-                    var push = 0.09 * (1 - d / (touch * 0.6)) * dt;
-                    a.vx -= nx * push; a.vy -= ny * push;
-                    b.vx += nx * push; b.vy += ny * push;
-                    continue;
+                // Soft core: they sink well into each other (one fat blob)
+                // but never collapse to a single point.
+                if (d < touch * 0.42) {
+                    var core = 0.06 * (1 - d / (touch * 0.42)) * dt;
+                    a.vx -= nx * core; a.vy -= ny * core;
+                    b.vx += nx * core; b.vy += ny * core;
                 }
-
-                if (d < touch * 1.7) {
-                    var mood = (a.bond + b.bond) * 0.5;         // shared mood
-                    var falloff = 1 - d / (touch * 1.7);
-                    var f = mood * 0.030 * falloff * dt;
-                    if (mood < 0) f *= 2.4;                     // tear apart decisively
-                    a.vx += nx * f; a.vy += ny * f;
-                    b.vx -= nx * f; b.vy -= ny * f;
+                if (d < touch * 2.3) {
+                    var mood = (a.bond + b.bond) * 0.5;
+                    var falloff = 1 - d / (touch * 2.3);
+                    var f = mood * 0.04 * falloff * dt;
+                    if (mood < 0) f *= 1.4;                   // tearing is slow and stringy
+                    var ma = b.r / touch, mb = a.r / touch;    // small drops get pulled harder
+                    a.vx += nx * f * ma * 2; a.vy += ny * f * ma * 2;
+                    b.vx -= nx * f * mb * 2; b.vy -= ny * f * mb * 2;
+                }
+                // Viscosity: welded neighbours share momentum, so a blob that
+                // wanders off drags the other by the neck instead of popping free.
+                if (d < touch * 1.25) {
+                    var k = 0.035 * dt;
+                    var avx = (b.vx - a.vx) * k, avy = (b.vy - a.vy) * k;
+                    a.vx += avx; a.vy += avy; b.vx -= avx; b.vy -= avy;
                 }
             }
-
-            // Light drag + clamp: lava-lamp pace, but never fully at rest.
-            a.vx *= 0.995; a.vy *= 0.995;
-            var sp = Math.sqrt(a.vx * a.vx + a.vy * a.vy);
-            if (sp > 1.0) { a.vx = a.vx / sp * 1.0; a.vy = a.vy / sp * 1.0; }
-
+            a.vx *= 0.992; a.vy *= 0.992;
+            var sp = Math.sqrt(a.vx * a.vx + a.vy * a.vy), cap = a.drop ? 1.2 : 0.85;
+            if (sp > cap) { a.vx = a.vx / sp * cap; a.vy = a.vy / sp * cap; }
             a.x += a.vx * dt; a.y += a.vy * dt;
-
-            if (a.x < a.r)     { a.x = a.r;     a.vx =  Math.abs(a.vx); }
-            if (a.x > W - a.r) { a.x = W - a.r; a.vx = -Math.abs(a.vx); }
-            if (a.y < a.r)     { a.y = a.r;     a.vy =  Math.abs(a.vy); }
-            if (a.y > H - a.r) { a.y = H - a.r; a.vy = -Math.abs(a.vy); }
+            if (a.x < a.r)     { a.x = a.r;     a.vx =  Math.abs(a.vx) * 0.6; }
+            if (a.x > W - a.r) { a.x = W - a.r; a.vx = -Math.abs(a.vx) * 0.6; }
+            if (a.y < a.r)     { a.y = a.r;     a.vy =  Math.abs(a.vy) * 0.6; }
+            if (a.y > H - a.r) { a.y = H - a.r; a.vy = -Math.abs(a.vy) * 0.6; }
         }
+    }
+    function step(ts) {
+        var dt = last ? Math.min(3, (ts - last) / 16.67) : 1; last = ts;
+        physics(ts, dt);
         draw();
         id = raf(step);
     }
+    // Under reduced motion there is one still frame: let the field settle a
+    // few seconds first so it shows welded goop, not evenly scattered dots.
+    function settled() { for (var t = 0; t < 480; t++) physics(t * 16.67, 1); draw(); }
     return {
-        start: function () { if (id) return; build(); if (reduceMotion) { id = -1; return; } last = 0; id = raf(step); },
+        start: function () { if (id) return; build(); if (reduceMotion) { settled(); id = -1; return; } last = 0; id = raf(step); },
         stop:  function () { if (id && id !== -1) cancelAnimationFrame(id); id = null; if (stage) stage.innerHTML = ''; },
         resize: function () {
             if (id === null) return;
             if (id !== -1) cancelAnimationFrame(id);
             build();
-            if (reduceMotion) { id = -1; } else { last = 0; id = raf(step); }
+            if (reduceMotion) { settled(); id = -1; } else { last = 0; id = raf(step); }
         }
+    };
+})();
+
+
+/* ── Space starfield ──────────────────────────────────────────────────────
+   The isaiart.com sky: dust-fine stars on near-black in three depths that
+   drift past very slowly, a few brighter ones that twinkle, and now and
+   then a thin shooting star. In light mode the stars become graphite specks
+   on a pale lunar ground. One static frame under reduced motion. */
+var space = (function () {
+    var cv, g, W = 0, H = 0, dpr = 1, stars = [], id = null, last = 0, shoot = null, nextShoot = 0;
+    function build() {
+        cv = $('spaceCanvas'); if (!cv) return false;
+        g = cv.getContext('2d');
+        dpr = Math.min(2, global.devicePixelRatio || 1);
+        W = innerWidth; H = innerHeight;
+        cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        stars = [];
+        var n = Math.round(W * H / 2600);
+        for (var i = 0; i < n; i++) {
+            var layer = Math.random() < 0.72 ? 0 : (Math.random() < 0.8 ? 1 : 2);
+            stars.push({
+                x: Math.random() * W, y: Math.random() * H, l: layer,
+                r: layer === 0 ? 0.35 + Math.random() * 0.45 : layer === 1 ? 0.7 + Math.random() * 0.5 : 1.1 + Math.random() * 0.7,
+                a: layer === 0 ? 0.25 + Math.random() * 0.4 : 0.55 + Math.random() * 0.45,
+                tw: Math.random() * Math.PI * 2, ts: 0.6 + Math.random() * 1.6,
+                hue: Math.random() < 0.18 ? '#BFD0FF' : (Math.random() < 0.1 ? '#FFE1C2' : '#FFFFFF')
+            });
+        }
+        nextShoot = performance.now() + 6000 + Math.random() * 10000;
+        return true;
+    }
+    function draw(now, dt) {
+        var light = html.getAttribute('data-mode') === 'light';
+        g.clearRect(0, 0, W, H);
+        var drift = [0.9, 2.2, 4.0];                   // px per second, per depth
+        for (var i = 0; i < stars.length; i++) {
+            var s = stars[i];
+            if (dt) { s.x -= drift[s.l] * dt / 1000; if (s.x < -2) { s.x = W + 2; s.y = Math.random() * H; } }
+            var a = s.a * (s.l === 2 ? 0.65 + 0.35 * Math.sin(now / 1000 * s.ts + s.tw) : 1);
+            g.globalAlpha = light ? a * 0.55 : a;
+            g.fillStyle = light ? '#2A2F3B' : s.hue;
+            g.beginPath(); g.arc(s.x, s.y, s.r, 0, Math.PI * 2); g.fill();
+            if (s.l === 2 && !light) {
+                g.globalAlpha = a * 0.18;
+                g.beginPath(); g.arc(s.x, s.y, s.r * 3.2, 0, Math.PI * 2); g.fill();
+            }
+        }
+        if (shoot) {
+            var p = (now - shoot.t0) / shoot.d;
+            if (p >= 1) shoot = null;
+            else {
+                var hx = shoot.x + shoot.dx * p, hy = shoot.y + shoot.dy * p;
+                var tx = hx - shoot.dx * 0.18, ty = hy - shoot.dy * 0.18;
+                var grad = g.createLinearGradient(hx, hy, tx, ty);
+                var c = light ? '42,47,59' : '230,236,255';
+                grad.addColorStop(0, 'rgba(' + c + ',' + (0.9 * Math.sin(p * Math.PI)).toFixed(3) + ')');
+                grad.addColorStop(1, 'rgba(' + c + ',0)');
+                g.globalAlpha = 1; g.strokeStyle = grad; g.lineWidth = 1.2;
+                g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke();
+            }
+        } else if (dt && now > nextShoot) {
+            var ang = (200 + Math.random() * 30) * Math.PI / 180, len = 380 + Math.random() * 280;
+            shoot = { x: W * (0.35 + Math.random() * 0.6), y: H * Math.random() * 0.45, dx: Math.cos(ang) * len, dy: -Math.sin(ang) * len, t0: now, d: 900 + Math.random() * 500 };
+            nextShoot = now + 14000 + Math.random() * 16000;
+        }
+        g.globalAlpha = 1;
+    }
+    function frame(now) {
+        var dt = last ? Math.min(100, now - last) : 16; last = now;
+        draw(now, dt);
+        id = raf(frame);
+    }
+    return {
+        start: function () { if (id) return; if (!build()) return; if (reduceMotion) { draw(performance.now(), 0); id = -1; return; } last = 0; id = raf(frame); },
+        stop:  function () { if (id && id !== -1) cancelAnimationFrame(id); id = null; },
+        resize: function () { if (id === null) return; if (id !== -1) cancelAnimationFrame(id); build(); if (reduceMotion) { draw(performance.now(), 0); id = -1; } else { last = 0; id = raf(frame); } },
+        redraw: function () { if (id === -1) draw(performance.now(), 0); }
     };
 })();
 
@@ -2093,7 +2230,12 @@ var retro = (function () {
    right. Nothing here is required for the app to work. */
 var news = (function () {
     var built = false, clockTimer = null, TTL = 10 * 60 * 1000;
-    var CACHE_H = 'smt-news-headlines', CACHE_T = 'smt-news-ticker';
+    var CACHE_H = 'smt-news-headlines-v3', CACHE_T = 'smt-news-ticker-v2';
+    // This desk sits beside a sales tracker that plays celebration chimes, so
+    // hard news (deaths, attacks, disasters) stays off it. Items that match
+    // are dropped; the curated rest still fills the crawl and story box.
+    var GRIM = /\b(kill(s|ed|ing|ings|er|ers)?|dead|deadly|deaths?|dies|died|dying|shoot(s|ing|ings)?|gunm[ae]n|gunfire|attack(s|ed|er|ers)?|bomb(s|ed|ing|ings|er|ers)?|blasts?|explosions?|wars?|wartime|battles?|massacres?|murder(s|ed|er|ers)?|assassinat(ed|ion|ions)|terror(ism|ist|ists)?|hostages?|stabb(ed|ing|ings)|missiles?|airstrikes?|invasion|invade[sd]?|crash(es|ed)?|collisions?|derail(ed|ment)|earthquakes?|tsunamis?|floods?|flooding|hurricanes?|typhoons?|cyclones?|tornado(es)?|wildfires?|famine|genocide|casualt(y|ies)|victims?|injur(ed|ies|y|ing)|wounded|abuse[sd]?|executed|execution|suicide|drown(ed|ing|s)?|disasters?|riots?)\b/i;
+    function calm(s) { return !GRIM.test(String(s || '')); }
     var CACHE_W = 'smt-news-weather', CACHE_G = 'smt-news-geo';
     var WEATHER_TTL = 15 * 60 * 1000, GEO_TTL = 24 * 60 * 60 * 1000;
 
@@ -2134,6 +2276,8 @@ var news = (function () {
     function build() {
         if (built) return; built = true;
         var top = el('div', { class:'news-band top' });
+        // Network ident first, the way every channel stamps its own bar.
+        top.appendChild(el('div', { class:'news-logo', html:'<b>SMT</b><span>NEWS<em>24</em></span>' }));
         top.appendChild(el('div', { class:'news-flag', text:'BREAKING NEWS' }));
         top.appendChild(el('div', { class:'news-crawl' }, [el('div', { class:'news-track', id:'newsTrack' })]));
         top.appendChild(el('div', { class:'news-clock' }, [
@@ -2143,16 +2287,28 @@ var news = (function () {
 
         // Broadcast weather bug — sits clear of the centred panel, and hides
         // itself on narrow viewports rather than colliding with it.
-        document.body.appendChild(el('div', { id:'newsWeather', 'aria-hidden':'true', html:
+        document.body.appendChild(el('div', { id:'newsWeather', class:'tt-clash', 'aria-hidden':'true', html:
             '<div class="wx-head"><span>Weather</span><span class="wx-city" id="wxCity">—</span></div>' +
             '<div class="wx-now"><span class="wx-ico" id="wxIcon">🌡️</span>' +
             '<span class="wx-temp" id="wxTemp">—</span>' +
             '<span class="wx-cond" id="wxCond">Loading…</span></div>' +
             '<div class="wx-days" id="wxDays"></div>' }));
 
+        // Top stories: the day's most-read Wikipedia articles with their lead
+        // photo, rotating like the box beside an anchor's shoulder.
+        document.body.appendChild(el('div', { id:'newsStory', class:'tt-clash', 'aria-hidden':'true', html:
+            '<div class="ns-head"><span>Top Stories</span><span class="ns-count" id="nsCount"></span></div>' +
+            '<div class="ns-media"><img id="nsImg" alt="" referrerpolicy="no-referrer"><div class="ns-ph"><b>SMT</b>NEWS 24</div>' +
+            '<span class="ns-beat" id="nsBeat">TRENDING</span></div>' +
+            '<div class="ns-body"><p class="ns-title" id="nsTitle">Loading the wires…</p><p class="ns-desc" id="nsDesc"></p></div>' +
+            '<div class="ns-dots" id="nsDots"></div>' }));
+
+        // The lower third: the app's own desk line ("SALES DESK · 3 sold of
+        // 14 calls today"), then the markets rail under it.
         var bottom = el('div', { class:'news-band bottom' });
         bottom.appendChild(el('div', { class:'news-strap' }, [
-            el('span', { text: (cfg.title || '').toUpperCase() }),
+            el('span', { class:'news-desk-tag', id:'newsDeskTag', text:'DESK' }),
+            el('span', { class:'news-desk', id:'newsDesk', text: (cfg.title || '').toUpperCase() }),
             el('span', { style:'margin-left:auto', id:'newsSrcLabel', text:'MARKETS' })
         ]));
         var rail = el('div', { class:'stock-rail' });
@@ -2170,9 +2326,80 @@ var news = (function () {
 
     function setHeadlines(list) { curHeadlines = list || []; renderCrawl(); }
 
+    /* Desk lines come from the app (SMTTheme.setDesk): they lead the crawl
+       and cycle through the lower third, so the broadcast is about *your*
+       numbers, not just the world's. */
+    var desk = [], deskI = 0, deskTimer = null, lastDeskSig = '';
+    function setDesk(lines) {
+        desk = (lines || []).filter(function (l) { return l && l.text; });
+        var sig = JSON.stringify(desk);
+        if (sig === lastDeskSig) return;
+        lastDeskSig = sig;
+        showDesk(true);
+        renderCrawl();
+    }
+    function showDesk(reset) {
+        var tag = $('newsDeskTag'), txt = $('newsDesk'); if (!tag || !txt) return;
+        if (!desk.length) return;
+        if (reset) deskI = 0;
+        var d = desk[deskI % desk.length];
+        tag.textContent = d.beat || 'DESK';
+        txt.textContent = d.text;
+        if (!reduceMotion) txt.animate([{ opacity:0, transform:'translateY(6px)' }, { opacity:1, transform:'none' }], { duration:380, easing:EASE.out });
+    }
+
+    /* ── Top stories ── */
+    var CACHE_S = 'smt-news-stories-v3', stories = [], storyI = 0, storyTimer = null;
+    var FALLBACK_STORIES = [
+        { beat:'DESK', title:'Every call logged, every number honest', desc:'The suite keeps your stats on this device.' },
+        { beat:'MARKETS', title:'Flat ahead of the close', desc:'Traders wait on the afternoon queue.' },
+        { beat:'WEATHER', title:'Mild, with a chance of hold music', desc:'Clear skies over the call floor.' }
+    ];
+    function loadStories() {
+        var d = new Date();
+        var ymd = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+        return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/featured/' + ymd).then(function (j) {
+            // Curated sources only (Wikipedia's editors pick these): today's
+            // featured article, the "In the news" stories with their lead
+            // article's photo, and the picture of the day. Most-read is left
+            // out on purpose — it is unfiltered and this sits on a work screen.
+            var out = [], tfa = j.tfa;
+            if (tfa && tfa.thumbnail && calm((tfa.normalizedtitle || tfa.title) + ' ' + (tfa.description || '') + ' ' + (tfa.extract || '')))
+                out.push({ beat:'FEATURED', title: tfa.normalizedtitle || tfa.title, desc: tfa.description || '', img: tfa.thumbnail.source });
+            (j.news || []).forEach(function (n) {
+                var link = (n.links || []).filter(function (l) { return l.thumbnail; })[0];
+                var story = String(n.story || '').replace(/<[^>]+>/g, '').trim();
+                if (out.length < 6 && story && calm(story)) out.push({ beat:'WORLD', title: story, desc: link ? (link.normalizedtitle || '') : '', img: link ? link.thumbnail.source : null });
+            });
+            if (j.image && j.image.thumbnail) out.push({ beat:'PICTURE OF THE DAY', title: (j.image.description && j.image.description.text ? String(j.image.description.text).replace(/<[^>]+>/g, '').slice(0, 120) : 'Picture of the day'), desc: j.image.artist ? String(j.image.artist.text || '').replace(/<[^>]+>/g, '') : '', img: j.image.thumbnail.source });
+            if (!out.length) throw 0;
+            return out;
+        });
+    }
+    function setStories(list) {
+        stories = list && list.length ? list : FALLBACK_STORIES;
+        var dots = $('nsDots');
+        if (dots) dots.innerHTML = stories.map(function () { return '<i></i>'; }).join('');
+        showStory(0);
+    }
+    function showStory(i) {
+        if (!stories.length) return;
+        storyI = (i + stories.length) % stories.length;
+        var s = stories[storyI], img = $('nsImg'), box = $('newsStory');
+        if (!box) return;
+        $('nsBeat').textContent = s.beat || 'NEWS';
+        $('nsTitle').textContent = s.title || '';
+        $('nsDesc').textContent = s.desc ? s.desc.charAt(0).toUpperCase() + s.desc.slice(1) : '';
+        $('nsCount').textContent = (storyI + 1) + '/' + stories.length;
+        box.classList.toggle('no-img', !s.img);
+        if (s.img && img.getAttribute('src') !== s.img) { img.classList.remove('in'); img.onload = function () { img.classList.add('in'); }; img.onerror = function () { box.classList.add('no-img'); }; img.src = s.img; }
+        Array.prototype.forEach.call($('nsDots').children, function (d, k) { d.classList.toggle('on', k === storyI); });
+        if (!reduceMotion) box.querySelector('.ns-body').animate([{ opacity:0, transform:'translateX(10px)' }, { opacity:1, transform:'none' }], { duration:420, easing:EASE.out });
+    }
+
     function renderCrawl() {
         var track = $('newsTrack'); if (!track) return;
-        var list = (wxItem ? [wxItem] : []).concat(curHeadlines);
+        var list = desk.concat(wxItem ? [wxItem] : []).concat(curHeadlines);
         var chars = 0;
         var body = list.map(function (h) {
             if (typeof h === 'string') h = { beat:'', text:h };       // tolerate old cache shape
@@ -2230,12 +2457,15 @@ var news = (function () {
         return fetchJSON('https://en.wikipedia.org/api/rest_v1/feed/featured/' + ymd).then(function (j) {
             var out = [];
             // "In the news" is only published on some days — use it when it's there.
-            (j.news || []).slice(0, 5).forEach(function (n) {
-                var txt = String(n.story || '').replace(/<[^>]+>/g, '').trim();
-                if (txt) out.push({ beat:'WORLD', text: txt });
-            });
-            ((j.mostread && j.mostread.articles) || []).slice(0, 8).forEach(function (a) {
-                if (a.normalizedtitle) out.push({ beat:'TRENDING', text: a.normalizedtitle });
+            (j.news || []).map(function (n) { return String(n.story || '').replace(/<[^>]+>/g, '').trim(); })
+                .filter(function (txt) { return txt && calm(txt); }).slice(0, 5)
+                .forEach(function (txt) { out.push({ beat:'WORLD', text: txt }); });
+            // Editorially curated items only: the featured article and "on
+            // this day". (Most-read is unfiltered and not safe for a work screen.)
+            if (j.tfa && j.tfa.normalizedtitle && calm(j.tfa.normalizedtitle + ' ' + (j.tfa.description || '') + ' ' + (j.tfa.extract || '')))
+                out.push({ beat:'FEATURED', text: j.tfa.normalizedtitle + (j.tfa.description ? ' — ' + j.tfa.description : '') });
+            ((j.onthisday) || []).filter(function (o) { return o.text && calm(o.text); }).slice(0, 4).forEach(function (o) {
+                out.push({ beat:'ON THIS DAY', text: (o.year ? o.year + ': ' : '') + String(o.text).replace(/<[^>]+>/g, '') });
             });
             if (!out.length) throw 0;
             return out;
@@ -2249,7 +2479,7 @@ var news = (function () {
                 }));
             })
             .then(function (items) {
-                var out = items.filter(Boolean).filter(function (i) { return i.title; })
+                var out = items.filter(Boolean).filter(function (i) { return i.title && calm(i.title); })
                                .map(function (i) { return { beat:'TECH', text: i.title }; });
                 if (!out.length) throw 0;
                 return out;
@@ -2277,9 +2507,15 @@ var news = (function () {
                     return { sym: map[k], val: '$' + Number(d[k].usd).toLocaleString(undefined, { maximumFractionDigits:2 }), chg: d[k].usd_24h_change || 0 };
                 });
             }).catch(function () { return []; });
-        var fx = fetchJSON('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,GBP,JPY')
+        // FX: the last week as a series, so each pair shows a real day-on-day
+        // move (latest fixing against the one before) instead of a dead 0.00%.
+        var since = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
+        var fx = fetchJSON('https://api.frankfurter.dev/v1/' + since + '..?base=USD&symbols=EUR,GBP,JPY')
             .then(function (d) {
-                return Object.keys(d.rates || {}).map(function (k) { return { sym:'USD/' + k, val: d.rates[k].toFixed(k === 'JPY' ? 2 : 4), chg: 0 }; });
+                var days = Object.keys(d.rates || {}).sort(), last = d.rates[days[days.length - 1]], prev = d.rates[days[days.length - 2]] || last;
+                return Object.keys(last || {}).map(function (k) {
+                    return { sym:'USD/' + k, val: last[k].toFixed(k === 'JPY' ? 2 : 4), chg: prev[k] ? (last[k] - prev[k]) / prev[k] * 100 : 0 };
+                });
             }).catch(function () { return []; });
         return Promise.all([crypto, fx]).then(function (r) {
             var all = r[0].concat(r[1]);
@@ -2374,6 +2610,10 @@ var news = (function () {
 
         setHeadlines(ch || FALLBACK_HEADLINES);
         setTicker(ct || FALLBACK_TICKER);
+
+        var cs = cached(CACHE_S);
+        setStories(cs || FALLBACK_STORIES);
+        if (!cs) loadStories().then(function (s) { setStories(s); cache(CACHE_S, s); }).catch(function () {});
         if (label) label.textContent = ct ? 'MARKETS · LIVE' : 'MARKETS';
 
         if (!ch) loadHeadlines().then(function (h) { setHeadlines(h); cache(CACHE_H, h); })
@@ -2389,8 +2629,17 @@ var news = (function () {
         if (c) c.textContent = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     }
     return {
-        start: function () { build(); refresh(); tickClock(); if (!clockTimer) clockTimer = setInterval(tickClock, 1000); },
-        stop:  function () { if (clockTimer) clearInterval(clockTimer); clockTimer = null; }
+        start: function () {
+            build(); refresh(); tickClock(); showDesk(true);
+            if (!clockTimer) clockTimer = setInterval(tickClock, 1000);
+            if (!storyTimer) storyTimer = setInterval(function () { showStory(storyI + 1); }, 9000);
+            if (!deskTimer) deskTimer = setInterval(function () { if (desk.length > 1) { deskI++; showDesk(); } }, 6500);
+        },
+        stop:  function () {
+            [clockTimer, storyTimer, deskTimer].forEach(function (t) { if (t) clearInterval(t); });
+            clockTimer = storyTimer = deskTimer = null;
+        },
+        setDesk: setDesk
     };
 })();
 
@@ -2401,7 +2650,8 @@ var BG = {
     goop:      goop,
     pixelart:  pixel,
     retro:     retro,
-    newsroom:  news
+    newsroom:  news,
+    space:     space
 };
 
 function activateBackground(style) {
@@ -2418,6 +2668,8 @@ function commit() {
     applyIcons(document);
     syncPanelUI();
     save();
+    if (state.style === 'space') space.redraw();      // light/dark repaint of the still frame
+    if (typeof fitDecor === 'function') raf(fitDecor);
     if (cfg.onChange) cfg.onChange(Object.assign({}, state));
 }
 
@@ -2467,7 +2719,7 @@ function panelToggle(open) {
 
 function buildUI() {
     var controls = el('div', { id:'ttControls' });
-    controls.appendChild(el('a', { class:'tt-fab', href: HUB, 'aria-label':'Back to hub',
+    if (!cfg.hub) controls.appendChild(el('a', { class:'tt-fab', href: HUB, 'aria-label':'Back to hub',
         html:'<span class="material-symbols-outlined">home</span>' }));
     controls.appendChild(el('button', { class:'tt-fab', id:'themePickerBtn', type:'button', 'aria-label':'Themes',
         html:'<span class="material-symbols-outlined">palette</span>',
@@ -3061,10 +3313,11 @@ function renderMeter(node, pct, opts) {
    layout silently). How each of those moves is the theme's (mo()).
 
    If the container itself changes height (a panel that sizes to its
-   content), its height is animated, and `anchor` (the centred panel) is
-   held by its top edge with a compensating translate, so the header, the
-   input and whatever is under the pointer stay still while the list grows
-   or shrinks below them. Returns the new rows. */
+   content), its height is animated, and `anchor` (the centred panel) stays
+   centred: it grows and shrinks from both edges in step with the list, and
+   any offset left over from an earlier move eases back to zero. (It used to
+   hold its top edge, which left a tall card hugging the bottom of the
+   screen.) Returns the new rows. */
 var anchors = [];
 function list(container, items, o) {
     var first = !container.__ttList, animate = !reduceMotion, empty = o.empty || null, p = mo(), A = o.anchor || null;
@@ -3175,15 +3428,16 @@ function list(container, items, o) {
         };
         ha.finished.then(done, done);
     }
-    if (A && Math.abs(h1 - h0) > 0.5) {
-        // Layout re-centres the panel by half the change; hold the top edge
-        // still instead (never letting the bottom leave the screen).
-        var r = A.getBoundingClientRect(), want = shift0 + (h1 - h0) / 2;
-        var over = r.top + r.height + (h1 - h0) - (innerHeight - 12);
-        if (over > 0) want -= over;
-        A.style.translate = '0 ' + want + 'px';
-        if (mv.d > 0) A.__ttShiftAnim = A.animate([{ translate:'0 ' + shift0 + 'px' }, { translate:'0 ' + want + 'px' }],
-                                                  { duration: mv.d, easing: mv.e, delay: lag, fill:'backwards' });
+    if (A) {
+        // The anchored panel stays centred. It used to hold its top edge and
+        // grow downward, which left a tall card hugging the bottom of the
+        // screen. The list's height animates (above), so the centred panel
+        // grows from both edges in step with it; any offset left over from
+        // before eases back to the middle on the same beat.
+        A.style.translate = '';
+        if (Math.abs(shift0) > 0.5 && mv.d > 0)
+            A.__ttShiftAnim = A.animate([{ translate:'0 ' + shift0 + 'px' }, { translate:'0 0' }],
+                                        { duration: mv.d, easing: mv.e, delay: lag, fill:'backwards' });
     }
     var enter = moving.length && mv.d > 0 ? lag + Math.round(mv.d * timeTo(mv.e, 0.8)) : 0;
     added.forEach(function (n) { run(n, p.rowIn, { delay: enter }); });
@@ -3343,9 +3597,14 @@ document.addEventListener('change', function (e) {
    adopts any glyph a page changes itself (the mute button). Weight, fill
    and effects per theme live in theme.css. */
 var ICONS = {
-    medieval:  { home:'castle', palette:'auto_fix_high', delete:'local_fire_department', add_call:'history_edu', edit:'history_edu',
-                 edit_note:'ink_pen', restart_alt:'hourglass_empty', history:'hourglass_bottom', add_circle:'history_edu',
-                 phone_in_talk:'history_edu', warning:'swords', add:'add', remove:'remove', notifications:'notifications_active' },
+    // Handbook: a d20 for the theme picker, an open book for home, quills
+    // for writing, a scroll for the log, swords for warnings.
+    medieval:  { home:'auto_stories', palette:'casino', delete:'local_fire_department', add_call:'history_edu', edit:'history_edu',
+                 edit_note:'ink_pen', restart_alt:'hourglass_empty', history:'menu_book', add_circle:'history_edu',
+                 phone_in_talk:'history_edu', warning:'swords', add:'add', remove:'remove', notifications:'notifications_active',
+                 bolt:'local_fire_department', content_copy:'content_copy', schedule:'hourglass_top', filter_alt:'shield' },
+    space:     { home:'rocket_launch', palette:'satellite_alt', history:'radar', phone_in_talk:'satellite_alt', bolt:'flare',
+                 restart_alt:'restart_alt', add_circle:'add', edit_note:'chevron_right', schedule:'timer' },
     cyberpunk: { home:'terminal', palette:'memory', delete:'close', restart_alt:'power_settings_new', notifications:'sensors',
                  history:'schedule', add_call:'add', add_circle:'add_box', edit_note:'chevron_right', edit:'code',
                  phone_in_talk:'terminal', warning:'error' },
@@ -3427,6 +3686,83 @@ function wireSpotlight() {
 }
 
 
+/* ═══════════ SOUNDS ═════════════════════════════════════════════════════
+   Small, soft cues synthesised on the fly (no files to load): a chime when
+   a sale lands, and a brighter one when it also earns an award. Each world
+   has its own voice — a glass bell, a harp run, a chiptune arpeggio, a
+   broadcast sting — always quiet, short and with a gentle attack, so it
+   reads as a reward on a call floor rather than an alarm. One shared
+   on/off ('smt-sound'), on by default. */
+var SOUND_KEY = 'smt-sound';
+var audio = null;
+function soundOn() { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; } }
+function setSoundOn(on) { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) {} }
+function ctx() {
+    if (!audio) { var AC = global.AudioContext || global.webkitAudioContext; if (!AC) return null; audio = new AC(); }
+    if (audio.state === 'suspended') audio.resume();
+    return audio;
+}
+// One voice: oscillator → (optional lowpass) → gain envelope → master.
+function note(ac, out, t, o) {
+    var osc = ac.createOscillator(), g = ac.createGain(), node = osc;
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f, t);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + (o.glide || 0.12));
+    if (o.det) osc.detune.setValueAtTime(o.det, t);
+    if (o.lp) { var lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.lp; osc.connect(lp); node = lp; }
+    var a = o.a || 0.012, d = o.d || 0.6, peak = o.g || 0.08;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+    node.connect(g); g.connect(out);
+    osc.start(t); osc.stop(t + a + d + 0.05);
+}
+var N = { C5:523.25, D5:587.33, E5:659.25, Fs5:739.99, G5:783.99, A5:880, B5:987.77,
+          C6:1046.5, D6:1174.66, E6:1318.51, G6:1567.98, A6:1760, C7:2093, E7:2637 };
+var VOICES = {
+    // Glass bell: fundamental plus a quiet inharmonic partial, two notes.
+    bell: function (ac, o, t) { [[N.E5, 0], [N.B5, 0.09]].forEach(function (p) {
+        note(ac, o, t + p[1], { f:p[0], g:0.085, a:0.008, d:1.25 });
+        note(ac, o, t + p[1], { f:p[0] * 2.76, g:0.018, a:0.004, d:0.45 }); }); },
+    // Space: a soft fifth that rings out, slightly detuned for shimmer.
+    space: function (ac, o, t) { [[N.A5, 0], [N.E6, 0.11]].forEach(function (p) {
+        note(ac, o, t + p[1], { f:p[0], type:'triangle', g:0.06, a:0.02, d:1.6 });
+        note(ac, o, t + p[1], { f:p[0], g:0.03, a:0.03, d:1.4, det:9 }); }); },
+    // Pixel: a chiptune arpeggio, square waves taken down by a lowpass.
+    chip: function (ac, o, t) { [N.C6, N.E6, N.G6, N.C7].forEach(function (f, i) {
+        note(ac, o, t + i * 0.065, { f:f, type:'square', g:0.028, a:0.004, d:0.13, lp:3200 }); }); },
+    // Win95: a small triad "ding".
+    ding: function (ac, o, t) { [N.C5, N.E5, N.G5].forEach(function (f) { note(ac, o, t, { f:f, type:'triangle', g:0.045, a:0.006, d:0.8 }); });
+        note(ac, o, t, { f:N.C6, g:0.03, a:0.006, d:0.9 }); },
+    // Handbook: a harp run, plucked triangles through a warm lowpass.
+    harp: function (ac, o, t) { [N.D5, N.Fs5, N.A5, N.D6].forEach(function (f, i) {
+        note(ac, o, t + i * 0.075, { f:f, type:'triangle', g:0.07, a:0.003, d:1.0, lp:2600 }); }); },
+    // Cyberpunk: two filtered saw blips.
+    synth: function (ac, o, t) { [[N.A5, 0], [N.E6, 0.08]].forEach(function (p) {
+        note(ac, o, t + p[1], { f:p[0], type:'sawtooth', g:0.03, a:0.005, d:0.28, lp:1800 }); }); },
+    // Newsroom: a rising three-note sting that resolves.
+    sting: function (ac, o, t) { [[N.G5, 0], [N.C6, 0.085], [N.E6, 0.17]].forEach(function (p) {
+        note(ac, o, t + p[1], { f:p[0], g:0.05, a:0.01, d:0.5 }); note(ac, o, t + p[1], { f:p[0] / 2, type:'triangle', g:0.025, a:0.01, d:0.45 }); });
+        note(ac, o, t + 0.26, { f:N.C6, g:0.045, a:0.02, d:1.1 }); },
+    // Blueprint: two soft marimba strikes.
+    marimba: function (ac, o, t) { [[N.C6, 0], [N.G6, 0.1]].forEach(function (p) {
+        note(ac, o, t + p[1], { f:p[0], g:0.08, a:0.003, d:0.38 }); note(ac, o, t + p[1], { f:p[0] * 4, g:0.012, a:0.002, d:0.08 }); }); },
+    // Brutalist: one solid thunk that steps up.
+    thunk: function (ac, o, t) { note(ac, o, t, { f:330, to:495, glide:0.05, type:'triangle', g:0.09, a:0.004, d:0.32 }); }
+};
+var VOICE_FOR = { default:'bell', glass:'bell', goop:'bell', neumorphic:'bell', space:'space', pixelart:'chip',
+                  retro:'ding', medieval:'harp', cyberpunk:'synth', newsroom:'sting', blueprint:'marimba', brutalist:'thunk' };
+function playSound(kind) {
+    if (!soundOn()) return;
+    var ac = ctx(); if (!ac) return;
+    var out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+    var t = ac.currentTime + 0.02;
+    (VOICES[VOICE_FOR[state.style]] || VOICES.bell)(ac, out, t);
+    if (kind === 'award') [N.C7, N.E7, N.C7 * 2].forEach(function (f, i) {
+        note(ac, out, t + 0.38 + i * 0.07, { f:f, g:0.022, a:0.004, d:0.5 }); });
+}
+
+
 /* ═══════════ INIT ═══════════════════════════════════════════════════════ */
 function init(options) {
     cfg = options || {};
@@ -3436,13 +3772,57 @@ function init(options) {
     wireRipples();
     wireSpotlight();
     watchIcons();
+    // The Handbook's running footer reads this ("Transfer Tracker | Self
+    // Management Tools"; the hub passes its own).
+    if ($('trackerPanel')) $('trackerPanel').setAttribute('data-tt-foot', cfg.footer || ((cfg.title || '') + '  ·  Self Management Tools'));
     commit();
     arrive($('trackerPanel'));
+
+    // Icons appear only once their font is really in. If it never arrives
+    // they stay hidden (every icon button also has a label or aria-label)
+    // rather than spelling out "home", "palette", "add_circle".
+    // (fonts.check() alone answers "true" when no such face is declared at
+    // all, e.g. with Google Fonts blocked, so look for a loaded face too.)
+    var iconsIn = function () {
+        var ok = !document.fonts || !document.fonts.forEach;
+        if (!ok) document.fonts.forEach(function (f) { if (/Material Symbols/.test(f.family) && f.status === 'loaded') ok = true; });
+        if (ok) html.classList.add('tt-icons');
+    };
+    if (document.fonts && document.fonts.load) {
+        document.fonts.load('24px "Material Symbols Outlined"', 'home').then(iconsIn, iconsIn);
+        document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', iconsIn);
+    } else iconsIn();
+
+    // Corner furniture gives way to the panel (see .tt-clash in theme.css).
+    // It starts hidden and is shown only once measured clear; the panel's own
+    // size changes re-measure it straight away.
+    fitDecor();
+    setInterval(fitDecor, 1200);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitDecor);
+    if (global.ResizeObserver && $('trackerPanel')) new ResizeObserver(function () { raf(fitDecor); }).observe($('trackerPanel'));
 
     var rt = null;
     global.addEventListener('resize', function () {
         clearTimeout(rt);
-        rt = setTimeout(function () { matrix.resize(); goop.resize(); pixel.resize(); }, 150);
+        rt = setTimeout(function () { matrix.resize(); goop.resize(); pixel.resize(); space.resize(); fitDecor(); }, 150);
+    });
+}
+
+/* Hide any corner furniture that would overlap the panel (or the theme
+   picker's buttons), show it again when there is room. Visibility, not
+   display, so the element keeps its box and can be re-measured. */
+var DECOR = ['blueprintTitleBlock', 'newsWeather', 'newsStory'];
+function fitDecor() {
+    var p = $('trackerPanel'); if (!p) return;
+    var pr = p.getBoundingClientRect(), pad = 12;
+    var boxes = [pr];
+    var ctl = $('ttControls'); if (ctl) boxes.push(ctl.getBoundingClientRect());
+    var hit = function (a, b) { return a.left < b.right + pad && a.right > b.left - pad && a.top < b.bottom + pad && a.bottom > b.top - pad; };
+    DECOR.map($).concat(Array.prototype.slice.call(document.querySelectorAll('.sp-hud'))).forEach(function (d) {
+        if (!d) return;
+        var r = d.getBoundingClientRect();
+        if (!r.width) return;                                     // not shown in this world
+        d.classList.toggle('tt-clash', boxes.some(function (b) { return b !== r && hit(r, b); }));
     });
 }
 
@@ -3463,6 +3843,10 @@ global.SMTTheme = {
     motion: mo,
     setStyle: setStyle, setColor: setColor, setMode: setMode,
     openPicker: function () { panelToggle(true); },
+    sound: playSound,
+    get soundOn() { return soundOn(); },
+    set soundOn(v) { setSoundOn(!!v); },
+    setDesk: function (lines) { news.setDesk(lines); },
     get style() { return state.style; },
     get mode()  { return state.mode; },
     get color() { return state.color; },

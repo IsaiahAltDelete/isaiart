@@ -1,187 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-style="default" data-color="auto" data-mode="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Self Management Tools</title>
 
-    <!-- TailwindCSS -->
+    <!-- Restore the saved theme before first paint so there's no flash. The
+         hub now wears the same twelve worlds as the trackers. -->
+    <script>
+    (function () {
+        try {
+            var s = JSON.parse(localStorage.getItem('smt-theme') || 'null') || {};
+            var d = document.documentElement;
+            if (s.style) d.setAttribute('data-style', s.style === 'minimal' ? 'default' : s.style);
+            if (s.color) d.setAttribute('data-color', s.color);
+            if (s.mode)  d.setAttribute('data-mode',  s.mode);
+            else if (localStorage.getItem('theme') === 'light') d.setAttribute('data-mode', 'light');   // the old hub-only toggle
+        } catch (e) {}
+    })();
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Orbitron:wght@500;600;700;800&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />
 
-    <!-- Google Material Symbols -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="theme.css?v=20261108">
 
     <style>
-        /* Motion — same curves as the apps (smt/theme.css). Nothing overshoots. */
-        :root {
-            --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
-            --ease-in:   cubic-bezier(0.4, 0, 1, 1);
-            --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-        }
+        /* ── Hub layout only. Everything themed lives in theme.css. ── */
+        body { overflow-x: hidden; }
+        @media (min-width: 768px) and (min-height: 640px) { body { overflow: hidden; } }
 
-        /* Hub ⇄ app navigation cross-fades instead of flashing (same-origin,
-           Chrome/Edge 126+; elsewhere it is an ordinary page load). */
-        @view-transition { navigation: auto; types: tt-nav; }
-        html:active-view-transition-type(tt-nav)::view-transition-old(root) { animation: ttNavOut 180ms var(--ease-in) both; }
-        html:active-view-transition-type(tt-nav)::view-transition-new(root) { animation: ttNavIn 420ms var(--ease-out) 60ms both; }
-        @keyframes ttNavOut { to { opacity: 0; transform: scale(0.99); } }
-        @keyframes ttNavIn  { from { opacity: 0; transform: translateY(10px); } }
-        /* Light/dark: the new theme spreads out as a circle from the toggle you
-           pressed (a cross-fade went through a muddy grey half-frame and felt
-           late). Transitions are held off while it runs so the page is
-           captured already settled. */
-        html.tt-theming *, html.tt-theming *::before, html.tt-theming *::after { transition: none !important; }
-        html.tt-reveal::view-transition-old(root) { animation: none; }
-        html.tt-reveal::view-transition-new(root) { animation: ttReveal 560ms var(--ease-out) both; mix-blend-mode: normal; }
-        @keyframes ttReveal { from { clip-path: circle(0px at var(--tt-vt-x) var(--tt-vt-y)); }
-                              to   { clip-path: circle(var(--tt-vt-r) at var(--tt-vt-x) var(--tt-vt-y)); } }
-
-        :root {
-            --accent-color: #6366F1; /* Indigo for the hub */
-            --accent-color-hover: #4F46E5;
-            /* Dark Theme (Default) */
-            --background-color: #111111;
-            --text-color: #E5E7EB;
-            --subtle-text-color: #9CA3AF;
-            --card-bg-color: rgba(31, 41, 55, 0.65);
-            --panel-shadow-color: rgba(0,0,0,0.3);
-            --border-color: rgba(255, 255, 255, 0.1);
-            --hover-bg-color: #374151;
-        }
-
-        html.light-mode {
-            /* Light Theme */
-            --background-color: #F0F2F5;
-            --text-color: #1F2937;
-            --subtle-text-color: #6B7280;
-            --card-bg-color: rgba(255, 255, 255, 0.7);
-            --panel-shadow-color: rgba(0,0,0,0.1);
-            --border-color: rgba(0, 0, 0, 0.1);
-            --hover-bg-color: #E5E7EB;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            overflow-x: hidden;
-        }
-        @media (min-width: 768px) and (min-height: 620px) { body { overflow: hidden; } }
-        
         #scene {
-            perspective: 1500px;
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            perspective: 1500px; position: relative; z-index: 1;
+            width: 100%; min-height: 100vh; min-height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
             padding: 5rem 1rem 2rem;
         }
-        @media (min-width: 768px) { #scene { padding: 1rem; } }
+        @media (min-width: 768px) { #scene { padding: 1.5rem; } }
 
-        #hubPanel {
-            width: 100%;
-            max-width: 1000px;
-            padding: 2.5rem;
-            transform-style: preserve-3d;
-            transition: transform 720ms var(--ease-out), background-color 0.3s ease, border-color 0.3s ease;
-            cursor: grab;
-            user-select: none;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px var(--panel-shadow-color);
-            background: var(--card-bg-color);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
+        #trackerPanel {
+            width: 100%; max-width: 1060px; padding: 2.6rem 2.6rem 2rem;
+            cursor: grab; user-select: none;
+            border-radius: var(--panel-radius);
+            box-shadow: 0 25px 60px -12px var(--shadow);
+            background: var(--card-bg);
+            backdrop-filter: blur(var(--panel-blur)); -webkit-backdrop-filter: blur(var(--panel-blur));
+            border: var(--panel-border-width) solid var(--border);
         }
-        #hubPanel:active {
-            cursor: grabbing;
-        }
+        #trackerPanel:active { cursor: grabbing; }
+        @media (max-width: 640px) { #trackerPanel { padding: 1.6rem 1.2rem 1.4rem; } }
+        #trackerPanel.tt-lifted .depth-1 { transform: translateZ(18px); }
+        #trackerPanel.tt-lifted .depth-2 { transform: translateZ(34px); }
+        .depth-1, .depth-2 { transition: transform var(--dur-settle) var(--ease-out); }
 
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
-        .custom-hover:hover { background-color: var(--hover-bg-color); }
-        .subtle-text { color: var(--subtle-text-color); }
-        
-        .app-card {
-            position: relative;
-            background-color: var(--hover-bg-color);
-            border: 1px solid var(--border-color);
-            transform: translateZ(20px);
-            transition: transform 280ms var(--ease-out), border-color 200ms ease, background-color 0.3s ease;
-        }
-        /* The glow is pre-rendered on a layer and faded, rather than animating
-           box-shadow (which repaints the blur every frame). */
-        .app-card::after {
-            content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
-            box-shadow: 0 0 25px 0 rgba(99, 102, 241, 0.3); /* Accent color glow */
-            opacity: 0; transition: opacity 280ms var(--ease-out);
-        }
-        .app-card:hover {
-            transform: translateZ(20px) scale(1.05);
-            border-color: var(--accent-color);
-        }
-        .app-card:hover::after { opacity: 1; }
-        .app-card:active { transform: translateZ(20px) scale(1.03); transition-duration: 90ms; }
-        .app-card .launch-text .material-symbols-outlined {
-            transition: transform 280ms var(--ease-out);
-        }
-        .app-card:hover .launch-text .material-symbols-outlined {
-            transform: translateX(4px);
-        }
-        #themeToggle { transition: background-color 150ms ease, transform 200ms var(--ease-out); }
+        .hub-title { font-size: 2.3rem; font-weight: 700; line-height: 1.1; }
+        .hub-sub { font-size: 0.92rem; }
+        .theme-link { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.85rem; padding: 0.35rem 0.8rem; font-size: 0.78rem; font-weight: 600;
+            border-radius: var(--pill-radius, 999px); border: 1px solid var(--border); background: var(--input-bg); color: var(--subtle); cursor: pointer;
+            transition: color var(--dur-fast), border-color var(--dur-fast); }
+        .theme-link:hover { color: var(--text); border-color: var(--accent); }
+        .theme-link b { color: var(--text); font-weight: 600; }
 
-        /* ── Ambient aurora ──────────────────────────────────────────────
-           Three soft blobs, one per app colour, drifting on long offset
-           loops behind the panel. Transform/opacity only, so it costs the
-           compositor almost nothing. */
-        #aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-        #aurora i { position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%;
-            filter: blur(70px); opacity: 0.22; will-change: transform; }
-        html.light-mode #aurora i { opacity: 0.28; }
-        #aurora i:nth-child(1) { background: #F59E0B; left: -12vmax; top: -14vmax; animation: drift1 26s var(--ease-in-out) infinite alternate; }
-        #aurora i:nth-child(2) { background: #3B82F6; right: -14vmax; top: 10vh;  animation: drift2 31s var(--ease-in-out) infinite alternate; }
-        #aurora i:nth-child(3) { background: #10B981; left: 22vw;  bottom: -22vmax; animation: drift3 36s var(--ease-in-out) infinite alternate; }
-        #aurora i:nth-child(4) { background: #6366F1; left: 40vw; top: 30vh; width: 30vmax; height: 30vmax; opacity: 0.14; animation: drift2 40s var(--ease-in-out) -12s infinite alternate-reverse; }
-        @keyframes drift1 { to { transform: translate(18vw, 14vh) scale(1.15); } }
-        @keyframes drift2 { to { transform: translate(-16vw, 18vh) scale(0.9); } }
-        @keyframes drift3 { to { transform: translate(-10vw, -20vh) scale(1.2); } }
-
-        /* ── Title shimmer: one light sweep across the heading on arrival ── */
-        .hub-title { background: linear-gradient(100deg, var(--text-color) 0%, var(--text-color) 40%, var(--accent-color) 50%, var(--text-color) 60%, var(--text-color) 100%);
-            background-size: 250% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .hub-title.shine { animation: shine 1600ms var(--ease-out) 350ms both; }
-        @keyframes shine { from { background-position: 100% 0; } to { background-position: 0% 0; } }
-
-        /* ── Cards: lean toward the pointer, with a light that follows it ──
-           --rx/--ry/--lift are written by the pointer handler and eased by
-           the transition, so the card glides rather than jitters. */
-        .app-card { --rx: 0deg; --ry: 0deg; --lift: 1; --hue: 99,102,241;
-            transform: translateZ(20px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--lift)); }
-        .app-card:hover { transform: translateZ(20px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--lift)); --lift: 1.04; }
-        .app-card:active { transform: translateZ(20px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.01); }
-        .app-card::after { box-shadow: 0 0 28px 0 rgba(var(--hue), 0.35); }
-        .app-card:hover { border-color: rgb(var(--hue)); }
+        /* ── App cards ── */
+        .app-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+        @media (max-width: 860px) { .app-grid { grid-template-columns: 1fr; } }
+        .app-card { position: relative; display: flex; flex-direction: column; gap: 0.9rem; padding: 1.4rem 1.4rem 1.2rem; border-radius: calc(var(--panel-radius) * 0.6);
+            text-decoration: none; color: inherit;
+            --rx: 0deg; --ry: 0deg; --lift: 1;
+            transform: rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--lift));
+            transition: transform 280ms var(--ease-out), border-color 200ms ease, box-shadow 280ms var(--ease-out); }
+        .app-card:hover { --lift: 1.03; border-color: var(--hue) !important; box-shadow: 0 14px 34px -14px color-mix(in srgb, var(--hue) 60%, transparent); }
+        .app-card:active { --lift: 1.005; transition-duration: 90ms; }
         .app-card::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
-            background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--hue), 0.18), transparent 70%);
+            background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--hue) 18%, transparent), transparent 70%);
             transition: opacity 360ms var(--ease-out); }
         .app-card:hover::before { opacity: 1; }
         .app-card > * { position: relative; }
+        .app-head { display: flex; align-items: center; gap: 0.9rem; }
+        .icon-box { width: 3.2rem; height: 3.2rem; flex-shrink: 0; display: grid; place-items: center; border-radius: var(--btn-radius);
+            background: color-mix(in srgb, var(--hue) 13%, transparent); color: var(--hue); transition: transform 420ms var(--ease-out); }
+        .icon-box .material-symbols-outlined { font-size: 1.9rem; }
+        .app-card:hover .icon-box { transform: rotate(-6deg) scale(1.08); }
+        .app-card h2 { font-size: 1.2rem; font-weight: 600; line-height: 1.2; }
+        .app-desc { font-size: 0.84rem; line-height: 1.45; flex: 1 1 auto; }
+        /* Your numbers, read from this device, on each card. */
+        .app-stat { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.55rem 0.7rem; border-radius: var(--btn-radius);
+            background: color-mix(in srgb, var(--text) 5%, transparent); border: 1px solid var(--border); font-size: 0.78rem; min-height: 2.6rem; }
+        .app-stat .tt-figure { font-size: 1.35rem; font-weight: 700; color: var(--hue); line-height: 1; }
+        .app-stat .s-cap { color: var(--subtle); }
+        .launch { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.9rem; color: var(--hue); }
+        .launch .material-symbols-outlined { transition: transform 280ms var(--ease-out); }
+        .app-card:hover .launch .material-symbols-outlined { transform: translateX(4px); }
+        .new-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; vertical-align: middle;
+            padding: 0.12rem 0.45rem; border-radius: var(--pill-radius, 999px); color: #fff; background: var(--hue); margin-left: 0.25rem; }
+        .hub-foot { font-size: 0.8rem; }
 
         /* Each icon does its own small thing on hover. */
-        .app-card .icon-box { transition: transform 420ms var(--ease-out), background-color 300ms ease; }
-        .app-card:hover .icon-box { transform: rotate(-6deg) scale(1.08); }
-        .app-card .icon-glyph { display: inline-block; }
         .app-card:hover .icon-glyph.swap   { animation: iconSwap 900ms var(--ease-in-out) infinite; }
         .app-card:hover .icon-glyph.check  { animation: iconNod 1100ms var(--ease-in-out) infinite; }
         .app-card:hover .icon-glyph.rocket { animation: iconLift 1200ms var(--ease-in-out) infinite; }
@@ -189,173 +107,114 @@
         @keyframes iconNod  { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-3px) rotate(-4deg); } }
         @keyframes iconLift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(2px,-4px); } }
 
-        .new-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-            padding: 0.12rem 0.45rem; border-radius: 999px; color: #fff; background: rgb(var(--hue));
-            box-shadow: 0 0 0 0 rgba(var(--hue), 0.6); animation: pulse 2.4s var(--ease-out) infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--hue), 0.55); } 70%,100% { box-shadow: 0 0 0 8px rgba(var(--hue), 0); } }
-
-        @media (prefers-reduced-motion: reduce) {
-            #aurora i, .new-badge, .hub-title.shine, .app-card:hover .icon-glyph { animation: none !important; }
-            .hub-title { color: var(--text-color); background: none; }
-        }
-        #themeToggle:active { transform: scale(0.94); transition-duration: 90ms; }
+        /* App hues stay recognisable in every world, a touch deeper on light pages. */
+        .h-transfer { --hue: #F59E0B; } .h-flow { --hue: #3B82F6; } .h-i300 { --hue: #10B981; }
+        html[data-mode="light"] .h-transfer, html[data-style="medieval"] .h-transfer { --hue: #B45309; }
+        html[data-mode="light"] .h-flow,     html[data-style="medieval"] .h-flow     { --hue: #1D4ED8; }
+        html[data-mode="light"] .h-i300,     html[data-style="medieval"] .h-i300     { --hue: #047857; }
+        html[data-style="retro"] .h-transfer { --hue: #9A4E00; } html[data-style="retro"] .h-flow { --hue: #00509E; } html[data-style="retro"] .h-i300 { --hue: #007A30; }
+        html[data-style="retro"] .app-card { color: #000; }
+        html[data-style="space"] .app-card h2 { font-size: 1.05rem; letter-spacing: 0.1em; }
+        html[data-style="retro"] .app-card:hover { box-shadow: var(--w95-pressed) !important; }
+        html[data-style="pixelart"] .app-card:hover { box-shadow: inset 2px 2px 0 var(--px-shade), 0 0 0 2px var(--hue) !important; }
+        html[data-style="brutalist"] .app-card:hover { box-shadow: 6px 6px 0 var(--hue) !important; }
+        @media (prefers-reduced-motion: reduce) { .app-card:hover .icon-glyph { animation: none !important; } }
     </style>
 </head>
 <body>
-    <div id="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-
-    <!-- Top Right Controls -->
-    <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
-        <button id="themeToggle" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
-            <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
-            <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
-        </button>
-    </div>
-
     <div id="scene">
-        <main id="hubPanel">
-            <!-- Header -->
-            <header class="text-center mb-8" style="transform: translateZ(40px);">
-                <h1 class="hub-title text-4xl font-bold mb-2">Self Management Tools</h1>
-                <p class="subtle-text text-sm">Pick a tracker. Your stats stay on this device.</p>
+        <main id="trackerPanel">
+            <header class="text-center mb-8 depth-2">
+                <h1 class="hub-title">Self Management Tools</h1>
+                <p class="hub-sub subtle-text mt-1.5">Pick a tracker. Your stats stay on this device.</p>
+                <button class="theme-link tt-no-drag" id="themeLink" type="button"><span class="material-symbols-outlined" style="font-size:1rem">palette</span><span>Theme · <b id="themeName">Default</b></span></button>
             </header>
 
-            <!-- App Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <!-- Transfer Tracker Card -->
-                <a href="https://isaiart.com/transfer" class="app-card block p-6 rounded-xl space-y-4" style="--hue: 245,158,11">
-                    <div class="flex items-center gap-4">
-                        <div class="icon-box p-3 rounded-lg" style="background-color: rgba(245, 158, 11, 0.1);">
-                            <span class="icon-glyph swap material-symbols-outlined text-3xl" style="color: #F59E0B;">swap_horiz</span>
-                        </div>
-                        <h2 class="text-xl font-semibold">Transfer Tracker</h2>
+            <div class="app-grid depth-1">
+                <a href="https://isaiart.com/transfer" class="app-card tt-card h-transfer">
+                    <div class="app-head">
+                        <div class="icon-box"><span class="icon-glyph swap material-symbols-outlined">swap_horiz</span></div>
+                        <h2>Transfer Tracker</h2>
                     </div>
-                    <p class="subtle-text text-sm">Monitor call transfers and calculate your transfer rate with detailed logging.</p>
-                    <p class="launch-text font-semibold flex items-center gap-2" style="color: #F59E0B;">
-                        Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
-                    </p>
+                    <p class="app-desc subtle-text">Log every transfer with a reason and watch your kept rate move with each call.</p>
+                    <div class="app-stat" id="statTransfer"><span class="s-cap">No calls logged yet</span></div>
+                    <p class="launch">Open <span class="material-symbols-outlined">arrow_right_alt</span></p>
                 </a>
 
-                <!-- Call Flow Tracker Card -->
-                <a href="https://isaiart.com/flow" class="app-card block p-6 rounded-xl space-y-4" style="--hue: 59,130,246">
-                    <div class="flex items-center gap-4">
-                        <div class="icon-box p-3 rounded-lg" style="background-color: rgba(59, 130, 246, 0.1);">
-                            <span class="icon-glyph check material-symbols-outlined text-3xl" style="color: #3B82F6;">checklist_rtl</span>
-                        </div>
-                        <h2 class="text-xl font-semibold">Call Flow Tracker</h2>
+                <a href="https://isaiart.com/flow" class="app-card tt-card h-flow">
+                    <div class="app-head">
+                        <div class="icon-box"><span class="icon-glyph check material-symbols-outlined">checklist_rtl</span></div>
+                        <h2>Call Flow Tracker</h2>
                     </div>
-                    <p class="subtle-text text-sm">Track call completion progress with a live graph, reminders, and a simple checklist.</p>
-                    <p class="launch-text font-semibold flex items-center gap-2" style="color: #3B82F6;">
-                        Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
-                    </p>
+                    <p class="app-desc subtle-text">A checklist of calls with a live completion graph and gentle reminders.</p>
+                    <div class="app-stat" id="statFlow"><span class="s-cap">No calls logged yet</span></div>
+                    <p class="launch">Open <span class="material-symbols-outlined">arrow_right_alt</span></p>
                 </a>
 
-                <!-- Internet 300 Tracker Card -->
-                <a href="https://isaiart.com/i300" class="app-card block p-6 rounded-xl space-y-4" style="--hue: 16,185,129">
-                    <div class="flex items-center gap-4">
-                        <div class="icon-box p-3 rounded-lg" style="background-color: rgba(16, 185, 129, 0.1);">
-                            <span class="icon-glyph rocket material-symbols-outlined text-3xl" style="color: #10B981;">rocket_launch</span>
-                        </div>
-                        <h2 class="text-xl font-semibold">Internet 300 <span class="new-badge align-middle">New</span></h2>
+                <a href="https://isaiart.com/i300" class="app-card tt-card h-i300">
+                    <div class="app-head">
+                        <div class="icon-box"><span class="icon-glyph rocket material-symbols-outlined">rocket_launch</span></div>
+                        <h2>Internet 300 <span class="new-badge">New</span></h2>
                     </div>
-                    <p class="subtle-text text-sm">Track calls, eligible, offers and sales as a live funnel, plus VAS toward your Spark Points.</p>
-                    <p class="launch-text font-semibold flex items-center gap-2" style="color: #10B981;">
-                        Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
-                    </p>
+                    <p class="app-desc subtle-text">Calls, eligible, offers and sales as a live funnel, plus add-ons toward your Spark Points.</p>
+                    <div class="app-stat" id="statI300"><span class="s-cap">No calls logged yet</span></div>
+                    <p class="launch">Open <span class="material-symbols-outlined">arrow_right_alt</span></p>
                 </a>
             </div>
-            
-            <!-- Footer -->
-            <footer class="text-center mt-10" style="transform: translateZ(20px);">
-                <p class="subtle-text text-sm">Created by Isaiah</p>
+
+            <footer class="text-center mt-9 depth-1">
+                <p class="hub-foot subtle-text">Created by Isaiah</p>
             </footer>
         </main>
     </div>
 
+    <script src="theme.js?v=20261108"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const $ = (id) => document.getElementById(id);
+        const panel = $('trackerPanel');
+        const reduceMotion = SMTTheme.reduceMotion;
+        const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+        const today = new Date().toDateString();
 
-        // --- 3D Panel Interaction ---
-        // The pointer sets a target; a frame loop eases the panel toward it at
-        // a per-time rate (same feel on 60Hz and 144Hz). It used to write the
-        // transform straight from mousemove behind a 50ms linear transition,
-        // which lagged and stuttered. Letting go returns it on the same 720ms
-        // curve the apps use, and grabbing it mid-return picks it up where it is.
-        const panel = document.getElementById('hubPanel');
-        let isDragging = false;
-        let previousMouseX, previousMouseY;
-        let targetX = 0, targetY = 0, currentRotationX = 0, currentRotationY = 0, loop = null, lastT = 0;
-        const SENSITIVITY = 0.20;
-        const MAX_ROTATION_X = 15;
-
-        function follow(now) {
-            const dt = lastT ? Math.min(64, now - lastT) : 16.67; lastT = now;
-            const k = 1 - Math.pow(1 - 0.3, dt / 16.67);
-            currentRotationX += (targetX - currentRotationX) * k;
-            currentRotationY += (targetY - currentRotationY) * k;
-            panel.style.transform = `rotateX(${currentRotationX.toFixed(2)}deg) rotateY(${currentRotationY.toFixed(2)}deg)`;
-            loop = isDragging ? requestAnimationFrame(follow) : null;
-        }
-
-        panel.addEventListener('mousedown', (e) => {
-            if (e.target.closest('a, button') || reduceMotion) return;
-            const m = new DOMMatrixReadOnly(getComputedStyle(panel).transform);
-            currentRotationY = targetY = Math.atan2(-m.m31, m.m11) * 180 / Math.PI;
-            currentRotationX = targetX = Math.asin(Math.max(-1, Math.min(1, m.m32))) * 180 / Math.PI;
-            isDragging = true;
-            previousMouseX = e.clientX;
-            previousMouseY = e.clientY;
-            panel.style.transition = 'none';
-            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
-            lastT = 0;
-            if (!loop) loop = requestAnimationFrame(follow);
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            targetY += (e.clientX - previousMouseX) * SENSITIVITY;
-            targetX -= (e.clientY - previousMouseY) * SENSITIVITY;
-            targetX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, targetX));
-            previousMouseX = e.clientX;
-            previousMouseY = e.clientY;
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                if (loop) { cancelAnimationFrame(loop); loop = null; }
-                panel.style.transition = '';
-                panel.style.transform = `rotateX(0deg) rotateY(0deg)`;
-                targetX = targetY = currentRotationX = currentRotationY = 0;
+        // Each card shows where you stand, straight from that app's own data.
+        function stats() {
+            const t = read('transferTrackerState');
+            if (t && t.totalCalls) {
+                const n = (t.transfers || []).length, rate = (t.totalCalls - n) / t.totalCalls * 100;
+                $('statTransfer').innerHTML = `<span class="tt-figure num">${rate.toFixed(1)}%</span><span class="s-cap">kept · ${n} transfer${n === 1 ? '' : 's'} of ${t.totalCalls} calls</span>`;
             }
-        });
-        panel.ondragstart = () => false;
-
-        // --- Arrival ---
-        // The panel rises into place and the two cards follow. Skipped when the
-        // page arrived through a cross-document view transition (already
-        // animated) or under reduced motion. Uses `translate`, never `transform`,
-        // so it can't fight the tilt.
-        const arrival = [];
-        let revealedByVT = false;
-        window.addEventListener('pagereveal', (e) => {
-            if (!e.viewTransition) return;
-            revealedByVT = true;
-            arrival.forEach(a => a.finish());
-        });
-        if (!reduceMotion && !revealedByVT) {
-            const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
-            arrival.push(document.getElementById('scene').animate(
-                [{ opacity: 0, translate: '0 14px' }, { opacity: 1, translate: '0 0' }], { duration: 560, easing: ease }));
-            document.querySelectorAll('.app-card').forEach((c, i) => arrival.push(c.animate(
-                [{ opacity: 0, translate: '0 10px' }, { opacity: 1, translate: '0 0' }],
-                { duration: 480, easing: ease, delay: 140 + i * 70, fill: 'backwards' })));
+            const f = read('callFlowV8');
+            if (f && f.calls && f.calls.length) {
+                const done = f.calls.filter(c => c.completed).length;
+                $('statFlow').innerHTML = `<span class="tt-figure num">${done}/${f.calls.length}</span><span class="s-cap">calls completed</span>`;
+            }
+            const s = read('i300TrackerState');
+            if (s && s.entries) {
+                const day = s.entries.filter(e => new Date(e.ts).toDateString() === today);
+                if (day.length) {
+                    const sold = day.filter(e => e.outcome === 'sold').length;
+                    $('statI300').innerHTML = `<span class="tt-figure num">${sold}</span><span class="s-cap">sold of ${day.length} call${day.length === 1 ? '' : 's'} today · ${Math.round(sold / day.length * 100)}%</span>`;
+                } else $('statI300').innerHTML = '<span class="s-cap">Nothing logged today yet</span>';
+            }
         }
+        stats();
 
-        // --- Card lean + spotlight ---
-        // Each card leans a few degrees toward the pointer and carries a soft
-        // light under it. Written once per frame; the CSS transition eases it.
+        const nameOf = () => (SMTTheme.THEMES.find(t => t.id === SMTTheme.style) || {}).name || 'Default';
+        SMTTheme.init({
+            app: 'smt',
+            title: 'Self Management Tools',
+            emoji: '🧰',
+            hub: true,
+            footer: 'Self Management Tools  ·  Contents',
+            sibling: { label: 'Internet 300 Tracker', href: 'https://isaiart.com/i300' },
+            onChange: () => { const n = $('themeName'); if (n) n.textContent = nameOf(); }
+        });
+        SMTTheme.tilt(panel, { max: 14 });
+        $('themeLink').addEventListener('click', (e) => { e.stopPropagation(); SMTTheme.openPicker(); });
+        SMTTheme.setDesk([{ beat: 'Hub', text: 'Three trackers, one desk · your numbers stay on this device' }]);
+
+        // Cards lean a few degrees toward the pointer with a light under it.
         if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
             document.querySelectorAll('.app-card').forEach(card => {
                 let f = 0, ev = null;
@@ -365,59 +224,19 @@
                     const x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height;
                     card.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
                     card.style.setProperty('--my', (y * 100).toFixed(1) + '%');
-                    card.style.setProperty('--ry', ((x - 0.5) * 10).toFixed(2) + 'deg');
-                    card.style.setProperty('--rx', ((0.5 - y) * 8).toFixed(2) + 'deg');
+                    card.style.setProperty('--ry', ((x - 0.5) * 9).toFixed(2) + 'deg');
+                    card.style.setProperty('--rx', ((0.5 - y) * 7).toFixed(2) + 'deg');
                 };
                 card.addEventListener('pointermove', e => { ev = e; if (!f) f = requestAnimationFrame(apply); });
                 card.addEventListener('pointerleave', () => { ev = null; card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); });
             });
+            document.querySelectorAll('.app-card').forEach((c, i) => c.animate(
+                [{ opacity: 0, translate: '0 10px' }, { opacity: 1, translate: '0 0' }],
+                { duration: 480, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', delay: 180 + i * 70, fill: 'backwards' }));
         }
-        if (!reduceMotion) document.querySelector('.hub-title').classList.add('shine');
-
-        // --- THEME MANAGEMENT ---
-        const themeToggle = document.getElementById('themeToggle');
-        const lightIcon = document.getElementById('theme-icon-light');
-        const darkIcon = document.getElementById('theme-icon-dark');
-        const htmlEl = document.documentElement;
-
-        const applyTheme = (theme) => {
-            if (theme === 'light') {
-                htmlEl.classList.add('light-mode');
-                lightIcon.style.display = 'none';
-                darkIcon.style.display = 'inline-block';
-            } else {
-                htmlEl.classList.remove('light-mode');
-                lightIcon.style.display = 'inline-block';
-                darkIcon.style.display = 'none';
-            }
-        };
-
-        // The whole page changes as one (the panel used to snap while only the
-        // body faded), spreading from the toggle, and the incoming icon turns
-        // into place.
-        themeToggle.addEventListener('click', () => {
-            const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
-            localStorage.setItem('theme', newTheme);
-            const swap = () => {
-                applyTheme(newTheme);
-                if (!reduceMotion) (newTheme === 'light' ? darkIcon : lightIcon).animate(
-                    [{ opacity: 0, transform: 'rotate(-90deg) scale(0.7)' }, { opacity: 1, transform: 'none' }],
-                    { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
-            };
-            if (!reduceMotion && document.startViewTransition) {
-                const r = themeToggle.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
-                htmlEl.style.setProperty('--tt-vt-x', x + 'px');
-                htmlEl.style.setProperty('--tt-vt-y', y + 'px');
-                htmlEl.style.setProperty('--tt-vt-r', Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 'px');
-                htmlEl.classList.add('tt-reveal');
-                const vt = document.startViewTransition(() => { htmlEl.classList.add('tt-theming'); swap(); });
-                const ready = () => htmlEl.classList.remove('tt-theming'), done = () => htmlEl.classList.remove('tt-reveal');
-                vt.ready.then(ready, ready); vt.finished.then(done, done);
-            } else swap();
-        });
-
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-        applyTheme(savedTheme);
+        // Coming back from an app with fresh numbers.
+        window.addEventListener('pageshow', stats);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) stats(); });
     });
     </script>
 </body>

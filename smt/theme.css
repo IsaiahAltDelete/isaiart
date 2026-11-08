@@ -1,7 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    SMT SHARED THEME SYSTEM
-   Used by:  /transfer  (Transfer Rate Tracker)
+   Used by:  /smt       (the hub)
+             /transfer  (Transfer Rate Tracker)
              /flow      (Call Flow Tracker)
+             /i300      (Internet 300 Tracker)
 
    This file is the single source of truth for every theme. Both apps used to
    carry their own hand-drifted copy, which is why "the same" themes looked
@@ -13,7 +15,7 @@
 
    ── STRUCTURE ──────────────────────────────────────────────────────────────
      1. Motion tokens
-     2. Accent palette          (data-color: the 6 dots)
+     2. Accent palette          (data-color: the 8 dots, Crimson included)
      3. Neutral recipe          (data-mode: dark / light)
      4. Style themes            (data-style: the 12 tiles)
      5. Background layers
@@ -87,7 +89,7 @@ html:active-view-transition-type(tt-nav)::view-transition-new(root) { animation:
    styles already declare their signature in their own base block, so they
    pick it up for free; only the few whose accent lives purely in the colour
    rows (cyberpunk, pixel art, brutalist) name `auto` explicitly. The soft
-   styles — default, glass, goop, neumorphic, minimal — have no inherent hue,
+   styles — default, glass, goop, neumorphic, space — have no inherent hue,
    so for them "auto" resolves to the neutral below. */
 
 html[data-mode="dark"] {
@@ -100,6 +102,7 @@ html[data-mode="dark"][data-color="white"]  { --accent:#818CF8; --accent-hover:#
 html[data-mode="dark"][data-color="blue"]   { --accent:#38BDF8; --accent-hover:#0EA5E9; --accent-text:#04222E; }
 html[data-mode="dark"][data-color="green"]  { --accent:#34D399; --accent-hover:#10B981; --accent-text:#04261A; }
 html[data-mode="dark"][data-color="pink"]   { --accent:#F472B6; --accent-hover:#EC4899; --accent-text:#2A0716; }
+html[data-mode="dark"][data-color="red"]    { --accent:#F25555; --accent-hover:#DC2626; --accent-text:#FFFFFF; }
 
 html[data-mode="light"] {
     --accent:#B45309; --accent-hover:#92400E; --accent-text:#FFFFFF;
@@ -111,6 +114,7 @@ html[data-mode="light"][data-color="white"]  { --accent:#4F46E5; --accent-hover:
 html[data-mode="light"][data-color="blue"]   { --accent:#0284C7; --accent-hover:#0369A1; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-color="green"]  { --accent:#047857; --accent-hover:#065F46; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-color="pink"]   { --accent:#BE185D; --accent-hover:#9D174D; --accent-text:#FFFFFF; }
+html[data-mode="light"][data-color="red"]    { --accent:#C81E1E; --accent-hover:#9B1515; --accent-text:#FFFFFF; }
 
 
 /* ═══════════ 3. NEUTRAL RECIPE ══════════════════════════════════════════ */
@@ -178,20 +182,20 @@ html[data-mode="light"] {
      glass       aqua       — frosted glass reads teal
      goop        violet     — lava lamp
      neumorphic  periwinkle — muted, suits soft UI
-     minimal     Swiss red  — black, white and one red, per the International
-                              Typographic Style this theme is built on
+     space       ice blue   — the isaiart.com accent (#8FB4FF)
+   (Minimal was retired: it was Default without the glow. Space took its slot.)
    Mono is always one click away if you want any of them greyscale. */
 html[data-mode="dark"][data-style="default"][data-color="auto"]    { --accent:#38BDF8; --accent-hover:#0EA5E9; --accent-text:#04222E; }
 html[data-mode="dark"][data-style="glass"][data-color="auto"]      { --accent:#2DD4BF; --accent-hover:#14B8A6; --accent-text:#04231F; }
 html[data-mode="dark"][data-style="goop"][data-color="auto"]       { --accent:#A78BFA; --accent-hover:#8B5CF6; --accent-text:#1A0B33; }
 html[data-mode="dark"][data-style="neumorphic"][data-color="auto"] { --accent:#8FA0E8; --accent-hover:#6E80D0; --accent-text:#0C1030; }
-html[data-mode="dark"][data-style="minimal"][data-color="auto"]    { --accent:#F03A32; --accent-hover:#D42019; --accent-text:#FFFFFF; }
+html[data-mode="dark"][data-style="space"][data-color="auto"]      { --accent:#8FB4FF; --accent-hover:#6F98F0; --accent-text:#06070B; }
 
 html[data-mode="light"][data-style="default"][data-color="auto"]    { --accent:#0284C7; --accent-hover:#0369A1; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="glass"][data-color="auto"]      { --accent:#0D9488; --accent-hover:#0F766E; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="goop"][data-color="auto"]       { --accent:#7C3AED; --accent-hover:#6D28D9; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="neumorphic"][data-color="auto"] { --accent:#5566C4; --accent-hover:#42509E; --accent-text:#FFFFFF; }
-html[data-mode="light"][data-style="minimal"][data-color="auto"]    { --accent:#D42019; --accent-hover:#AB1812; --accent-text:#FFFFFF; }
+html[data-mode="light"][data-style="space"][data-color="auto"]      { --accent:#2F4FB8; --accent-hover:#213C94; --accent-text:#FFFFFF; }
 
 /* ── DEFAULT ─────────────────────────────────────────────────────────────
    Identical in both apps now. Soft accent-tinted dark, one ambient glow. */
@@ -233,7 +237,7 @@ html[data-style="goop"] #goopBg { display:block !important; }
    The panel keeps a faint dark floor so text stays readable whatever drifts
    behind it, while the blobs still read clearly as colour. */
 html[data-style="goop"] #trackerPanel {
-    background: rgba(10,12,20,0.34) !important;
+    background: rgba(12,14,24,0.62) !important;
     border:1px solid rgba(255,255,255,0.18) !important;
     backdrop-filter: blur(26px) saturate(165%) !important;
     -webkit-backdrop-filter: blur(26px) saturate(165%) !important;
@@ -255,66 +259,164 @@ html[data-mode="light"][data-style="goop"] #trackerPanel { background: rgba(255,
 html[data-mode="light"][data-style="goop"] .tt-surface   { background: rgba(255,255,255,0.6) !important; border-color: rgba(255,255,255,0.75) !important; }
 
 
-/* ── NEUMORPHIC ──────────────────────────────────────────────────────── */
-html[data-style="neumorphic"] { --panel-radius:1.75rem; --btn-radius:0.9rem; }
-html[data-mode="dark"][data-style="neumorphic"] {
-    --bg:#1B1F27; --bg-alt:#1B1F27; --card-bg:#1B1F27; --input-bg:#1B1F27;
-    --dropdown-bg:#1B1F27; --list-item-bg:#1B1F27; --border:transparent;
-    --hover-bg:#171B22; --text:#D3D8E3; --subtle:#8E96A8;
-    --nm-dark: rgba(7,9,14,0.72); --nm-light: rgba(50,57,74,0.38);
-}
+/* ── NEUMORPHIC ──────────────────────────────────────────────────────────
+   Soft UI done properly. ONE surface colour that everything is pressed out
+   of or into; one light source, top-left; paired shadows tuned per mode so
+   edges read with no borders at all. Accent is kept for state — the lit
+   icon, the active pill, the primary key — and dense content (lists) sits
+   in a single recessed well instead of a dozen separate bumps, which is what
+   made the old version look lumpy and muddy. */
+html[data-style="neumorphic"] { --panel-radius:2rem; --btn-radius:1rem; --pill-radius:999px; }
 html[data-mode="light"][data-style="neumorphic"] {
-    --bg:#E2E7EE; --bg-alt:#E2E7EE; --card-bg:#E2E7EE; --input-bg:#E2E7EE;
-    --dropdown-bg:#E2E7EE; --list-item-bg:#E2E7EE; --border:transparent;
-    --hover-bg:#D8DEE7; --text:#3E4557; --subtle:#5E6779;
-    --nm-dark: rgba(163,177,198,0.62); --nm-light: rgba(255,255,255,0.92);
+    --nm-base:#E3E8F1;
+    --bg: var(--nm-base); --bg-alt: var(--nm-base); --card-bg: var(--nm-base); --input-bg: var(--nm-base);
+    --dropdown-bg: var(--nm-base); --list-item-bg: var(--nm-base); --border: transparent;
+    --hover-bg: color-mix(in srgb, var(--accent) 7%, var(--nm-base));
+    --text:#2B364A; --subtle:#66728A; --shadow: rgba(150,166,190,0.55);
+    --nm-dark: rgba(158,173,196,0.72); --nm-light: rgba(255,255,255,0.96);
+    --nm-hi: rgba(255,255,255,0.55);
+}
+html[data-mode="dark"][data-style="neumorphic"] {
+    --nm-base:#2A2F37;
+    --bg: var(--nm-base); --bg-alt: var(--nm-base); --card-bg: var(--nm-base); --input-bg: var(--nm-base);
+    --dropdown-bg: var(--nm-base); --list-item-bg: var(--nm-base); --border: transparent;
+    --hover-bg: color-mix(in srgb, var(--accent) 9%, var(--nm-base));
+    --text:#E1E6EE; --subtle:#9AA4B5; --shadow: rgba(12,14,18,0.6);
+    --nm-dark: rgba(14,16,20,0.78); --nm-light: rgba(66,73,85,0.55);
+    --nm-hi: rgba(255,255,255,0.05);
+}
+html[data-style="neumorphic"] {
+    --nm-out-lg: 16px 16px 34px var(--nm-dark), -14px -14px 30px var(--nm-light);
+    --nm-out:     9px  9px 18px var(--nm-dark),  -8px  -8px 16px var(--nm-light);
+    --nm-out-sm:  5px  5px 10px var(--nm-dark),  -4px  -4px  9px var(--nm-light);
+    --nm-in:    inset 6px 6px 12px var(--nm-dark), inset -6px -6px 12px var(--nm-light);
+    --nm-in-sm: inset 3px 3px 7px var(--nm-dark), inset -3px -3px 7px var(--nm-light);
+    /* the faint convex sheen every raised part carries */
+    --nm-face: linear-gradient(145deg, color-mix(in srgb, #FFFFFF 5%, var(--nm-base)), color-mix(in srgb, #000000 4%, var(--nm-base)));
 }
 html[data-style="neumorphic"] #trackerPanel {
-    background: var(--bg) !important; border:none !important;
+    background: var(--nm-face) !important; border:none !important;
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow: 13px 13px 26px var(--nm-dark), -13px -13px 26px var(--nm-light) !important;
+    box-shadow: var(--nm-out-lg) !important;
 }
 html[data-style="neumorphic"] .tt-surface {
-    background: var(--bg) !important; border:none !important;
+    background: var(--nm-base) !important; border:none !important;
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow: 10px 10px 20px var(--nm-dark), -10px -10px 20px var(--nm-light) !important;
+    box-shadow: var(--nm-out-lg) !important;
 }
 html[data-style="neumorphic"] .tt-card,
-html[data-style="neumorphic"] .glass-effect,
-html[data-style="neumorphic"] .list-item-bg {
-    background: var(--bg) !important; border:none !important;
+html[data-style="neumorphic"] .glass-effect {
+    background: var(--nm-face) !important; border:none !important;
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow: 5px 5px 11px var(--nm-dark), -5px -5px 11px var(--nm-light) !important;
+    box-shadow: var(--nm-out) !important;
 }
+/* Rows are flat on the well they sit in; hovering lifts one out. */
+html[data-style="neumorphic"] .list-item-bg,
+html[data-style="neumorphic"] .tt-row { background: transparent !important; border:none !important; box-shadow:none !important;
+    transition: box-shadow 220ms var(--ease-out), background-color 220ms; }
+html[data-style="neumorphic"] .tt-row:hover,
+html[data-style="neumorphic"] #transferListContainer > [data-id]:hover { background: var(--nm-face) !important; box-shadow: var(--nm-out-sm) !important; }
+html[data-style="neumorphic"] .tt-well,
+html[data-style="neumorphic"] #transferListContainer,
+html[data-style="neumorphic"] #callListContainer { background: var(--nm-base) !important; border-radius: 1.25rem; box-shadow: var(--nm-in) !important; border:none !important; }
 html[data-style="neumorphic"] .tt-card.selected,
-html[data-style="neumorphic"] .tt-card:active {
-    box-shadow: inset 4px 4px 8px var(--nm-dark), inset -4px -4px 8px var(--nm-light) !important;
-}
+html[data-style="neumorphic"] .tt-card:active { box-shadow: var(--nm-in-sm) !important; }
 html[data-style="neumorphic"] .glass-input,
 html[data-style="neumorphic"] .tt-input {
-    background: var(--bg) !important; border:none !important;
-    box-shadow: inset 4px 4px 9px var(--nm-dark), inset -4px -4px 9px var(--nm-light) !important;
+    background: var(--nm-base) !important; border:none !important;
+    box-shadow: var(--nm-in-sm) !important;
 }
 html[data-style="neumorphic"] .tt-meter {
-    background: var(--bg) !important;
-    box-shadow: inset 3px 3px 6px var(--nm-dark), inset -3px -3px 6px var(--nm-light);
+    background: var(--nm-base) !important; border-radius:999px !important; height:10px;
+    box-shadow: var(--nm-in-sm);
 }
+html[data-style="neumorphic"] .tt-meter .meter-fill { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 75%, #fff), var(--accent)); border-radius:999px; }
 
 
-/* ── MINIMAL ─────────────────────────────────────────────────────────────
-   Truly minimal: hairlines, no shadows, no tint, no chrome. */
-html[data-style="minimal"] { --panel-radius:0.5rem; --btn-radius:0.25rem; }
-html[data-mode="dark"][data-style="minimal"]  { --bg:#0A0B0D; --bg-alt:#0F1114; --card-bg:#0F1114; --input-bg:#131519; --dropdown-bg:#131519; --list-item-bg:#121418; --border:rgba(255,255,255,0.12); --text:#E9EBEF; --subtle:#8B92A0; --shadow:rgba(0,0,0,0.4); }
-html[data-mode="light"][data-style="minimal"] { --bg:#FFFFFF; --bg-alt:#FFFFFF; --card-bg:#FFFFFF; --input-bg:#FFFFFF; --dropdown-bg:#FFFFFF; --list-item-bg:#FCFCFD; --border:rgba(15,20,30,0.13); --text:#15181F; --subtle:#666E7C; --shadow:rgba(0,0,0,0.08); }
-html[data-style="minimal"] #trackerPanel {
-    background: var(--card-bg) !important; border:1px solid var(--border) !important;
-    backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow:none !important;
+/* ── SPACE ───────────────────────────────────────────────────────────────
+   The isaiart.com sky (the home page and the 404): near-black, a dust of
+   drifting stars, the thin iridescent eclipse ring, hairline horizon arcs
+   and condensed HUD readouts in the corners. Orbitron for the instrument
+   type (titles and figures), Barlow / Barlow Condensed for everything you
+   read, exactly as on the main site. Hairlines, no rounding to speak of,
+   and accent only where an instrument would light up. */
+html[data-style="space"] {
+    --font-main:'Barlow', system-ui, sans-serif;
+    --font-display:'Orbitron', 'Barlow Condensed', sans-serif;
+    --panel-radius:6px; --btn-radius:3px; --pill-radius:3px;
 }
-html[data-style="minimal"] .tt-surface { background: var(--dropdown-bg) !important; border:1px solid var(--border) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow: 0 10px 34px var(--shadow) !important; border-radius:0.5rem !important; }
-html[data-style="minimal"] .tt-card,
-html[data-style="minimal"] .glass-effect { background:transparent !important; border:1px solid var(--border) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow:none !important; border-radius:0.25rem !important; }
-html[data-style="minimal"] .tt-meter { border-radius:0 !important; height:3px !important; }
+html[data-mode="dark"][data-style="space"] {
+    --bg:#06070B; --bg-alt: rgba(255,255,255,0.032); --card-bg: rgba(8,10,16,0.78);
+    --input-bg: rgba(255,255,255,0.03); --dropdown-bg:#0B0D13; --list-item-bg: rgba(255,255,255,0.03);
+    --text:#F4F4F2; --subtle:#9A9A95; --border: rgba(255,255,255,0.11);
+    --hover-bg: color-mix(in srgb, var(--accent) 10%, transparent); --shadow: rgba(0,0,0,0.72);
+    --sp-line: rgba(255,255,255,0.12);
+}
+html[data-mode="light"][data-style="space"] {
+    --bg:#E8EAEF; --bg-alt: rgba(10,14,24,0.035); --card-bg: rgba(247,248,251,0.86);
+    --input-bg: rgba(255,255,255,0.75); --dropdown-bg:#F6F7FA; --list-item-bg: rgba(255,255,255,0.6);
+    --text:#0D1018; --subtle:#5B606D; --border: rgba(10,14,24,0.14);
+    --hover-bg: color-mix(in srgb, var(--accent) 9%, transparent); --shadow: rgba(20,26,40,0.18);
+    --sp-line: rgba(10,14,24,0.14);
+}
+html[data-style="space"] #spaceBg { display:block !important; }
+html[data-style="space"] #trackerPanel {
+    /* HUD corner brackets in the accent, then the glass. */
+    background:
+        linear-gradient(var(--accent), var(--accent)) left top / 16px 1px,
+        linear-gradient(var(--accent), var(--accent)) left top / 1px 16px,
+        linear-gradient(var(--accent), var(--accent)) right top / 16px 1px,
+        linear-gradient(var(--accent), var(--accent)) right top / 1px 16px,
+        linear-gradient(var(--accent), var(--accent)) left bottom / 16px 1px,
+        linear-gradient(var(--accent), var(--accent)) left bottom / 1px 16px,
+        linear-gradient(var(--accent), var(--accent)) right bottom / 16px 1px,
+        linear-gradient(var(--accent), var(--accent)) right bottom / 1px 16px,
+        linear-gradient(var(--card-bg), var(--card-bg)) !important;
+    background-repeat: no-repeat !important;
+    border:1px solid var(--border) !important;
+    backdrop-filter: blur(10px) saturate(120%) !important; -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+    box-shadow: 0 40px 90px -20px var(--shadow), 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent) !important;
+}
+html[data-style="space"] .tt-surface { background: var(--dropdown-bg) !important; border:1px solid var(--border) !important; border-radius:6px !important;
+    backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow: 0 30px 70px var(--shadow) !important; }
+html[data-style="space"] .tt-card,
+html[data-style="space"] .glass-effect { background: var(--bg-alt) !important; border:1px solid var(--border) !important; border-radius:4px !important;
+    backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow:none !important; }
+html[data-style="space"] .list-item-bg,
+html[data-style="space"] .tt-row { background: transparent !important; border:none !important; border-bottom:1px solid var(--sp-line) !important; border-radius:0 !important; box-shadow:none !important; }
+html[data-style="space"] .tt-row:hover { background: var(--hover-bg) !important; }
+html[data-style="space"] .glass-input,
+html[data-style="space"] .tt-input { background: var(--input-bg) !important; border:1px solid var(--border) !important; border-radius:3px !important; }
+html[data-style="space"] h1 { font-family: var(--font-display) !important; font-weight:700 !important; text-transform:uppercase; letter-spacing:0.14em; font-size:1.3rem !important; }
+html[data-style="space"] h2, html[data-style="space"] h3,
+html[data-style="space"] .tp-label { font-family:'Barlow Condensed', 'Barlow', sans-serif !important; text-transform:uppercase; letter-spacing:0.2em; font-weight:600 !important; }
+html[data-style="space"] .subtle-text { letter-spacing:0.02em; }
+html[data-style="space"] .tt-meter:not(.heart-meter):not(.seg-meter) { border-radius:0 !important; height:3px !important; background: var(--sp-line) !important; box-shadow: 0 0 12px -2px color-mix(in srgb, var(--accent) 45%, transparent); }
+html[data-style="space"] .tt-meter .meter-fill { border-radius:0; }
+html[data-style="space"] .tt-btn,
+html[data-style="space"] .accent-bg { border-radius:3px !important; font-family:'Barlow Condensed', 'Barlow', sans-serif !important; text-transform:uppercase; letter-spacing:0.16em; font-weight:700 !important; box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+
+/* Background furniture */
+#spaceBg { background: var(--bg); }
+#spaceCanvas { position:absolute; inset:0; display:block; }
+.sp-ring { position:absolute; width:min(44vmin, 520px); aspect-ratio:1; right:7vw; top:9vh; border-radius:50%; }
+.sp-ring::before { content:''; position:absolute; inset:0; border-radius:50%; padding:1.5px;
+    background: conic-gradient(from 200deg, var(--accent), #F0A8FF, #FFE1A8, #8FFFE0, var(--accent));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity:0.6; animation: spRing 120s linear infinite; }
+.sp-ring::after { content:''; position:absolute; inset:-30%; border-radius:50%;
+    background: radial-gradient(circle, transparent 37%, color-mix(in srgb, var(--accent) 9%, transparent) 39%, transparent 52%); }
+.sp-ring i { position:absolute; inset:2px; border-radius:50%; background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--bg) 70%, #1a1f2e), var(--bg) 70%); }
+html[data-mode="light"] .sp-ring::before { opacity:0.45; }
+@keyframes spRing { to { transform: rotate(360deg); } }
+.sp-arc { position:absolute; left:0; width:100%; height:56px; fill:none; stroke: var(--sp-line); stroke-width:1; }
+.sp-arc path { vector-effect: non-scaling-stroke; }
+.sp-arc-top { top:0; } .sp-arc-bot { bottom:0; }
+.sp-hud { position:absolute; bottom:18px; font-family:'Barlow Condensed', 'Barlow', sans-serif; font-size:0.7rem; letter-spacing:0.22em; text-transform:uppercase; color: var(--subtle); }
+.sp-hud span { opacity:0.6; margin-right:6px; }
+.sp-hud-bl { left:28px; } .sp-hud-br { right:28px; }
+@media (max-width: 720px) { .sp-hud { display:none; } .sp-ring { right:-10vw; top:4vh; width:60vw; } }
 
 
 /* ── BLUEPRINT ───────────────────────────────────────────────────────────
@@ -353,6 +455,7 @@ html[data-mode="dark"][data-style="blueprint"][data-color="orange"] { --bp-paper
 html[data-mode="dark"][data-style="blueprint"][data-color="white"]  { --bp-paper:#13102A; --bp-ink:#B7ABF5; }  /* violet drafting          */
 html[data-mode="dark"][data-style="blueprint"][data-color="green"]  { --bp-paper:#06140A; --bp-ink:#7FE0A0; }  /* phosphor plan            */
 html[data-mode="dark"][data-style="blueprint"][data-color="pink"]   { --bp-paper:#1A0916; --bp-ink:#F58ACB; }  /* magenta diazo            */
+html[data-mode="dark"][data-style="blueprint"][data-color="red"]    { --bp-paper:#1A0809; --bp-ink:#FF8A80; }  /* red-line markup set      */
 
 html[data-mode="light"][data-style="blueprint"] {
     --bp-paper:#EEF4FA; --bp-ink:#1F5A94;
@@ -379,6 +482,7 @@ html[data-mode="light"][data-style="blueprint"][data-color="orange"] { --bp-pape
 html[data-mode="light"][data-style="blueprint"][data-color="white"]  { --bp-paper:#F3F1FD; --bp-ink:#463699; }
 html[data-mode="light"][data-style="blueprint"][data-color="green"]  { --bp-paper:#EEF7F0; --bp-ink:#1D6B3C; }
 html[data-mode="light"][data-style="blueprint"][data-color="pink"]   { --bp-paper:#FCEFF7; --bp-ink:#9C2472; }
+html[data-mode="light"][data-style="blueprint"][data-color="red"]    { --bp-paper:#FCF1EF; --bp-ink:#A3231C; }
 html[data-style="blueprint"] #blueprintBg { display:block !important; }
 html[data-style="blueprint"] #trackerPanel {
     background: var(--card-bg) !important;
@@ -438,6 +542,7 @@ html[data-mode="dark"][data-style="cyberpunk"][data-color="white"]  { --accent:#
 html[data-mode="dark"][data-style="cyberpunk"][data-color="blue"]   { --accent:#33CCFF; --accent-hover:#0099CC; --accent-text:#021A26; }
 html[data-mode="dark"][data-style="cyberpunk"][data-color="pink"]   { --accent:#FF66CC; --accent-hover:#CC3399; --accent-text:#26021A; }
 html[data-mode="dark"][data-style="cyberpunk"][data-color="orange"] { --accent:#FFA23A; --accent-hover:#CC6600; --accent-text:#261202; }
+html[data-mode="dark"][data-style="cyberpunk"][data-color="red"]    { --accent:#FF3B48; --accent-hover:#CC1F2B; --accent-text:#1F0003; }  /* red alert */
 html[data-mode="light"][data-style="cyberpunk"] {
     --bg:#E7EAE8; --bg-alt:#F2F4F3; --card-bg:#DFE3E1; --input-bg:#FFFFFF;
     --dropdown-bg:#DFE3E1; --list-item-bg:#EDEFEE;
@@ -507,6 +612,7 @@ html[data-mode="dark"][data-style="pixelart"][data-color="white"]  { --accent:#8
 html[data-mode="dark"][data-style="pixelart"][data-color="blue"]   { --accent:#29ADFF; --accent-hover:#1A8ECC; --accent-text:#06121C; }
 html[data-mode="dark"][data-style="pixelart"][data-color="green"]  { --accent:#00E436; --accent-hover:#00B82C; --accent-text:#04200D; }
 html[data-mode="dark"][data-style="pixelart"][data-color="pink"]   { --accent:#FF77A8; --accent-hover:#CC4477; --accent-text:#2A0014; }
+html[data-mode="dark"][data-style="pixelart"][data-color="red"]    { --accent:#FF004D; --accent-hover:#C2003A; --accent-text:#FFF1E8; }
 html[data-mode="light"][data-style="pixelart"] {
     --bg:#E8F0E8; --bg-alt:#DCE8D8; --card-bg:#D2E2CC; --input-bg:#F4F9F1;
     --dropdown-bg:#D2E2CC; --list-item-bg:#E4EEDF;
@@ -525,6 +631,7 @@ html[data-mode="light"][data-style="pixelart"][data-color="white"]  { --accent:#
 html[data-mode="light"][data-style="pixelart"][data-color="blue"]   { --accent:#2A3A8A; --accent-hover:#1A2870; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="pixelart"][data-color="green"]  { --accent:#2C6A10; --accent-hover:#1A4A08; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="pixelart"][data-color="pink"]   { --accent:#8A2A4A; --accent-hover:#6A1A38; --accent-text:#FFFFFF; }
+html[data-mode="light"][data-style="pixelart"][data-color="red"]    { --accent:#A8102E; --accent-hover:#7E0B22; --accent-text:#FFFFFF; }
 /* The colour dots tint the whole window, not just the accent. Signature
    keeps the theme's own hand-tuned palette above (indigo by night, GameBoy
    green by day); every other dot re-inks the card, frame, wells, keys and
@@ -689,7 +796,7 @@ html[data-style="retro"] {
    the base palette block (html[data-mode][data-color]) outranks the one on
    html[data-style="retro"] and title bars end up dark-on-dark. */
 html[data-style="retro"][data-mode="dark"],
-html[data-style="retro"][data-mode="light"] { --accent-text:#FFFFFF; }
+html[data-style="retro"][data-mode="light"] { --accent-text:#FFFFFF; --rate-green:#007A30; --rate-red:#B00000; --success:#007A30; }
 /* Signature = the canonical teal desktop with a navy title bar. It has to be
    restated at two-attribute specificity: the base html[data-mode][data-color]
    palette outranks the accent on html[data-style="retro"], which would
@@ -701,6 +808,8 @@ html[data-style="retro"][data-color="blue"]   { --bg:#3A6EA5; --accent:#000090; 
 html[data-style="retro"][data-color="green"]  { --bg:#1A7A6A; --accent:#006040; --accent-hover:#004830; }
 html[data-style="retro"][data-color="pink"]   { --bg:#7A4A6A; --accent:#800060; --accent-hover:#600048; }
 html[data-style="retro"][data-color="orange"] { --bg:#8A6A2A; --accent:#7A3C00; --accent-hover:#5A2A00; }
+html[data-style="retro"][data-color="red"]    { --bg:#6E1F23; --accent:#800000; --accent-hover:#5E0000; }   /* "Maple" */
+html[data-mode="light"][data-style="retro"][data-color="red"] { --bg:#C9A3A3; }
 html[data-mode="light"][data-style="retro"]   { --bg:#C0C0C0; }
 html[data-mode="light"][data-style="retro"][data-color="blue"]   { --bg:#A8B8D0; }
 html[data-mode="light"][data-style="retro"][data-color="green"]  { --bg:#9EBEB0; }
@@ -805,117 +914,155 @@ html[data-style="retro"] input[type=range]::-webkit-slider-thumb { background: v
 .sm-sep { height:2px; margin:3px 2px; box-shadow: inset 0 1px 0 var(--w95-lo), inset 0 -1px 0 var(--w95-hi); }
 
 
-/* ── MEDIEVAL ────────────────────────────────────────────────────────────
-   Regal, not just "a serif font": parchment grain, gilt foil headings,
-   filigree corners, wax seal, candle-lit vignette that breathes. */
-html[data-style="medieval"] {
-    --font-main:'Cinzel', 'Times New Roman', serif;
-    --font-display:'Cinzel Decorative', 'Cinzel', serif;
-    --panel-radius:0.25rem; --btn-radius:0.125rem;
-}
-/* The colour dot swaps the whole hall — stone, metal and candlelight — not
-   just the button. Everything is derived from four seeds (--med-stone,
-   --med-glow and the three --gilt steps), so a variant is four lines. */
-html[data-mode="dark"][data-style="medieval"] {
-    --med-stone:#0E0A06; --med-glow:#2E1D0A;
-    --gilt-1:#F5E2A8; --gilt-2:#C8962A; --gilt-3:#8A5F14;
-    --bg: var(--med-stone);
-    --bg-alt:       color-mix(in srgb, var(--gilt-3) 14%, var(--med-stone));
-    --card-bg:      color-mix(in srgb, var(--gilt-3) 19%, var(--med-stone));
-    --input-bg:     color-mix(in srgb, var(--gilt-3)  8%, var(--med-stone));
-    --dropdown-bg:  color-mix(in srgb, var(--gilt-3) 21%, var(--med-stone));
-    --list-item-bg: color-mix(in srgb, var(--gilt-3) 24%, var(--med-stone));
-    --text:   color-mix(in srgb, var(--gilt-1) 82%, #FFFFFF);
-    --subtle: color-mix(in srgb, var(--gilt-2) 62%, #9C9C9C);
-    --border: var(--gilt-3);
-    --hover-bg: color-mix(in srgb, var(--gilt-2) 14%, transparent);
-    --shadow: rgba(0,0,0,0.75);
-    --accent: var(--gilt-2); --accent-hover: var(--gilt-3);
-    --accent-text: color-mix(in srgb, var(--med-stone) 82%, #000000);
-}
-/* Amber — the classic candlelit gold hall */
-html[data-mode="dark"][data-style="medieval"][data-color="orange"] { --med-stone:#0E0A06; --med-glow:#33200B; --gilt-1:#F7E3A4; --gilt-2:#DBA22C; --gilt-3:#8A5F14; }
-/* Mono — cold grey stone and hammered silver */
-html[data-mode="dark"][data-style="medieval"][data-color="dark"]   { --med-stone:#0B0C0E; --med-glow:#282C34; --gilt-1:#F4F7FB; --gilt-2:#B6BECC; --gilt-3:#697285; }
-/* Indigo — royal purple drapery, pale silver leaf */
-html[data-mode="dark"][data-style="medieval"][data-color="white"]  { --med-stone:#0C0817; --med-glow:#2A1B4A; --gilt-1:#EDE7FF; --gilt-2:#AA9BE6; --gilt-3:#6250A2; }
-/* Sky — moonlit keep, blued steel */
-html[data-mode="dark"][data-style="medieval"][data-color="blue"]   { --med-stone:#060B14; --med-glow:#12294A; --gilt-1:#DDEDFC; --gilt-2:#84B2E0; --gilt-3:#3F6494; }
-/* Emerald — mossy hall, verdigris bronze */
-html[data-mode="dark"][data-style="medieval"][data-color="green"]  { --med-stone:#060D07; --med-glow:#153017; --gilt-1:#E0F4D6; --gilt-2:#8FC46E; --gilt-3:#446E3C; }
-/* Pink — garnet and rose gold */
-html[data-mode="dark"][data-style="medieval"][data-color="pink"]   { --med-stone:#110609; --med-glow:#3A1220; --gilt-1:#FDE3EC; --gilt-2:#DE8FA8; --gilt-3:#8B4460; }
+/* ── HANDBOOK (id: medieval) ─────────────────────────────────────────────
+   A page from the Player's Handbook, built from dnd.isaiart.com/template:
+   the same parchment, the same Solbera faces (Bookinsanity for text, Mr
+   Eaves Small Caps for heads and figures), dark-red small-caps heads over a
+   gold rule, ability-score boxes for stats, green-striped tables for logs,
+   a monster stat block for the featured card, and the gold page-foot
+   flourish with a running footer. By night the page lies on a candlelit
+   desk with embers drifting up; by day on pale vellum. The colour dot is
+   the ink the heads are set in. (The id stays "medieval" so saved choices
+   carry over.) */
+@font-face { font-family:'Bookinsanity'; src:url('fonts/Bookinsanity.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:'Bookinsanity'; src:url('fonts/Bookinsanity-italic.woff2') format('woff2'); font-style:italic; font-display:swap; }
+@font-face { font-family:'Bookinsanity'; src:url('fonts/Bookinsanity-700.woff2') format('woff2'); font-weight:700; font-display:swap; }
+@font-face { font-family:'Mr Eaves Small Caps'; src:url('fonts/MrEavesSmallCaps.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:'Nodesto Caps Condensed'; src:url('fonts/NodestoCapsCondensed.woff2') format('woff2'); font-display:swap; }
 
-html[data-mode="light"][data-style="medieval"] {
-    --med-stone:#5A3E1E; --med-glow:#A87A3A; --parch:#F4E7C4;
-    --gilt-1:#8A5F14; --gilt-2:#6A4410; --gilt-3:#4A2E08;
-    --bg: var(--med-stone);
-    --card-bg: var(--parch);
-    --bg-alt:       color-mix(in srgb, var(--parch) 86%, #FFFFFF);
-    --input-bg:     color-mix(in srgb, var(--parch) 55%, #FFFFFF);
-    --dropdown-bg:  var(--parch);
-    --list-item-bg: color-mix(in srgb, var(--parch) 78%, #FFFFFF);
-    --text:   color-mix(in srgb, var(--gilt-3) 84%, #000000);
-    --subtle: color-mix(in srgb, var(--gilt-2) 74%, #2E2418);
-    --border: color-mix(in srgb, var(--gilt-1) 78%, #6A4A22);
-    --hover-bg: color-mix(in srgb, var(--gilt-1) 12%, transparent);
-    --shadow: rgba(0,0,0,0.45);
-    /* Signature: illuminated-manuscript oxblood on parchment. */
-    --accent:#8B1A1A; --accent-hover:#6A1010; --accent-text:#FFFFFF;
+html[data-style="medieval"] {
+    --font-main:'Bookinsanity', 'IM Fell English', Georgia, serif;
+    --font-display:'Mr Eaves Small Caps', 'IM Fell English SC', Georgia, serif;
+    --panel-radius:3px; --btn-radius:4px; --pill-radius:4px;
+    --hb-page:#EEE5CE; --hb-ink:#1D1912; --hb-gold:#C9AD6A; --hb-cap:#766649;
+    --hb-note:#E0E5C1; --hb-stat:#F2E5B5; --hb-line:#BFAA7C;
+    --hb-head:#58180D; --hb-rule:#9C2B1B;
+    --text: var(--hb-ink); --subtle: var(--hb-cap); --border: var(--hb-line);
+    --card-bg: var(--hb-page); --dropdown-bg: var(--hb-page); --bg-alt: rgba(255,255,255,0.24);
+    --input-bg: rgba(255,252,242,0.62); --list-item-bg: transparent;
+    --hover-bg: color-mix(in srgb, var(--hb-head) 8%, transparent);
+    /* (accent is set below at two-attribute specificity) */
+    --rate-green:#3C6B2A; --rate-red:#9C2B1B;
 }
-html[data-mode="light"][data-style="medieval"][data-color="orange"] { --med-stone:#5A3E1E; --med-glow:#A87A3A; --parch:#F4E7C4; --gilt-1:#8A5F14; --gilt-2:#6A4410; --gilt-3:#402708; --accent:#A8590E; --accent-hover:#84450A; }
-html[data-mode="light"][data-style="medieval"][data-color="dark"]   { --med-stone:#3B3E44; --med-glow:#767C86; --parch:#F5F4F0; --gilt-1:#5A5F68; --gilt-2:#3A3E45; --gilt-3:#1B1D21; --accent:#22252A; --accent-hover:#0C0D0F; }
-html[data-mode="light"][data-style="medieval"][data-color="white"]  { --med-stone:#3E3160; --med-glow:#7A67AE; --parch:#F1ECFB; --gilt-1:#5B4A93; --gilt-2:#443578; --gilt-3:#291D50; --accent:#3A3A72; --accent-hover:#272750; }
-html[data-mode="light"][data-style="medieval"][data-color="blue"]   { --med-stone:#274363; --med-glow:#5B87B8; --parch:#EDF3FA; --gilt-1:#2F5D93; --gilt-2:#224873; --gilt-3:#14304F; --accent:#1F4A96; --accent-hover:#163A76; }
-html[data-mode="light"][data-style="medieval"][data-color="green"]  { --med-stone:#2F4A2A; --med-glow:#6D9660; --parch:#F0F6E9; --gilt-1:#3E6B33; --gilt-2:#2E5326; --gilt-3:#1B3616; --accent:#3A6A1A; --accent-hover:#2A4E12; }
-html[data-mode="light"][data-style="medieval"][data-color="pink"]   { --med-stone:#5E2A42; --med-glow:#A05C7C; --parch:#FBECF2; --gilt-1:#8A2E56; --gilt-2:#6C2141; --gilt-3:#47132A; --accent:#A01A5A; --accent-hover:#7E1246; }
+/* The ink. Everything set in "red" in the book follows the dot. */
+html[data-style="medieval"][data-color="orange"] { --hb-head:#6B3A0A; --hb-rule:#A8590E; }
+html[data-style="medieval"][data-color="dark"]   { --hb-head:#1D1912; --hb-rule:#4A4038; }
+html[data-style="medieval"][data-color="white"]  { --hb-head:#2E2366; --hb-rule:#4B3BA0; }
+html[data-style="medieval"][data-color="blue"]   { --hb-head:#1F3A5F; --hb-rule:#2F5D93; }
+html[data-style="medieval"][data-color="green"]  { --hb-head:#2E4A1E; --hb-rule:#4E7A2E; }
+html[data-style="medieval"][data-color="pink"]   { --hb-head:#6A1840; --hb-rule:#A42A63; }
+html[data-style="medieval"][data-color="red"]    { --hb-head:#8B0F14; --hb-rule:#C0171E; }
+/* accent-text at two-attribute specificity, like retro, so the base
+   palette rows can't override it with a dark value */
+html[data-style="medieval"][data-mode="dark"], html[data-style="medieval"][data-mode="light"] {
+    --accent: var(--hb-head); --accent-hover: color-mix(in srgb, var(--hb-head) 78%, #000); --accent-text:#F6EDD6;
+    --accent-trans: color-mix(in srgb, var(--hb-head) 12%, transparent); }
+html[data-mode="dark"][data-style="medieval"]  { --bg:#120D0A; --shadow: rgba(0,0,0,0.7); }
+html[data-mode="light"][data-style="medieval"] { --bg:#D6CAAC; --shadow: rgba(60,40,15,0.32); }
+
 html[data-style="medieval"] #medievalBg { display:block !important; }
-html[data-style="medieval"] #medievalCorners { display:block !important; }
 html[data-style="medieval"] #trackerPanel {
-    background: var(--card-bg) !important; border:2px solid var(--border) !important;
+    background: url('handbook/parchment.webp') center / cover, var(--hb-page) !important;
+    border:none !important; border-radius:3px !important;
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--gilt-1) 55%, transparent),
-        0 0 0 6px var(--border),
-        0 0 0 7px color-mix(in srgb, var(--gilt-3) 80%, transparent),
-        inset 0 0 60px rgba(80,50,15,0.16),
-        0 26px 70px var(--shadow) !important;
+    box-shadow: inset 0 0 90px rgba(150,115,50,0.22), 0 0 0 1px rgba(60,40,15,0.35), 0 34px 90px var(--shadow) !important;
+    padding-bottom: 3.6rem !important;
     position:relative;
 }
+/* Page foot: the gold flourish and the running footer, like the book. */
+html[data-style="medieval"] #trackerPanel::after {
+    content:''; position:absolute; left:0; right:0; bottom:0; height:52px; pointer-events:none;
+    background: url('handbook/footer.webp') center top / 100% auto no-repeat; opacity:0.95;
+}
+html[data-style="medieval"] #trackerPanel::before {
+    content: attr(data-tt-foot); position:absolute; left:2.4rem; bottom:21px; pointer-events:none;
+    font-family:'Mr Eaves Small Caps', Georgia, serif; font-size:0.8rem; letter-spacing:0.05em; color: color-mix(in srgb, var(--hb-gold) 72%, #5A4318); white-space:pre;
+}
 html[data-style="medieval"] .tt-surface {
-    background: var(--dropdown-bg) !important; border:2px solid var(--border) !important;
+    background: url('handbook/parchment.webp') center / cover, var(--hb-page) !important; border:none !important; border-radius:3px !important;
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow: 0 0 0 4px var(--border), 0 0 0 5px color-mix(in srgb, var(--gilt-3) 70%, transparent), 0 20px 55px var(--shadow) !important;
+    box-shadow: inset 0 0 60px rgba(150,115,50,0.2), 0 0 0 1px rgba(60,40,15,0.35), 0 24px 60px var(--shadow) !important;
+    color: var(--hb-ink) !important;
 }
+/* Ability-score boxes. */
 html[data-style="medieval"] .tt-card,
-html[data-style="medieval"] .glass-effect,
-html[data-style="medieval"] .list-item-bg {
-    background: var(--bg-alt) !important; border:1px solid var(--border) !important;
-    border-radius:0.125rem !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-    box-shadow: inset 0 0 22px rgba(90,60,20,0.10) !important;
+html[data-style="medieval"] .glass-effect {
+    background: rgba(255,250,236,0.34) !important; border:1.5px solid var(--hb-line) !important; border-radius:9px !important;
+    backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 0 rgba(120,90,40,0.12) !important;
 }
-/* Gilt foil heading — gradient clipped to the glyphs, with an emboss. */
+/* The monster stat block, for whatever a page wants to feature. */
+html[data-style="medieval"] .tt-feature {
+    background: url('handbook/statblock.webp') center / 100% auto, var(--hb-stat) !important; background-blend-mode: overlay !important;
+    border-style:solid !important; border-width:7px 3px !important; border-radius:0 !important;
+    border-image: url('handbook/frame-border.webp') 14 6 stretch !important;
+    box-shadow: 0 6px 14px rgba(60,40,15,0.28) !important;
+}
+/* PHB tables: no boxes, alternating green rows. */
+html[data-style="medieval"] .list-item-bg,
+html[data-style="medieval"] .tt-row { background: transparent !important; border:none !important; border-radius:0 !important; box-shadow:none !important; }
+html[data-style="medieval"] .tt-row:nth-child(odd),
+html[data-style="medieval"] #transferListContainer > [data-id]:nth-child(odd),
+html[data-style="medieval"] .call-item:nth-child(odd) { background: color-mix(in srgb, var(--hb-note) 92%, transparent) !important; }
+html[data-style="medieval"] .tt-row:hover { background: color-mix(in srgb, var(--hb-head) 8%, var(--hb-note)) !important; }
+html[data-style="medieval"] .glass-input,
+html[data-style="medieval"] .tt-input { background: var(--input-bg) !important; border:1px solid var(--hb-line) !important; border-radius:4px !important; color: var(--hb-ink) !important; }
+html[data-style="medieval"] .tt-input::placeholder { color: color-mix(in srgb, var(--hb-cap) 85%, transparent); font-style:italic; }
+
+/* Heads */
 html[data-style="medieval"] h1 {
-    font-family: var(--font-display) !important; font-size:1.45rem !important; letter-spacing:1.5px;
-    background: linear-gradient(175deg, var(--gilt-1) 0%, var(--gilt-2) 48%, var(--gilt-3) 52%, var(--gilt-2) 78%, var(--gilt-1) 100%);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.45));
+    font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important;
+    font-size:2.15rem !important; line-height:1.05; letter-spacing:0.01em; color: var(--hb-head) !important;
+    background:none; -webkit-background-clip:border-box; filter:none;
 }
-html[data-style="medieval"] h2 { font-family: var(--font-display) !important; letter-spacing:1px; }
-/* Fleuron divider instead of a plain rule. */
-html[data-style="medieval"] .tt-divider,
-html[data-style="medieval"] header[style*="border-bottom"],
-html[data-style="medieval"] footer[style*="border-top"] { position:relative; }
-html[data-style="medieval"] .tt-divider::after {
-    content:'\276E \2766 \276F'; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    background: var(--card-bg); padding:0 10px; color: var(--accent); font-size:0.7rem; letter-spacing:2px;
+html[data-style="medieval"] h3 {
+    font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important;
+    font-size:1.32rem !important; color: var(--hb-head) !important; letter-spacing:0.01em;
+    border-bottom:2px solid var(--hb-gold); padding-bottom:1px;
 }
-html[data-style="medieval"] .tt-meter { border-radius:0 !important; }
+html[data-style="medieval"] h2,
+html[data-style="medieval"] .tp-label {
+    font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important; text-transform:none !important;
+    letter-spacing:0.08em !important; color: var(--hb-cap) !important; font-size:0.86rem !important;
+}
+html[data-style="medieval"] .subtle-text { color: var(--hb-cap); }
+html[data-style="medieval"] .accent-text { color: var(--hb-head) !important; }
+html[data-style="medieval"] .tt-meter:not(.heart-meter) { border-radius:2px !important; height:10px !important; background: rgba(60,40,15,0.08) !important; border:1px solid var(--hb-line); }
+html[data-style="medieval"] .tt-meter .meter-fill { background: linear-gradient(180deg, #E2BF78, #A9843A) !important; }
+html[data-style="medieval"] .tt-meter.heart-meter .heart { color: rgba(60,40,15,0.2); font-size:1.15rem; }
+html[data-style="medieval"] .tt-meter.heart-meter .heart.on { color: var(--hb-rule); text-shadow:none; }
 html[data-style="medieval"] .tt-btn,
 html[data-style="medieval"] .accent-bg {
-    border-radius:0.125rem !important;
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gilt-1) 45%, transparent), 0 2px 0 var(--gilt-3), 0 4px 10px var(--shadow) !important;
+    background: var(--hb-head) !important; color: var(--accent-text) !important; border-radius:4px !important;
+    font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important; letter-spacing:0.06em; font-size:1.02rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 0 rgba(0,0,0,0.25), 0 4px 10px rgba(60,40,15,0.25) !important;
 }
+html[data-style="medieval"] .tt-divider::after { content:''; }
+
+/* The desk */
+#medievalBg { background: radial-gradient(ellipse 70% 60% at 50% 38%, #4A2A1A 0%, #2A1C13 42%, #120D0A 76%, #070504 100%); }
+html[data-mode="light"] #medievalBg { background: radial-gradient(ellipse 80% 70% at 50% 40%, #EFE6D1 0%, #DCCFB0 55%, #BFAE88 100%); }
+#medievalBg::before { content:''; position:absolute; inset:0; opacity:0.45;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.4' numOctaves='3' seed='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='220' height='220' filter='url(%23n)' opacity='0.35'/></svg>");
+    mix-blend-mode: overlay; }
+#medievalBg::after { content:''; position:absolute; inset:0;
+    background: radial-gradient(ellipse at 50% 40%, transparent 35%, rgba(0,0,0,0.6) 100%);
+    animation: candle 5.5s var(--ease-in-out) infinite alternate; }
+html[data-mode="light"] #medievalBg::after { background: radial-gradient(ellipse at 50% 40%, transparent 50%, rgba(90,60,20,0.22) 100%); }
+@keyframes candle { from { opacity:0.82; } to { opacity:1; } }
+.hb-embers { position:absolute; inset:0; overflow:hidden; }
+.hb-embers i { position:absolute; left:var(--x); bottom:-12px; width:var(--s); height:var(--s); border-radius:50%;
+    background: radial-gradient(circle, #FFD58A 0%, #FF9A3C 45%, rgba(255,120,40,0) 70%);
+    box-shadow: 0 0 6px 1px rgba(255,150,60,0.55); opacity:0;
+    animation: hbEmber var(--d) linear var(--delay) infinite; }
+html[data-mode="light"] .hb-embers { display:none; }
+@keyframes hbEmber {
+    0%   { transform: translate(0, 0); opacity:0; }
+    10%  { opacity:0.9; }
+    60%  { opacity:0.55; }
+    100% { transform: translate(var(--sway), -88vh); opacity:0; }
+}
+#medievalCorners { display:none !important; }
 
 
 /* ── BRUTALIST ───────────────────────────────────────────────────────── */
@@ -932,6 +1079,7 @@ html[data-mode="dark"][data-style="brutalist"][data-color="blue"]   { --accent:#
 html[data-mode="dark"][data-style="brutalist"][data-color="green"]  { --accent:#00FF66; --accent-hover:#00CC52; --accent-text:#04200D; }
 html[data-mode="dark"][data-style="brutalist"][data-color="pink"]   { --accent:#FF0099; --accent-hover:#CC0077; --accent-text:#FFFFFF; }
 html[data-mode="dark"][data-style="brutalist"][data-color="orange"] { --accent:#FF6600; --accent-hover:#CC4400; --accent-text:#180800; }
+html[data-mode="dark"][data-style="brutalist"][data-color="red"]    { --accent:#D7001E; --accent-hover:#A80017; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="brutalist"] { --bg:#F0F0E8; --bg-alt:#E8E8E0; --card-bg:#E8E8E0; --input-bg:#FFFFFF; --dropdown-bg:#E8E8E0; --list-item-bg:#FFFFFF; --text:#0A0A0A; --subtle:#4A4A4A; --border:#0A0A0A; --hover-bg:rgba(10,10,10,0.07); --shadow:rgba(0,0,0,0.5); }
 html[data-mode="light"][data-style="brutalist"][data-color="auto"]   { --accent:#E60000; --accent-hover:#B80000; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="brutalist"][data-color="dark"]   { --accent:#0A0A0A; --accent-hover:#000000; --accent-text:#FFFFFF; }
@@ -940,6 +1088,7 @@ html[data-mode="light"][data-style="brutalist"][data-color="blue"]   { --accent:
 html[data-mode="light"][data-style="brutalist"][data-color="green"]  { --accent:#006E00; --accent-hover:#005200; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="brutalist"][data-color="pink"]   { --accent:#C4005E; --accent-hover:#970048; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="brutalist"][data-color="orange"] { --accent:#C44E00; --accent-hover:#993B00; --accent-text:#FFFFFF; }
+html[data-mode="light"][data-style="brutalist"][data-color="red"]    { --accent:#B0001A; --accent-hover:#860014; --accent-text:#FFFFFF; }
 html[data-style="brutalist"] #brutalistBg { display:block !important; }
 html[data-style="brutalist"] #trackerPanel { background: var(--card-bg) !important; border:3px solid var(--border) !important; border-radius:0 !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow: 10px 10px 0 var(--border) !important; }
 html[data-style="brutalist"] .tt-surface { background: var(--dropdown-bg) !important; border:3px solid var(--border) !important; border-radius:0 !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow: 6px 6px 0 var(--border) !important; }
@@ -995,6 +1144,7 @@ html[data-mode="dark"][data-style="newsroom"][data-color="orange"] { --news-red:
 html[data-mode="dark"][data-style="newsroom"][data-color="white"]  { --news-red:#6C5AE8; --news-slate:#0F0D22; }
 html[data-mode="dark"][data-style="newsroom"][data-color="green"]  { --news-red:#0A8145; --news-slate:#07150E; }
 html[data-mode="dark"][data-style="newsroom"][data-color="pink"]   { --news-red:#DC1A86; --news-slate:#160810; }
+html[data-mode="dark"][data-style="newsroom"][data-color="red"]    { --news-red:#B5121B; --news-slate:#120709; }   /* maroon evening edition */
 
 html[data-mode="light"][data-style="newsroom"] {
     --news-red:#C4111A; --news-slate:#E9EEF5; --news-bar-ink:#101B2C;
@@ -1015,6 +1165,7 @@ html[data-mode="light"][data-style="newsroom"][data-color="orange"] { --news-red
 html[data-mode="light"][data-style="newsroom"][data-color="white"]  { --news-red:#4B3BC4; --news-slate:#EEEBFA; --news-bar-ink:#171243; }
 html[data-mode="light"][data-style="newsroom"][data-color="green"]  { --news-red:#0B7C41; --news-slate:#E8F4EC; --news-bar-ink:#0A2A19; }
 html[data-mode="light"][data-style="newsroom"][data-color="pink"]   { --news-red:#B31068; --news-slate:#FAEAF3; --news-bar-ink:#380427; }
+html[data-mode="light"][data-style="newsroom"][data-color="red"]    { --news-red:#A50E16; --news-slate:#F6ECEC; --news-bar-ink:#2A0607; }
 html[data-style="newsroom"] #newsChrome { display:block !important; }
 html[data-style="newsroom"] #scene { padding-top:56px !important; padding-bottom:62px !important; }
 html[data-style="newsroom"] #trackerPanel {
@@ -1048,7 +1199,7 @@ html[data-style="newsroom"] .tt-meter { border-radius:0 !important; }
 .news-beat { font-family:'Bebas Neue',Impact,sans-serif; font-size:0.78rem; letter-spacing:1.4px;
     background: var(--news-red); color: var(--news-flag-text); padding:1px 7px; margin-right:10px; border-radius:2px; }
 /* Opaque so the crawl slides *behind* it instead of colliding with the clock. */
-.news-clock { display:flex; align-items:center; gap:10px; padding:0 16px; font-family:'Roboto Mono',monospace; font-size:0.78rem;
+.news-clock { display:flex; align-items:center; justify-content:center; width:190px; box-sizing:border-box; gap:10px; padding:0 12px; font-family:'Roboto Mono',monospace; font-size:0.78rem;
     border-left:1px solid rgba(255,255,255,0.16); flex-shrink:0; background: var(--news-bar); z-index:2;
     box-shadow:-14px 0 14px -6px var(--news-bar); }
 .news-live { display:inline-flex; align-items:center; gap:6px; font-family:'Bebas Neue',sans-serif; letter-spacing:1.5px; font-size:0.9rem; }
@@ -1096,6 +1247,53 @@ html[data-style="newsroom"] #newsWeather { display:block; }
 #newsWeather .wx-day i { font-style:normal; font-family:'Roboto Mono',monospace; font-size:0.58rem; display:flex; gap:3px; }
 #newsWeather .wx-day i em { font-style:normal; opacity:0.55; }
 
+/* ── Network ident, lower third, top stories ── */
+.news-logo { display:flex; align-items:center; gap:7px; padding:0 14px 0 12px; background:#FFFFFF; color:#0B0D12; flex-shrink:0; position:relative; z-index:1; }
+.news-logo b { font-family:'Bebas Neue',Impact,sans-serif; font-weight:400; font-size:1.55rem; letter-spacing:1px; line-height:1;
+    background: var(--news-red); color: var(--news-flag-text); padding:3px 6px 1px; }
+.news-logo span { font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:0.78rem; letter-spacing:0.14em; line-height:1; }
+.news-logo em { font-style:normal; color: var(--news-red); margin-left:2px; }
+html[data-color="dark"] .news-logo b { background:#0B0D12; color:#FFFFFF; }
+/* The strap is now a proper lower third: a desk tag and the app's own line. */
+.news-band.bottom { height:62px; }
+.news-strap { height:28px !important; gap:12px !important; padding:0 14px 0 0 !important; background: rgba(255,255,255,0.08) !important; }
+.news-desk-tag { align-self:stretch; display:flex; align-items:center; padding:0 12px; background: var(--news-red); color: var(--news-flag-text);
+    font-family:'Bebas Neue',Impact,sans-serif; font-size:0.95rem; letter-spacing:1.6px; text-transform:uppercase; }
+.news-desk { font-family:'Barlow','Poppins',sans-serif; font-size:0.86rem; font-weight:600; letter-spacing:0.01em; text-transform:none; color:#FFFFFF;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+#newsSrcLabel { font-size:0.6rem; letter-spacing:0.16em; color: rgba(255,255,255,0.7); white-space:nowrap; }
+html[data-style="newsroom"] #scene { padding-bottom:70px !important; }
+html[data-style="newsroom"] #newsWeather { bottom:78px; }
+
+#newsStory { display:none; position:fixed; right:18px; bottom:78px; z-index:44; width:244px;
+    background: var(--news-bar); color: var(--news-bar-text); font-family:'Barlow','Poppins',sans-serif;
+    border:1px solid rgba(255,255,255,0.14); border-top:3px solid var(--news-red);
+    box-shadow: 0 14px 34px rgba(0,0,0,0.45); overflow:hidden; animation: wxIn 460ms var(--ease-out) 120ms both; }
+html[data-style="newsroom"] #newsStory { display:block; }
+@media (max-width: 1300px), (max-height: 700px) { html[data-style="newsroom"] #newsStory { display:none; } }
+#newsStory .ns-head { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background: var(--news-red); color: var(--news-flag-text);
+    font-family:'Bebas Neue',Impact,sans-serif; font-size:0.82rem; letter-spacing:1.6px; }
+#newsStory .ns-count { font-family:'Roboto Mono',monospace; font-size:0.6rem; letter-spacing:0.06em; opacity:0.85; }
+#newsStory .ns-media { position:relative; aspect-ratio:16/9; background: linear-gradient(135deg, color-mix(in srgb, var(--news-red) 45%, #0B1220), #0B1220); overflow:hidden; }
+#newsStory .ns-media img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition: opacity 500ms ease; }
+#newsStory .ns-media img.in { opacity:1; }
+#newsStory .ns-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:6px; color:#FFFFFF;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:0.14em; font-size:0.8rem; opacity:0.9; }
+#newsStory .ns-ph b { font-family:'Bebas Neue',Impact,sans-serif; font-weight:400; font-size:1.6rem; background: var(--news-red); color: var(--news-flag-text); padding:2px 6px 0; letter-spacing:1px; }
+#newsStory:not(.no-img) .ns-ph { display:none; }
+#newsStory .ns-beat { position:absolute; left:8px; bottom:8px; background: var(--news-red); color: var(--news-flag-text);
+    font-family:'Bebas Neue',Impact,sans-serif; font-size:0.78rem; letter-spacing:1.4px; padding:1px 7px; }
+#newsStory .ns-media::after { content:''; position:absolute; inset:0; background: linear-gradient(transparent 55%, rgba(0,0,0,0.55)); }
+#newsStory .ns-beat { z-index:1; }
+#newsStory .ns-body { padding:9px 11px 4px; }
+#newsStory .ns-title { font-weight:700; font-size:0.9rem; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+#newsStory .ns-desc { font-size:0.68rem; opacity:0.72; margin-top:3px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+#newsStory .ns-dots { display:flex; gap:4px; padding:6px 11px 10px; }
+#newsStory .ns-dots i { flex:1; height:3px; background: rgba(255,255,255,0.18); }
+#newsStory .ns-dots i.on { background: var(--news-red); }
+/* Market rail: up/down coloured, with a hairline between exchanges. */
+.stock-item .chg.up::before, .stock-item .chg.down::before { content:''; }
+
 
 /* ═══════════ 4b. THEME IDENTITY KITS ════════════════════════════════════
    What makes each theme feel like its world beyond colour: type, icon
@@ -1105,7 +1303,7 @@ html[data-style="newsroom"] #newsWeather { display:block; }
    theme through theme.js MOTION. */
 
 /* ── Icon weight / fill / treatment ── */
-html[data-style="minimal"]    .material-symbols-outlined,
+html[data-style="space"]      .material-symbols-outlined,
 html[data-style="blueprint"]  .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 20; }
 html[data-style="glass"]      .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; }
 html[data-style="goop"]       .material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24; }
@@ -1121,10 +1319,8 @@ html[data-style="pixelart"]   .material-symbols-outlined { font-variation-settin
 
 /* ── Type ── */
 html[data-style="glass"]      { --font-main:'Inter', system-ui, sans-serif; --font-display:'Inter', system-ui, sans-serif; }
-html[data-style="minimal"]    { --font-main:'Inter', system-ui, sans-serif; --font-display:'Inter', system-ui, sans-serif; }
-html[data-style="minimal"] h1 { font-weight:600 !important; letter-spacing:-0.025em; }
 html[data-style="neumorphic"] { --font-main:'Nunito', 'Poppins', sans-serif; --font-display:'Nunito', sans-serif; }
-html[data-style="neumorphic"] h1 { font-weight:800 !important; }
+html[data-style="neumorphic"] h1 { font-weight:800 !important; letter-spacing:-0.01em; }
 html[data-style="goop"]       { --font-main:'Fredoka', 'Nunito', sans-serif; --font-display:'Fredoka', sans-serif; --panel-radius:2rem; --btn-radius:999px; }
 html[data-style="goop"] h1    { font-weight:600 !important; }
 html[data-style="brutalist"]  { --font-main:'Space Mono', ui-monospace, monospace; --font-display:'Archivo Black', Impact, sans-serif; }
@@ -1133,23 +1329,21 @@ html[data-style="brutalist"] h2 { font-size:0.72rem !important; letter-spacing:2
 html[data-style="brutalist"] p, html[data-style="brutalist"] .subtle-text { letter-spacing:0; }
 html[data-style="newsroom"]   { --font-main:'Barlow', 'Poppins', system-ui, sans-serif; }
 html[data-style="newsroom"] h2, html[data-style="newsroom"] .tp-label { font-family:'Barlow Condensed', 'Barlow', sans-serif !important; letter-spacing:0.12em; }
-/* Manuscript: blackletter title, a period text face for the body, small
-   caps for labels. (Cinzel is caps-only, which set every line in capitals.) */
-html[data-style="medieval"]   { --font-main:'IM Fell English', 'Cinzel', Georgia, serif; --font-display:'UnifrakturMaguntia', 'Cinzel Decorative', serif; }
-html[data-style="medieval"] h1 { font-size:2.05rem !important; letter-spacing:0.5px !important; line-height:1.15; }
-html[data-style="medieval"] h2, html[data-style="medieval"] h3,
-html[data-style="medieval"] .tp-label { font-family:'IM Fell English SC', 'IM Fell English', serif !important; letter-spacing:0.06em; }
-/* Big figures in each world's numerals instead of one mono everywhere. */
-html[data-style="medieval"]   .text-4xl { font-family:'IM Fell English', Georgia, serif !important; font-weight:400 !important; }
-html[data-style="newsroom"]   .text-4xl { font-family:'Bebas Neue', Impact, sans-serif !important; font-weight:400 !important; font-size:2.6rem !important; letter-spacing:1px; }
-html[data-style="brutalist"]  .text-4xl { font-family:'Archivo Black', Impact, sans-serif !important; font-weight:400 !important; }
-html[data-style="neumorphic"] .text-4xl { font-family:'Nunito', sans-serif !important; font-weight:800 !important; }
-html[data-style="goop"]       .text-4xl { font-family:'Fredoka', sans-serif !important; font-weight:600 !important; }
-html[data-style="minimal"]    .text-4xl { font-family:'Inter', sans-serif !important; font-weight:600 !important; letter-spacing:-0.02em; }
-html[data-style="cyberpunk"]  .text-4xl { font-family:'VT323', monospace !important; font-size:2.9rem !important; font-weight:400 !important; }
-html[data-style="retro"]      .text-4xl { font-family:'Tahoma', 'MS Sans Serif', sans-serif !important; font-size:1.9rem !important; }
-
-
+/* Big figures in each world's numerals instead of one mono everywhere.
+   .tt-figure is the hook for any app's big numbers (.text-4xl is the
+   older one the first two apps use). */
+html[data-style="medieval"]   :is(.text-4xl, .tt-figure) { font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important; color: var(--hb-ink); letter-spacing:0.01em; }
+html[data-style="newsroom"]   :is(.text-4xl, .tt-figure) { font-family:'Bebas Neue', Impact, sans-serif !important; font-weight:400 !important; letter-spacing:1px; }
+html[data-style="newsroom"]   .text-4xl { font-size:2.6rem !important; }
+html[data-style="brutalist"]  :is(.text-4xl, .tt-figure) { font-family:'Archivo Black', Impact, sans-serif !important; font-weight:400 !important; }
+html[data-style="neumorphic"] :is(.text-4xl, .tt-figure) { font-family:'Nunito', sans-serif !important; font-weight:800 !important; }
+html[data-style="goop"]       :is(.text-4xl, .tt-figure) { font-family:'Fredoka', sans-serif !important; font-weight:600 !important; }
+html[data-style="space"]      :is(.text-4xl, .tt-figure) { font-family:'Orbitron', 'Barlow Condensed', sans-serif !important; font-weight:600 !important; letter-spacing:0.04em; }
+html[data-style="cyberpunk"]  :is(.text-4xl, .tt-figure) { font-family:'VT323', monospace !important; font-weight:400 !important; }
+html[data-style="cyberpunk"]  .text-4xl { font-size:2.9rem !important; }
+html[data-style="retro"]      :is(.text-4xl, .tt-figure) { font-family:'Tahoma', 'MS Sans Serif', sans-serif !important; }
+html[data-style="retro"]      .text-4xl { font-size:1.9rem !important; }
+html[data-style="blueprint"]  :is(.text-4xl, .tt-figure) { font-family:'Roboto Mono', monospace !important; font-weight:500 !important; }
 /* ── Switches: each world's own on/off ─────────────────────────────────── */
 /* glass: frosted track */
 html[data-style="glass"] .toggle-switch .slider { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.24); backdrop-filter: blur(8px); }
@@ -1162,20 +1356,18 @@ html[data-style="goop"] .toggle-switch .slider:before { width:20px; height:20px;
 html[data-style="goop"] .toggle-switch input:checked + .slider { background: var(--accent); }
 html[data-style="goop"] .toggle-switch input:active + .slider:before { width:26px; }
 html[data-style="goop"] .toggle-switch input:checked:active + .slider:before { transform: translateX(14px); }
-/* neumorphic: pressed-in track, raised knob */
-html[data-style="neumorphic"] .toggle-switch .slider { background: var(--bg); border:none;
-    box-shadow: inset 3px 3px 6px var(--nm-dark), inset -3px -3px 6px var(--nm-light); }
-html[data-style="neumorphic"] .toggle-switch .slider:before { background: color-mix(in srgb, var(--text) 9%, var(--bg));
-    box-shadow: 2px 2px 4px var(--nm-dark), -1px -1px 3px var(--nm-light), inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent); }
-html[data-style="neumorphic"] .toggle-switch input:checked + .slider { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
-html[data-style="neumorphic"] .toggle-switch input:checked + .slider:before { background: radial-gradient(circle, var(--accent) 0 3px, var(--bg) 3.5px); }
-/* minimal: a hairline, monochrome */
-html[data-style="minimal"] .toggle-switch .slider { background: transparent; border:1px solid var(--subtle); }
-html[data-style="minimal"] .toggle-switch .slider:before { width:12px; height:12px; left:5px; bottom:5px; background: var(--subtle); }
-html[data-style="minimal"] .toggle-switch input:checked + .slider { background: var(--text); border-color: var(--text); }
-html[data-style="minimal"] .toggle-switch input:checked + .slider:before { background: var(--bg); }
-html[data-style="minimal"] .toggle-switch input:active + .slider:before { width:16px; }
-html[data-style="minimal"] .toggle-switch input:checked:active + .slider:before { transform: translateX(16px); }
+/* neumorphic: pressed-in track, raised knob that lights when on */
+html[data-style="neumorphic"] .toggle-switch .slider { background: var(--nm-base); border:none; box-shadow: var(--nm-in-sm); }
+html[data-style="neumorphic"] .toggle-switch .slider:before { background: var(--nm-face); box-shadow: 2px 2px 5px var(--nm-dark), -2px -2px 4px var(--nm-light); }
+html[data-style="neumorphic"] .toggle-switch input:checked + .slider { background: color-mix(in srgb, var(--accent) 16%, var(--nm-base)); }
+html[data-style="neumorphic"] .toggle-switch input:checked + .slider:before { background: radial-gradient(circle, var(--accent) 0 3.5px, transparent 4px), var(--nm-face); }
+/* space: a hairline track with a lit pip, like a cockpit switch */
+html[data-style="space"] .toggle-switch .slider { background: transparent; border:1px solid var(--border); border-radius:2px; }
+html[data-style="space"] .toggle-switch .slider:before { width:12px; height:12px; left:5px; bottom:5px; border-radius:1px; background: var(--subtle); }
+html[data-style="space"] .toggle-switch input:checked + .slider { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+html[data-style="space"] .toggle-switch input:checked + .slider:before { background: var(--accent); box-shadow: 0 0 8px var(--accent); transform: translateX(20px); }
+html[data-style="space"] .toggle-switch input:active + .slider:before { width:12px; }
+html[data-style="space"] .toggle-switch input:checked:active + .slider:before { transform: translateX(20px); }
 /* blueprint: hollow square that is inked in when on */
 html[data-style="blueprint"] .toggle-switch .slider { background: transparent; border:1px solid var(--border); }
 html[data-style="blueprint"] .toggle-switch .slider:before { width:14px; height:14px; left:4px; bottom:4px; background: transparent; border:1px solid var(--accent); border-radius:0;
@@ -1333,22 +1525,26 @@ html[data-style="retro"] ::-webkit-scrollbar-track { background: repeating-conic
 html[data-style="retro"] ::-webkit-scrollbar-thumb { background: var(--w95-face); border-radius:0; box-shadow: var(--w95-raised); }
 
 
-/* ── Medieval manuscript ───────────────────────────────────────────────── */
-html[data-style="medieval"] .call-item { border-bottom:1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius:0 !important; }
-/* Striking a call through is done in red ink. */
-html[data-style="medieval"] .call-item .flex-grow > p.line-through:first-child { text-decoration-color: #A3261F; text-decoration-thickness:2px; }
-html[data-mode="dark"][data-style="medieval"] .call-item .flex-grow > p.line-through:first-child { text-decoration-color: #D0503F; }
-html[data-style="medieval"] #chartContainer { background: repeating-linear-gradient(transparent 0 19px, color-mix(in srgb, var(--border) 22%, transparent) 19px 20px); }
-html[data-style="medieval"] #rateChart .chart-line { stroke-width:2; }
+/* ── Handbook ──────────────────────────────────────────────────────────── */
+html[data-style="medieval"] .call-item { border-radius:0 !important; }
+/* Striking a call through is done in the book's red. */
+html[data-style="medieval"] .call-item .flex-grow > p.line-through:first-child { text-decoration-color: var(--hb-rule); text-decoration-thickness:2px; }
+html[data-style="medieval"] #chartContainer { background: repeating-linear-gradient(transparent 0 19px, rgba(120,90,40,0.16) 19px 20px); border:1.5px solid var(--hb-line); border-radius:9px; }
+html[data-style="medieval"] #rateChart .chart-line { stroke: var(--hb-rule) !important; stroke-width:2; }
 html[data-style="medieval"] #rateChart .grid-line { stroke-dasharray:0; opacity:0.5; }
-html[data-style="medieval"] #rateChart .chart-point { fill: var(--gilt-1); stroke: var(--gilt-3); }
-html[data-style="medieval"] .tt-surface h3 { font-family: var(--font-display) !important; font-size:1.35rem !important; font-weight:400 !important; }
-html[data-style="medieval"] button.custom-hover:hover { box-shadow: 0 0 0 1px var(--border), 0 0 12px color-mix(in srgb, var(--gilt-2) 35%, transparent); }
-html[data-style="medieval"] .tt-fab { border-color: var(--border); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gilt-3) 60%, transparent), 0 6px 18px var(--shadow); }
+html[data-style="medieval"] #rateChart .chart-point { fill: var(--hb-page); stroke: var(--hb-rule); }
+html[data-style="medieval"] .tt-surface h3 { font-size:1.45rem !important; }
+html[data-style="medieval"] button.custom-hover:hover { box-shadow: 0 0 0 1px var(--hb-line); }
+html[data-style="medieval"] .tt-fab { background: url('handbook/parchment.webp') center / 300px, var(--hb-page); color: var(--hb-head); border:1px solid rgba(60,40,15,0.4);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--hb-gold) 70%, transparent), 0 6px 18px var(--shadow); }
+html[data-style="medieval"] .tt-fab:hover { background: url('handbook/parchment.webp') center / 300px, var(--hb-page); color: var(--hb-rule); }
 /* Popovers settle slowly, like a page turning. */
-html[data-style="medieval"] #themePanel { border-radius:0.25rem; border:2px solid var(--border); transition: opacity 260ms ease, transform 300ms ease; }
+html[data-style="medieval"] #themePanel { border-radius:3px; border:none; background: url('handbook/parchment.webp') center / cover, var(--hb-page); color: var(--hb-ink);
+    box-shadow: inset 0 0 50px rgba(150,115,50,0.2), 0 0 0 1px rgba(60,40,15,0.35), 0 24px 60px var(--shadow); transition: opacity 260ms ease, transform 300ms ease; }
 html[data-style="medieval"] #themePanel.visible, html[data-style="medieval"] #reminderControls.visible { transition: opacity 420ms ease, transform 520ms cubic-bezier(0.3, 0.1, 0.3, 1); }
-html[data-style="medieval"] ::-webkit-scrollbar-thumb { background: linear-gradient(var(--gilt-1), var(--gilt-3)); }
+html[data-style="medieval"] .tt-panel-head b { font-family:'Mr Eaves Small Caps', Georgia, serif; font-weight:400; font-size:1.25rem; color: var(--hb-head); }
+html[data-style="medieval"] ::-webkit-scrollbar-thumb { background: var(--hb-line); border-radius:4px; }
+html[data-style="medieval"] ::selection { background: color-mix(in srgb, var(--hb-head) 25%, transparent); }
 
 
 /* ── Cyberpunk terminal ────────────────────────────────────────────────── */
@@ -1642,24 +1838,33 @@ html[data-style="newsroom"] #reminderControls.visible { clip-path: inset(-24px -
 
 
 /* ── Neumorphic ────────────────────────────────────────────────────────── */
-/* Everything is extruded from the one surface; pressing pushes it in. */
-html[data-style="neumorphic"] .tt-btn, html[data-style="neumorphic"] .accent-bg { background: var(--bg) !important; color: var(--accent) !important;
-    box-shadow: 5px 5px 10px var(--nm-dark), -5px -5px 10px var(--nm-light) !important; transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out); }
-html[data-style="neumorphic"] .tt-btn:hover, html[data-style="neumorphic"] .accent-bg:hover { background: var(--bg) !important; transform:none; }
+/* Keys are pressed out of the surface and sink when you press them; the
+   primary key is the one thing filled with colour, and it is still soft. */
+html[data-style="neumorphic"] .tt-btn, html[data-style="neumorphic"] .accent-bg {
+    background: linear-gradient(145deg, color-mix(in srgb, #FFFFFF 18%, var(--accent)), var(--accent)) !important; color: var(--accent-text) !important; border:none !important;
+    box-shadow: var(--nm-out-sm), inset 0 1px 0 rgba(255,255,255,0.25) !important; transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out); }
+html[data-style="neumorphic"] .tt-btn:hover, html[data-style="neumorphic"] .accent-bg:hover { transform: translateY(-1px); filter: brightness(1.04); }
 html[data-style="neumorphic"] .tt-btn:active, html[data-style="neumorphic"] .accent-bg:active { transform:none;
-    box-shadow: inset 4px 4px 8px var(--nm-dark), inset -4px -4px 8px var(--nm-light) !important; transition-duration: var(--dur-press); }
-html[data-style="neumorphic"] button.custom-hover, html[data-style="neumorphic"] .delete-btn { background: var(--bg) !important;
-    box-shadow: 3px 3px 6px var(--nm-dark), -3px -3px 6px var(--nm-light); transition: box-shadow 200ms var(--ease-out), color 150ms; }
-html[data-style="neumorphic"] button.custom-hover:hover { background: var(--bg) !important; color: var(--accent) !important; }
-html[data-style="neumorphic"] .delete-btn:hover { background: var(--bg) !important; color: var(--danger) !important; }
-html[data-style="neumorphic"] button.custom-hover:active, html[data-style="neumorphic"] .delete-btn:active { transform:none;
-    box-shadow: inset 3px 3px 6px var(--nm-dark), inset -3px -3px 6px var(--nm-light); }
-html[data-style="neumorphic"] #callListContainer { padding:10px 16px 10px 10px !important; }
-html[data-style="neumorphic"] .call-item { box-shadow: 4px 4px 9px var(--nm-dark), -4px -4px 9px var(--nm-light); border-radius:1rem !important; margin-bottom:12px; }
-html[data-style="neumorphic"] .tt-fab { background: var(--bg); border:none; box-shadow: 5px 5px 10px var(--nm-dark), -5px -5px 10px var(--nm-light); }
-html[data-style="neumorphic"] .tt-fab:active { box-shadow: inset 3px 3px 6px var(--nm-dark), inset -3px -3px 6px var(--nm-light); }
-html[data-style="neumorphic"] #themePanel { border:none; background: var(--bg); backdrop-filter:none; -webkit-backdrop-filter:none;
-    box-shadow: 10px 10px 20px var(--nm-dark), -10px -10px 20px var(--nm-light); }
+    box-shadow: inset 4px 4px 8px color-mix(in srgb, #000 25%, var(--accent)), inset -3px -3px 6px color-mix(in srgb, #fff 25%, var(--accent)) !important; transition-duration: var(--dur-press); }
+html[data-style="neumorphic"] button.custom-hover, html[data-style="neumorphic"] .delete-btn, html[data-style="neumorphic"] .edit-btn { background: transparent !important; border-radius:999px !important;
+    transition: box-shadow 200ms var(--ease-out), color 150ms; }
+html[data-style="neumorphic"] button.custom-hover:hover, html[data-style="neumorphic"] .edit-btn:hover { background: var(--nm-face) !important; box-shadow: var(--nm-out-sm); color: var(--accent) !important; }
+html[data-style="neumorphic"] .delete-btn:hover { background: var(--nm-face) !important; box-shadow: var(--nm-out-sm); color: var(--danger) !important; }
+html[data-style="neumorphic"] button.custom-hover:active, html[data-style="neumorphic"] .delete-btn:active { transform:none; box-shadow: var(--nm-in-sm); }
+html[data-style="neumorphic"] #callListContainer { padding:10px 14px !important; }
+html[data-style="neumorphic"] .call-item { border-radius:1rem !important; }
+html[data-style="neumorphic"] #transferListContainer { padding:10px !important; }
+html[data-style="neumorphic"] #transferListContainer > [data-id] { background: transparent !important; border:none !important; box-shadow:none !important; border-radius:1rem !important; }
+html[data-style="neumorphic"] .tt-fab { background: var(--nm-face); border:none; box-shadow: var(--nm-out-sm); color: var(--subtle); }
+html[data-style="neumorphic"] .tt-fab:hover { color: var(--accent); background: var(--nm-face); }
+html[data-style="neumorphic"] .tt-fab:active { box-shadow: var(--nm-in-sm); }
+html[data-style="neumorphic"] #themePanel { border:none; background: var(--nm-base); backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow: var(--nm-out-lg); border-radius:1.5rem; }
+html[data-style="neumorphic"] .style-btn, html[data-style="neumorphic"] .mode-pill { border:none; background: var(--nm-base); box-shadow: var(--nm-out-sm); }
+html[data-style="neumorphic"] .style-btn.selected { box-shadow: var(--nm-in-sm); background: var(--nm-base); }
+html[data-style="neumorphic"] .mode-pill { box-shadow: var(--nm-in-sm); }
+html[data-style="neumorphic"] .mode-pill-btn.active { background: var(--nm-face); box-shadow: var(--nm-out-sm); color: var(--accent); }
+html[data-style="neumorphic"] #rateChart .chart-line { stroke-width:3; }
+html[data-style="neumorphic"] #chartContainer { border-radius:1.25rem; box-shadow: var(--nm-in); }
 
 
 /* ── Goop ──────────────────────────────────────────────────────────────── */
@@ -1674,19 +1879,21 @@ html[data-style="goop"] #themePanel { border-radius:1.75rem; transform: scale(0.
 html[data-style="goop"] #themePanel.visible, html[data-style="goop"] #reminderControls.visible { transform:none; transition: opacity 220ms var(--ease-out), transform 460ms cubic-bezier(0.3, 0.6, 0.35, 1); }
 
 
-/* ── Minimal ───────────────────────────────────────────────────────────── */
-html[data-style="minimal"] #transferListContainer > [data-id] { background:transparent !important; border:none !important; border-bottom:1px solid var(--border) !important;
-    border-radius:0 !important; box-shadow:none !important; margin-top:0 !important; padding-left:2px !important; padding-right:0 !important; }
-html[data-style="minimal"] .call-item { border-bottom:1px solid var(--border); border-radius:0 !important; }
-html[data-style="minimal"] .tt-btn, html[data-style="minimal"] .accent-bg { box-shadow:none !important; }
-html[data-style="minimal"] .tt-btn:hover { transform:none; }
-html[data-style="minimal"] #rateChart .chart-line { stroke-width:1.5; fill:none; }
-html[data-style="minimal"] #rateChart .chart-point { opacity:0; transition: opacity 120ms; }
-html[data-style="minimal"] #rateChart .chart-point:last-of-type, html[data-style="minimal"] #rateChart .chart-point:hover { opacity:1; }
-html[data-style="minimal"] .tt-fab { box-shadow:none; }
-/* Popovers only fade. */
-html[data-style="minimal"] #themePanel, html[data-style="minimal"] #reminderControls { transform:none; transition: opacity 110ms ease-in; }
-html[data-style="minimal"] #themePanel.visible, html[data-style="minimal"] #reminderControls.visible { transition: opacity 150ms ease-out; }
+/* ── Space ─────────────────────────────────────────────────────────────── */
+html[data-style="space"] #transferListContainer > [data-id] { background:transparent !important; border:none !important; border-bottom:1px solid var(--sp-line) !important;
+    border-radius:0 !important; box-shadow:none !important; margin-top:0 !important; }
+html[data-style="space"] .call-item { border-bottom:1px solid var(--sp-line); border-radius:0 !important; }
+html[data-style="space"] #rateChart .chart-line { stroke-width:1.5; fill:none; filter: drop-shadow(0 0 4px var(--accent)); }
+html[data-style="space"] #rateChart .grid-line { stroke: var(--sp-line); stroke-dasharray: 2 6; }
+html[data-style="space"] #chartContainer { background-image: radial-gradient(circle, var(--sp-line) 1px, transparent 1.2px); background-size: 24px 24px; }
+html[data-style="space"] .tt-fab { border-radius:3px; background: var(--card-bg); border-color: var(--border); box-shadow:none; backdrop-filter: blur(8px); }
+html[data-style="space"] .tt-fab:hover { border-color: var(--accent); color: var(--accent); transform:none; }
+html[data-style="space"] #themePanel { border-radius:6px; }
+html[data-style="space"] ::selection { background: var(--accent); color: var(--bg); }
+html[data-style="space"] ::-webkit-scrollbar-thumb { background: var(--sp-line); border-radius:0; }
+/* Popovers scan in from the top, like an instrument readout. */
+html[data-style="space"] #themePanel, html[data-style="space"] #reminderControls { transform:none; clip-path: inset(0 0 100% 0); opacity:1; transition: clip-path 160ms var(--ease-in); }
+html[data-style="space"] #themePanel.visible, html[data-style="space"] #reminderControls.visible { clip-path: inset(-20px -20px -60px -20px); transition: clip-path 420ms var(--ease-out); }
 
 
 /* ── Glass ─────────────────────────────────────────────────────────────── */
@@ -1701,7 +1908,7 @@ body { font-family: var(--font-main); background-color: var(--bg); color: var(--
        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 #ambientBg, #gradientBg, #goopBg, #matrixCanvas, #pixelArtBg,
-#medievalBg, #brutalistBg, #blueprintBg { display:none; position:fixed; inset:0; z-index:-1; overflow:hidden; }
+#medievalBg, #brutalistBg, #blueprintBg, #spaceBg { display:none; position:fixed; inset:0; z-index:-1; overflow:hidden; }
 
 /* Default — one slow accent bloom, nothing that can smear text. */
 #ambientBg { background: var(--bg); }
@@ -1725,8 +1932,8 @@ html[data-mode="light"] #gradientBg::before { opacity:0.3; }
 
 /* Goop — metaball stage. Alpha-threshold filter makes the blobs weld. */
 #goopBg { background: var(--bg); }
-#goopBg .goop-stage { position:absolute; inset:-12%; filter: url(#smtGoo); opacity:0.72; }
-html[data-mode="light"] #goopBg .goop-stage { opacity:0.6; }
+#goopBg .goop-stage { position:absolute; inset:-12%; filter: url(#smtGoo); opacity:0.8; }
+html[data-mode="light"] #goopBg .goop-stage { opacity:0.66; }
 #goopBg .goop-ball { position:absolute; border-radius:50%; top:0; left:0; will-change: transform; }
 #goopBg .goop-tint { position:absolute; inset:0; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%); }
 
@@ -1745,38 +1952,29 @@ html[data-mode="light"] #scanlineOverlay { background: repeating-linear-gradient
     animation: crtFlicker 8s steps(1) infinite; }
 @keyframes crtFlicker { 0%,98% { opacity:1; } 99% { opacity:0.94; } 100% { opacity:1; } }
 
-/* Medieval — candlelit stone / aged parchment, with a slow flame breathe.
-   Driven by the same --med-* seeds, so the ground follows the colour dot. */
-#medievalBg { background: radial-gradient(ellipse at 36% 32%,
-    var(--med-glow) 0%,
-    color-mix(in srgb, var(--med-glow) 34%, var(--med-stone)) 46%,
-    var(--med-stone) 76%,
-    color-mix(in srgb, var(--med-stone) 62%, #000000) 100%); }
-#medievalBg::before { content:''; position:absolute; inset:0; opacity:0.5;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.35'/></svg>");
-    mix-blend-mode: overlay; }
-#medievalBg::after { content:''; position:absolute; inset:0;
-    background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,0.62) 100%);
-    animation: candle 5.5s var(--ease-in-out) infinite alternate; }
-@keyframes candle { from { opacity:0.85; } to { opacity:1; } }
-#medievalCorners { display:none; position:fixed; inset:0; z-index:0; pointer-events:none; }
-#medievalCorners svg { position:absolute; width:104px; height:104px; stroke: color-mix(in srgb, var(--gilt-2) 70%, transparent); fill:none; stroke-width:1.4; opacity:0.75; }
-#medievalCorners svg:nth-child(1) { top:14px;    left:14px; }
-#medievalCorners svg:nth-child(2) { top:14px;    right:14px;  transform: scaleX(-1); }
-#medievalCorners svg:nth-child(3) { bottom:14px; left:14px;   transform: scaleY(-1); }
-#medievalCorners svg:nth-child(4) { bottom:14px; right:14px;  transform: scale(-1,-1); }
+/* Handbook desk and embers: see the HANDBOOK block in section 4. */
+#medievalCorners { display:none; }
 
 /* Brutalist — hatch. */
 #brutalistBg { background: var(--bg); background-image: repeating-linear-gradient(45deg, transparent, transparent 24px, color-mix(in srgb, var(--text) 5%, transparent) 24px, color-mix(in srgb, var(--text) 5%, transparent) 26px); }
 
-/* Blueprint — crisp two-tier grid, no blur. */
+/* Blueprint — crisp two-tier grid, no blur. The sheet creeps diagonally
+   (one major square every 50s, ~2px a second) so the room feels alive
+   without anything you would notice moving. One major period per loop, so
+   the wrap is seamless. A drafting lamp's soft pool sits over it. */
 #blueprintBg { background: var(--bg);
     background-image:
         linear-gradient(var(--bp-line) 1px, transparent 1px),
         linear-gradient(90deg, var(--bp-line) 1px, transparent 1px),
         linear-gradient(var(--bp-line-major) 1px, transparent 1px),
         linear-gradient(90deg, var(--bp-line-major) 1px, transparent 1px);
-    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px; }
+    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+    animation: bpDrift 50s linear infinite; }
+@keyframes bpDrift { from { background-position: 0 0, 0 0, 0 0, 0 0; } to { background-position: 100px 100px, 100px 100px, 100px 100px, 100px 100px; } }
+#blueprintBg::after { content:''; position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(ellipse 60% 55% at 50% 45%, color-mix(in srgb, var(--bp-ink) 7%, transparent), transparent 70%),
+                radial-gradient(ellipse at 50% 50%, transparent 55%, color-mix(in srgb, #000 28%, transparent) 100%); }
+html[data-mode="light"] #blueprintBg::after { background: radial-gradient(ellipse at 50% 50%, transparent 60%, color-mix(in srgb, var(--bp-ink) 10%, transparent) 100%); }
 
 
 /* ═══════════ 6/7 handled above ══════════════════════════════════════════ */
@@ -1784,7 +1982,12 @@ html[data-mode="light"] #scanlineOverlay { background: repeating-linear-gradient
 
 /* ═══════════ 8. THEME PICKER PANEL ══════════════════════════════════════ */
 #ttControls { position:fixed; top:1.5rem; right:1.5rem; display:flex; align-items:center; gap:0.5rem; z-index:66; }
-html[data-style="newsroom"] #ttControls { top:64px; }
+/* Newsroom: the home and theme buttons live in the top band, beside the
+   LIVE clock, like a broadcast control strip, so they never sit on a panel. */
+html[data-style="newsroom"] #ttControls { top:0; right:190px; height:45px; gap:4px; z-index:46; padding:0 6px 0 8px; background: var(--news-bar); box-shadow:-14px 0 14px -6px var(--news-bar); border-left:1px solid rgba(255,255,255,0.16); }
+html[data-style="newsroom"] .tt-fab { padding:0.42rem; border-radius:3px; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--news-bar-text); box-shadow:none; }
+html[data-style="newsroom"] .tt-fab:hover { background: var(--news-red); color: var(--news-flag-text); transform:none; }
+html[data-style="newsroom"] .tt-fab .material-symbols-outlined { font-size:18px; }
 .tt-fab { display:inline-flex; align-items:center; justify-content:center; padding:0.625rem; border-radius:9999px;
     background: var(--card-bg); border:1px solid var(--border); color: var(--text); cursor:pointer;
     box-shadow: 0 6px 18px var(--shadow); transition: transform 200ms var(--ease-out), background-color var(--dur-fast); text-decoration:none; }
@@ -1803,7 +2006,7 @@ html[data-style="blueprint"] .tt-fab { border-radius:0; }
     transition: opacity 150ms var(--ease-in), transform 170ms var(--ease-in); }
 #themePanel.visible { opacity:1; transform:none; pointer-events:auto;
     transition: opacity 180ms var(--ease-out), transform 280ms var(--ease-out); }
-html[data-style="newsroom"] #themePanel { top:112px; }
+html[data-style="newsroom"] #themePanel { top:58px; }
 #themePanel::-webkit-scrollbar { width:6px; }
 #themePanel::-webkit-scrollbar-thumb { background: var(--accent); border-radius:6px; }
 
@@ -1868,6 +2071,160 @@ html[data-style="cyberpunk"] #themePanel .style-btn { font-size:0.58rem !importa
 .accent-bg:hover { background-color: var(--accent-hover) !important; }
 .custom-hover:hover { background-color: var(--hover-bg) !important; }
 .list-item-bg { background-color: var(--list-item-bg); }
+
+/* ── App components: keys, chips, segmented switches, rows, wells ─────────
+   Shared hooks so a new app's controls belong to every world without that
+   app knowing the worlds exist:
+     .tt-key   a big pressable tile (an outcome button)
+     .tt-chip  a small toggle (filters, add-ons); .on = engaged
+     .tt-seg   a segmented switch; its buttons get .on, its .seg-pill slides
+     .tt-row   a row in a list
+     .tt-well  the recessed area a list scrolls in
+   Apps style these with tokens (--btn-radius, --pill-radius, --border,
+   --input-bg …), and each world below adds its own construction: Win95
+   bevels, 16-bit keys, extruded soft UI, hard brutalist offsets, drafted
+   outlines, PHB boxes. Backgrounds are set on :not(.on) so an app's own
+   engaged colours survive. */
+:root { --pill-radius:999px; }
+html[data-style="retro"], html[data-style="pixelart"], html[data-style="brutalist"],
+html[data-style="blueprint"], html[data-style="cyberpunk"] { --pill-radius:0px; }
+html[data-style="newsroom"] { --pill-radius:2px; }
+
+/* Windows 95 */
+html[data-style="retro"] .tt-key { background: var(--w95-face) !important; color:#000 !important; border:none !important; border-radius:0 !important; box-shadow: var(--w95-raised) !important; transform:none !important; }
+html[data-style="retro"] .tt-key:active { box-shadow: var(--w95-pressed) !important; }
+html[data-style="retro"] .tt-key .o-sub, html[data-style="retro"] .tt-key .kbd { color:#333 !important; }
+html[data-style="retro"] .tt-chip { border:none !important; border-radius:0 !important; color:#000 !important; box-shadow: var(--w95-raised) !important; transform:none !important; }
+html[data-style="retro"] .tt-chip:not(.on) { background: var(--w95-face) !important; }
+html[data-style="retro"] .tt-chip.on { box-shadow: var(--w95-pressed) !important; background: repeating-conic-gradient(#C0C0C0 0 25%, #FFFFFF 0 50%) 0 0 / 2px 2px !important; }
+html[data-style="retro"] .tt-seg { background: transparent !important; border:none !important; padding:0 !important; gap:2px; }
+html[data-style="retro"] .tt-seg .seg-pill { display:none; }
+html[data-style="retro"] .tt-seg button { border-radius:0 !important; color:#000 !important; background: var(--w95-face) !important; box-shadow: var(--w95-raised); }
+html[data-style="retro"] .tt-seg button.on { box-shadow: var(--w95-pressed); background: repeating-conic-gradient(#C0C0C0 0 25%, #FFFFFF 0 50%) 0 0 / 2px 2px !important; font-weight:700; }
+html[data-style="retro"] .tt-well { background:#FFFFFF !important; box-shadow: var(--w95-field) !important; padding:3px !important; }
+html[data-style="retro"] .tt-row { background: transparent !important; border:none !important; border-radius:0 !important; box-shadow:none !important; color:#000 !important; }
+html[data-style="retro"] .tt-row:hover { background: var(--accent) !important; color:#FFFFFF !important; }
+html[data-style="retro"] .tt-row:hover * { color:#FFFFFF !important; }
+html[data-style="retro"] .tt-card { border-radius:0 !important; }
+
+/* 16-bit RPG menu */
+html[data-style="pixelart"] .tt-key { border:2px solid var(--px-ink) !important; border-radius:0 !important;
+    box-shadow: inset 0 2px 0 var(--px-key-hi), inset 0 -2px 0 var(--px-key-lo), 4px 4px 0 var(--px-shade) !important;
+    transition: transform 60ms steps(2), box-shadow 60ms steps(2) !important; }
+html[data-style="pixelart"] .tt-key:not(.sold) { background: var(--px-key) !important; }
+html[data-style="pixelart"] .tt-key:hover { transform: translate(-2px, -2px) !important; filter: brightness(1.08); }
+html[data-style="pixelart"] .tt-key:active { transform: translate(4px, 4px) !important; box-shadow: inset 0 2px 0 var(--px-shade) !important; }
+html[data-style="pixelart"] .tt-chip { border:2px solid var(--px-ink) !important; border-radius:0 !important; box-shadow: inset 0 2px 0 var(--px-key-hi), 2px 2px 0 var(--px-shade) !important; transition: transform 60ms steps(2) !important; }
+html[data-style="pixelart"] .tt-chip:not(.on) { background: var(--px-key) !important; color: var(--text) !important; }
+html[data-style="pixelart"] .tt-chip.on { transform: translate(2px, 2px) !important; box-shadow: inset 2px 2px 0 var(--px-shade) !important; }
+html[data-style="pixelart"] .tt-seg { background: var(--px-well) !important; border:2px solid var(--px-ink) !important; border-radius:0 !important; box-shadow: inset 2px 2px 0 var(--px-shade) !important; }
+html[data-style="pixelart"] .tt-seg .seg-pill { border-radius:0 !important; border:2px solid var(--px-ink); box-shadow: inset 0 2px 0 rgba(255,255,255,0.4), 2px 2px 0 var(--px-shade) !important; transition: transform 160ms steps(4), width 160ms steps(4) !important; }
+html[data-style="pixelart"] .tt-seg button { border-radius:0 !important; }
+html[data-style="pixelart"] .tt-well { background: var(--px-well) !important; border:2px solid var(--px-ink) !important; box-shadow: inset 2px 2px 0 var(--px-shade) !important; }
+html[data-style="pixelart"] .tt-row { background: var(--list-item-bg) !important; border:2px solid var(--px-ink) !important; border-radius:0 !important;
+    box-shadow: inset 0 2px 0 var(--px-key-hi), 2px 2px 0 var(--px-shade) !important; }
+
+/* Soft UI */
+html[data-style="neumorphic"] .tt-key { border:none !important; box-shadow: var(--nm-out) !important; transition: box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out) !important; }
+html[data-style="neumorphic"] .tt-key:not(.sold) { background: var(--nm-face) !important; }
+html[data-style="neumorphic"] .tt-key.sold { background: linear-gradient(145deg, color-mix(in srgb, var(--hue) 14%, var(--nm-base)), color-mix(in srgb, var(--hue) 22%, var(--nm-base))) !important; }
+html[data-style="neumorphic"] .tt-key:hover { transform: translateY(-2px) !important; }
+html[data-style="neumorphic"] .tt-key:active { transform:none !important; box-shadow: var(--nm-in-sm) !important; }
+html[data-style="neumorphic"] .tt-chip { border:none !important; box-shadow: var(--nm-out-sm) !important; }
+html[data-style="neumorphic"] .tt-chip:not(.on) { background: var(--nm-face) !important; }
+html[data-style="neumorphic"] .tt-chip.on { background: var(--nm-base) !important; box-shadow: var(--nm-in-sm) !important; }
+html[data-style="neumorphic"] .tt-seg { background: var(--nm-base) !important; border:none !important; box-shadow: var(--nm-in-sm) !important; padding:4px !important; }
+html[data-style="neumorphic"] .tt-seg .seg-pill { background: var(--nm-face) !important; box-shadow: var(--nm-out-sm) !important; top:4px !important; bottom:4px !important; }
+html[data-style="neumorphic"] .tt-seg button.on { color: var(--accent) !important; }
+
+/* Brutalist */
+html[data-style="brutalist"] .tt-key { border:2px solid var(--border) !important; border-radius:0 !important; box-shadow: 4px 4px 0 var(--border) !important; transition: transform 80ms, box-shadow 80ms !important; }
+html[data-style="brutalist"] .tt-key:not(.sold) { background: var(--bg-alt) !important; }
+html[data-style="brutalist"] .tt-key:hover { transform: translate(-2px, -2px) !important; box-shadow: 6px 6px 0 var(--border) !important; }
+html[data-style="brutalist"] .tt-key:active { transform: translate(3px, 3px) !important; box-shadow: 1px 1px 0 var(--border) !important; }
+html[data-style="brutalist"] .tt-chip { border:2px solid var(--border) !important; border-radius:0 !important; box-shadow: 2px 2px 0 var(--border) !important; }
+html[data-style="brutalist"] .tt-chip.on { background: var(--accent) !important; color: var(--accent-text) !important; }
+html[data-style="brutalist"] .tt-chip.on .material-symbols-outlined { color: var(--accent-text) !important; }
+html[data-style="brutalist"] .tt-seg { border:2px solid var(--border) !important; border-radius:0 !important; box-shadow: 3px 3px 0 var(--border); }
+html[data-style="brutalist"] .tt-seg .seg-pill { box-shadow:none !important; transition:none !important; }
+html[data-style="brutalist"] .tt-row { background: transparent !important; border:none !important; border-bottom:2px solid var(--border) !important; border-radius:0 !important; box-shadow:none !important; }
+html[data-style="brutalist"] .tt-row:hover { background: var(--text) !important; color: var(--bg) !important; }
+html[data-style="brutalist"] .tt-row:hover .subtle-text, html[data-style="brutalist"] .tt-row:hover .row-time { color: var(--bg) !important; }
+
+/* Blueprint: drawn, not filled */
+html[data-style="blueprint"] .tt-key { border:1px dashed var(--border) !important; border-radius:0 !important; box-shadow:none !important; }
+html[data-style="blueprint"] .tt-key:not(.sold) { background: transparent !important; }
+html[data-style="blueprint"] .tt-key:hover { border-style:solid !important; border-color: var(--accent) !important; transform:none !important; background: var(--hover-bg) !important; }
+html[data-style="blueprint"] .tt-key .o-label { text-transform:uppercase; letter-spacing:0.1em; }
+html[data-style="blueprint"] .tt-chip { border-radius:0 !important; text-transform:uppercase; letter-spacing:0.08em; }
+html[data-style="blueprint"] .tt-chip:not(.on) { background: transparent !important; }
+html[data-style="blueprint"] .tt-seg { border-radius:0 !important; background: transparent !important; }
+html[data-style="blueprint"] .tt-seg .seg-pill { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, transparent) 0 1px, transparent 1px 5px) !important;
+    border:1px solid var(--accent); box-shadow:none !important; }
+html[data-style="blueprint"] .tt-seg button.on { color: var(--text) !important; }
+html[data-style="blueprint"] .tt-row { background: transparent !important; border:none !important; border-bottom:1px dashed color-mix(in srgb, var(--border) 60%, transparent) !important; border-radius:0 !important; box-shadow:none !important; }
+
+/* Cyberpunk: phosphor outlines */
+html[data-style="cyberpunk"] .tt-key { border:1px solid color-mix(in srgb, var(--accent) 55%, transparent) !important; border-radius:0 !important; }
+html[data-style="cyberpunk"] .tt-key:not(.sold) { background: color-mix(in srgb, var(--accent) 4%, var(--input-bg)) !important; }
+html[data-style="cyberpunk"] .tt-key:hover { border-color: var(--accent) !important; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 0 12px color-mix(in srgb, var(--accent) 12%, transparent) !important; }
+html[data-style="cyberpunk"] .tt-key .o-label { text-transform:uppercase; letter-spacing:0.08em; }
+html[data-style="cyberpunk"] .tt-chip { border-radius:0 !important; text-transform:uppercase; }
+html[data-style="cyberpunk"] .tt-seg { border-radius:0 !important; border-color: var(--accent) !important; }
+html[data-style="cyberpunk"] .tt-seg .seg-pill { box-shadow: 0 0 12px var(--accent) !important; }
+html[data-style="cyberpunk"] .tt-row { border-radius:0 !important; border:none !important; border-left:2px solid transparent !important; background: transparent !important; box-shadow:none !important; }
+html[data-style="cyberpunk"] .tt-row:hover { border-left-color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 7%, transparent) !important; }
+
+/* Newsroom: square-cut, and live rows carry the network bar */
+html[data-style="newsroom"] .tt-key { border-radius:2px !important; border-top:3px solid var(--hue, var(--news-red)) !important; }
+html[data-style="newsroom"] .tt-key .o-label { font-family:'Barlow Condensed','Barlow',sans-serif; text-transform:uppercase; letter-spacing:0.06em; font-size:0.95rem; }
+html[data-style="newsroom"] .tt-chip { border-radius:2px !important; font-family:'Barlow Condensed','Barlow',sans-serif !important; text-transform:uppercase; letter-spacing:0.06em; }
+html[data-style="newsroom"] .tt-seg { border-radius:2px !important; }
+html[data-style="newsroom"] .tt-seg .seg-pill { background: var(--news-red) !important; box-shadow:none !important; }
+html[data-style="newsroom"] .tt-seg:has(.seg-pill) button.on { color: var(--news-flag-text) !important; }
+html[data-style="newsroom"] .tt-row { border-left:3px solid var(--news-red) !important; border-radius:2px !important; }
+
+/* Handbook */
+html[data-style="medieval"] .tt-key { border:1.5px solid var(--hb-line) !important; border-radius:8px !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.55) !important; }
+html[data-style="medieval"] .tt-key:not(.sold) { background: rgba(255,250,236,0.45) !important; }
+html[data-style="medieval"] .tt-key.sold { background: color-mix(in srgb, var(--hb-note) 85%, transparent) !important; border-color:#9FAE6E !important; }
+html[data-style="medieval"] .tt-key:hover { border-color: var(--hb-head) !important; box-shadow: 0 0 0 1px var(--hb-head), 0 4px 10px rgba(60,40,15,0.18) !important; }
+html[data-style="medieval"] .tt-key .o-label { font-family:'Mr Eaves Small Caps', Georgia, serif; font-weight:400 !important; font-size:1.05rem; color: var(--hb-ink); }
+html[data-style="medieval"] .tt-key .o-sub { font-style:italic; color: var(--hb-cap) !important; }
+html[data-style="medieval"] .tt-chip { border-radius:4px !important; font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important; font-size:0.92rem !important; }
+html[data-style="medieval"] .tt-chip:not(.on) { background: rgba(255,250,236,0.4) !important; border-color: var(--hb-line) !important; color: var(--hb-cap) !important; }
+html[data-style="medieval"] .tt-seg { border-radius:4px !important; background: rgba(255,250,236,0.4) !important; border-color: var(--hb-line) !important; }
+html[data-style="medieval"] .tt-seg .seg-pill { border-radius:3px !important; background: var(--hb-head) !important; box-shadow:none !important; }
+html[data-style="medieval"] .tt-seg button { font-family:'Mr Eaves Small Caps', Georgia, serif !important; font-weight:400 !important; font-size:0.95rem !important; }
+html[data-style="medieval"] .tt-seg:has(.seg-pill) button.on { color: var(--accent-text) !important; }
+
+/* Space: hairlines and lit instruments */
+html[data-style="space"] .tt-key { border:1px solid var(--border) !important; border-radius:3px !important; }
+html[data-style="space"] .tt-key:not(.sold) { background: rgba(255,255,255,0.018) !important; }
+html[data-mode="light"][data-style="space"] .tt-key:not(.sold) { background: rgba(255,255,255,0.55) !important; }
+html[data-style="space"] .tt-key:hover { border-color: var(--hue, var(--accent)) !important; box-shadow: 0 0 22px -6px var(--hue, var(--accent)) !important; transform:none !important; }
+html[data-style="space"] .tt-key .o-label { font-family:'Barlow Condensed','Barlow',sans-serif; text-transform:uppercase; letter-spacing:0.12em; font-size:0.92rem; }
+html[data-style="space"] .tt-chip { border-radius:3px !important; font-family:'Barlow Condensed','Barlow',sans-serif !important; text-transform:uppercase; letter-spacing:0.12em; }
+html[data-style="space"] .tt-seg { border-radius:3px !important; background: transparent !important; }
+html[data-style="space"] .tt-seg .seg-pill { border-radius:2px !important; background: var(--text) !important; box-shadow:none !important; }
+html[data-style="space"] .tt-seg button { font-family:'Barlow Condensed','Barlow',sans-serif !important; text-transform:uppercase; letter-spacing:0.14em; }
+html[data-style="space"] .tt-seg:has(.seg-pill) button.on { color: var(--bg) !important; }
+
+/* The square-cut worlds have no round corners anywhere inside a panel
+   (badges, award rows, tallies, hints included); only true circles stay. */
+html:is([data-style="retro"], [data-style="pixelart"], [data-style="brutalist"], [data-style="blueprint"], [data-style="cyberpunk"])
+    #trackerPanel *:not(.material-symbols-outlined):not(.a-ico):not(.dot) { border-radius:0 !important; }
+/* Pixel type runs larger (it sits on an 8px grid), so the 16-bit menu packs
+   its parts a little tighter to keep a 1080p screen in one view. */
+html[data-style="pixelart"] .i3-col { gap:0.8rem !important; }
+html[data-style="pixelart"] .tt-feature { padding-top:0.8rem !important; padding-bottom:0.8rem !important; }
+html[data-style="pixelart"] .tt-feature.space-y-3 > * + * { margin-top:0.55rem !important; }
+html[data-style="pixelart"] .award { padding-top:0.3rem !important; padding-bottom:0.3rem !important; }
+
+/* Glass and goop: frosted parts */
+html[data-style="glass"] .tt-key:not(.sold), html[data-style="goop"] .tt-key:not(.sold) { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.14) !important; }
+html[data-mode="light"][data-style="glass"] .tt-key:not(.sold), html[data-mode="light"][data-style="goop"] .tt-key:not(.sold) { background: rgba(255,255,255,0.5) !important; border-color: rgba(255,255,255,0.75) !important; }
+html[data-style="goop"] .tt-key { border-radius:1.4rem !important; }
 
 .tt-btn { background: var(--accent); color: var(--accent-text); border:none; border-radius: var(--btn-radius);
     cursor:pointer; font-family: var(--font-main); position:relative; overflow:hidden;
@@ -1997,7 +2354,7 @@ html[data-mode="light"] .tt-card::after { mix-blend-mode: multiply; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important; scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important; transition-delay: 0s !important; scroll-behavior: auto !important;
     }
     .news-track, .stock-track { animation:none !important; }
 }
@@ -2031,3 +2388,32 @@ html[data-mode="light"] .tt-card::after { mix-blend-mode: multiply; }
    • DEEP SEA    Bioluminescent drift: slow particle plankton, caustic light
                  sweeps across the panel, very dark teal ground.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════ 11. DECOR THAT GIVES WAY ═════════════════════════════════════
+   Corner furniture (the Blueprint title block, the Newsroom weather bug and
+   top-stories box, the Space HUD readouts) steps aside whenever it would sit
+   on the panel; theme.js measures and sets .tt-clash. */
+.tt-clash { visibility:hidden !important; opacity:0 !important; }
+
+/* Icons stay invisible until the icon font has arrived, instead of showing
+   their ligature names ("home", "palette") for a moment on a slow line.
+   While hidden each keeps a 1em footprint, so a late font never swells a
+   button by the width of its ligature word. theme.js adds .tt-icons once a
+   Material Symbols face has loaded. */
+html:not(.tt-icons) .material-symbols-outlined { visibility:hidden; max-width:1em; overflow:hidden; white-space:nowrap; }
+
+/* Win95: the home and theme buttons are taskbar buttons beside the tray,
+   so nothing floats over a window's title bar. */
+html[data-style="retro"] #ttControls { top:auto; bottom:4px; right:104px; height:26px; gap:3px; z-index:62; }
+html[data-style="retro"] .tt-fab { width:26px; height:26px; padding:0; }
+html[data-style="retro"] .tt-fab .material-symbols-outlined { font-size:16px; }
+html[data-style="retro"] #themePanel { top:auto; bottom:40px; }
+
+/* Phones: the floating buttons tuck closer to the top edge so the panel
+   (which leaves room for them) never sits under them. */
+@media (max-width: 640px) {
+    #ttControls { top:0.7rem; right:0.75rem; }
+    html[data-style="newsroom"] #ttControls, html[data-style="retro"] #ttControls { top:auto; }
+    html[data-style="newsroom"] #ttControls { top:0; }
+}

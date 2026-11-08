@@ -11,7 +11,7 @@
         try {
             var s = JSON.parse(localStorage.getItem('smt-theme') || 'null') || {};
             var d = document.documentElement;
-            if (s.style) d.setAttribute('data-style', s.style);
+            if (s.style) d.setAttribute('data-style', s.style === 'minimal' ? 'default' : s.style);
             if (s.color) d.setAttribute('data-color', s.color);
             if (s.mode)  d.setAttribute('data-mode',  s.mode);
         } catch (e) {}
@@ -22,15 +22,15 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Orbitron:wght@500;600;700;800&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />
 
     <!-- Shared theme system — same file the Call Flow Tracker loads. -->
     <!-- The ?v= stamps make a new page always fetch the matching shared theme
          files: the host caches .js/.css for 4 hours but pages for 10 minutes, so an
          unversioned URL can pair a new page with a stale theme.js. Bump both
          stamps (here and in the other app) whenever smt/theme.* changes. -->
-    <link rel="stylesheet" href="../smt/theme.css?v=20261107">
+    <link rel="stylesheet" href="../smt/theme.css?v=20261108">
 
     <style>
         /* ── App-specific layout only. Everything themed lives in theme.css. ── */
@@ -120,7 +120,7 @@
                         <span class="hidden sm:inline">Add</span>
                     </button>
                 </div>
-                <div id="transferListContainer" class="space-y-3 max-h-[30vh] overflow-y-auto p-1">
+                <div id="transferListContainer" class="space-y-3 overflow-y-auto p-1" style="max-height: clamp(9rem, calc(100dvh - 38rem), 34rem)">
                     <p id="emptyState" class="text-center subtle-text py-8">No transfers logged yet.</p>
                 </div>
             </section>
@@ -163,7 +163,7 @@
         </div>
     </div>
 
-    <script src="../smt/theme.js?v=20261107"></script>
+    <script src="../smt/theme.js?v=20261108"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const panel = document.getElementById('trackerPanel');
@@ -214,6 +214,11 @@
         function render() {
             const calls = state.totalCalls;
             const transfers = state.transfers.length;
+            // Newsroom's lower third leads with this desk's numbers.
+            SMTTheme.setDesk([
+                { beat: 'Transfer desk', text: calls ? `Kept rate ${((calls - transfers) / calls * 100).toFixed(1)}% · ${transfers} transfer${transfers === 1 ? '' : 's'} of ${calls} calls` : 'No calls logged yet' },
+                ...(state.transfers.length ? [{ beat: 'Latest', text: state.transfers[state.transfers.length - 1].note || 'Transfer logged' }] : [])
+            ]);
 
             // Whole-number counters roll like an odometer, in the direction
             // they moved; the kept rate below glides through its decimals.

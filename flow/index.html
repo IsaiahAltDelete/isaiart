@@ -11,7 +11,7 @@
         try {
             var s = JSON.parse(localStorage.getItem('smt-theme') || 'null') || {};
             var d = document.documentElement;
-            if (s.style) d.setAttribute('data-style', s.style);
+            if (s.style) d.setAttribute('data-style', s.style === 'minimal' ? 'default' : s.style);
             if (s.color) d.setAttribute('data-color', s.color);
             if (s.mode)  d.setAttribute('data-mode',  s.mode);
         } catch (e) {}
@@ -22,15 +22,15 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Orbitron:wght@500;600;700;800&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />
 
     <!-- Shared theme system — same file the Transfer Rate Tracker loads. -->
     <!-- The ?v= stamps make a new page always fetch the matching shared theme
          files: the host caches .js/.css for 4 hours but pages for 10 minutes, so an
          unversioned URL can pair a new page with a stale theme.js. Bump both
          stamps (here and in the other app) whenever smt/theme.* changes. -->
-    <link rel="stylesheet" href="../smt/theme.css?v=20261107">
+    <link rel="stylesheet" href="../smt/theme.css?v=20261108">
 
     <style>
         /* ── App-specific layout only. Everything themed lives in theme.css. ── */
@@ -196,7 +196,7 @@
     <div id="resetConfirmModal"  class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(6px)"></div>
     <div id="deleteConfirmModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(6px)"></div>
 
-    <script src="../smt/theme.js?v=20261107"></script>
+    <script src="../smt/theme.js?v=20261108"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const panel = document.getElementById('trackerPanel');
@@ -359,6 +359,7 @@
         }
 
         function render(){
+            {const t=state.calls.length,d=state.calls.filter(c=>c.completed).length;SMTTheme.setDesk([{beat:'Call flow',text:t?`${d} of ${t} calls completed · ${Math.round(d/t*100)}%`:'No calls on the board yet'}]);}
             const total=state.calls.length,done=state.calls.filter(c=>c.completed).length,pct=total>0?(done/total)*100:0;
             if(Math.abs(pct-shownPct)>0.4) SMTTheme.countUp(progressText,pct,{decimals:0,suffix:'%'});
             else progressText.textContent=pct.toFixed(0)+'%';
