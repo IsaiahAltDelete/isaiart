@@ -1,0 +1,631 @@
+{
+ "date": "2026-11-08",
+ "updated": "2026-11-08T07:57:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Madrid is six hours ahead of Eastern; São Paulo is two hours ahead. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "NASCAR Cup Series Championship at Homestead-Miami (3:00 PM ET, NBC)",
+  "Bengals vs. Falcons in Madrid (9:30 AM ET, NFL Network)",
+  "Buccaneers at Bears, Sunday Night Football (8:20 PM ET, NBC)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 9",
+   "note": "Madrid morning game • CBS and FOX regional windows • SNF"
+  },
+  {
+   "key": "NASCAR",
+   "name": "NASCAR",
+   "subtitle": "Cup Series",
+   "note": "Championship race • Homestead-Miami"
+  },
+  {
+   "key": "F1",
+   "name": "Formula 1",
+   "subtitle": "São Paulo Grand Prix",
+   "note": "Race at Interlagos"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV or national streams"
+  }
+ ],
+ "footer_note": "Nineteen qualifying events fall inside Sunday’s Eastern calendar day. Regional NHL and NBA games, NBA TV and NHL Network games are excluded. Monday Night Football is Bills at Vikings (8:15 PM ET, ESPN and ABC).",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/9/year/2026/seasontype/2"
+  },
+  {
+   "label": "NASCAR.com championship entry list",
+   "url": "https://www.nascar.com/news-media/2026/11/02/2026-nascar-cup-series-entry-list-for-homestead-miami-speedway-championship-race/"
+  },
+  {
+   "label": "ESPN F1 schedule",
+   "url": "https://www.espn.com/f1/schedule"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261108"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-08"
+  }
+ ],
+ "events": [
+  {
+   "id": "nfl-cin-atl",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [
+    "International Series • Madrid"
+   ],
+   "competitors": [
+    {
+     "name": "Cincinnati Bengals",
+     "abbr": "CIN",
+     "detail": "5–2",
+     "logo": "nfl/cin"
+    },
+    {
+     "name": "Atlanta Falcons",
+     "abbr": "ATL",
+     "detail": "3–5",
+     "logo": "nfl/atl"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-08T09:30:00-05:00",
+   "watch": "NFL Network",
+   "streaming": "NFL+",
+   "coverage_type": "National",
+   "coverage": "National NFL Network window; Atlanta is the designated home team.",
+   "venue": "Santiago Bernabéu, Madrid, Spain",
+   "venue_tz": "Central European Time",
+   "notes": "Morning game in Madrid. Kickoff is 3:30 p.m. local.",
+   "blackout": "Local over-the-air simulcasts are expected in the Cincinnati and Atlanta markets. NFL+ restrictions may apply."
+  },
+  {
+   "id": "f1-brazil",
+   "league": "F1",
+   "label": "F1 • São Paulo Grand Prix",
+   "flags": [
+    "Race"
+   ],
+   "competitors": [
+    {
+     "name": "São Paulo Grand Prix",
+     "abbr": "BRA",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-11-08T12:00:00-05:00",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "U.S. Formula 1 coverage is on Apple TV.",
+   "venue": "Interlagos, São Paulo, Brazil",
+   "venue_tz": "Brasília Time",
+   "notes": "Race start is 2:00 p.m. local.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "ncaam-iona-sju",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [
+    "Peacock"
+   ],
+   "competitors": [
+    {
+     "name": "Iona Gaels",
+     "abbr": "IONA",
+     "detail": "2–0"
+    },
+    {
+     "name": "St. John's Red Storm",
+     "abbr": "SJU",
+     "detail": "No. 13 • 1–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T12:00:00-05:00",
+   "watch": "Peacock",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "venue": "Madison Square Garden, New York",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 13 St. John's hosts Iona at the Garden.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "nfl-dal-ind",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "3–5",
+     "logo": "nfl/dal"
+    },
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "2–6",
+     "logo": "nfl/ind"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Lucas Oil Stadium, Indianapolis",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 9 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-nyj-kc",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "2–6",
+     "logo": "nfl/nyj"
+    },
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "5–2",
+     "logo": "nfl/kc"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Arrowhead Stadium, Kansas City, Mo.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 9 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-det-mia",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Detroit Lions",
+     "abbr": "DET",
+     "detail": "5–2",
+     "logo": "nfl/det"
+    },
+    {
+     "name": "Miami Dolphins",
+     "abbr": "MIA",
+     "detail": "1–6",
+     "logo": "nfl/mia"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Hard Rock Stadium, Miami Gardens, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 9 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-cle-no",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Cleveland Browns",
+     "abbr": "CLE",
+     "detail": "5–3",
+     "logo": "nfl/cle"
+    },
+    {
+     "name": "New Orleans Saints",
+     "abbr": "NO",
+     "detail": "2–5",
+     "logo": "nfl/no"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Caesars Superdome, New Orleans",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 9 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-nyg-phi",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Giants",
+     "abbr": "NYG",
+     "detail": "4–2–1",
+     "logo": "nfl/nyg"
+    },
+    {
+     "name": "Philadelphia Eagles",
+     "abbr": "PHI",
+     "detail": "2–6",
+     "logo": "nfl/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Lincoln Financial Field, Philadelphia",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "NFC East game in the early window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lar-wsh",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "4–4",
+     "logo": "nfl/lar"
+    },
+    {
+     "name": "Washington Commanders",
+     "abbr": "WSH",
+     "detail": "2–4–1",
+     "logo": "nfl/wsh"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Northwest Stadium, Landover, Md.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 9 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-den-car",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "6–2",
+     "logo": "nfl/den"
+    },
+    {
+     "name": "Carolina Panthers",
+     "abbr": "CAR",
+     "detail": "3–4",
+     "logo": "nfl/car"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Bank of America Stadium, Charlotte, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 9 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "ncaam-ark-uva",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arkansas Razorbacks",
+     "abbr": "ARK",
+     "detail": "No. 12 • 1–0"
+    },
+    {
+     "name": "Virginia Cavaliers",
+     "abbr": "UVA",
+     "detail": "No. 9 • 2–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-08T13:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Capital One Arena, Washington",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Neutral-site game between ranked teams; Virginia is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nascar-hms",
+   "league": "NASCAR",
+   "label": "NASCAR Cup • The Chase",
+   "flags": [
+    "Championship race"
+   ],
+   "competitors": [
+    {
+     "name": "Cup Series Championship at Homestead-Miami",
+     "abbr": "HMS",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-11-08T15:00:00-05:00",
+   "watch": "NBC",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Homestead-Miami Speedway, Homestead, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Season finale. Kyle Larson leads the Chase by 67 points; Christopher Bell (67 back) and Denny Hamlin (70 back) are the only other drivers still in contention.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "nfl-hou-lac",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Houston Texans",
+     "abbr": "HOU",
+     "detail": "2–5",
+     "logo": "nfl/hou"
+    },
+    {
+     "name": "Los Angeles Chargers",
+     "abbr": "LAC",
+     "detail": "0–7",
+     "logo": "nfl/lac"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T16:05:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "SoFi Stadium, Inglewood, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "The winless Chargers host Houston; 1:05 p.m. local kickoff.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-gb-ne",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Green Bay Packers",
+     "abbr": "GB",
+     "detail": "5–3",
+     "logo": "nfl/gb"
+    },
+    {
+     "name": "New England Patriots",
+     "abbr": "NE",
+     "detail": "5–3",
+     "logo": "nfl/ne"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T16:25:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Gillette Stadium, Foxborough, Mass.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Both teams enter 5–3.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lv-sf",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "4–4",
+     "logo": "nfl/lv"
+    },
+    {
+     "name": "San Francisco 49ers",
+     "abbr": "SF",
+     "detail": "6–1",
+     "logo": "nfl/sf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T16:25:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Levi’s Stadium, Santa Clara, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Week 9 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ari-sea",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "3–5",
+     "logo": "nfl/ari"
+    },
+    {
+     "name": "Seattle Seahawks",
+     "abbr": "SEA",
+     "detail": "4–4",
+     "logo": "nfl/sea"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T16:25:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Lumen Field, Seattle",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "NFC West game in the late window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-tb-chi",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [
+    "Sunday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Buccaneers",
+     "abbr": "TB",
+     "detail": "3–5",
+     "logo": "nfl/tb"
+    },
+    {
+     "name": "Chicago Bears",
+     "abbr": "CHI",
+     "detail": "6–2",
+     "logo": "nfl/chi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-08T20:20:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window.",
+   "venue": "Soldier Field, Chicago",
+   "venue_tz": "Central Standard Time",
+   "notes": "Chicago, 6–2, hosts Tampa Bay in prime time.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  },
+  {
+   "id": "ncaam-hou-cal",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 10 • 1–0"
+    },
+    {
+     "name": "California Golden Bears",
+     "abbr": "CAL",
+     "detail": "2–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-08T20:30:00-05:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Tahoe Blue Event Center, Stateline, Nev.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; 5:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaam-usc-wich",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 21 • 1–0"
+    },
+    {
+     "name": "Wichita State Shockers",
+     "abbr": "WICH",
+     "detail": "1–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-08T23:00:00-05:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Tahoe Blue Event Center, Stateline, Nev.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Second game of the Stateline doubleheader; 8 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  }
+ ]
+}
