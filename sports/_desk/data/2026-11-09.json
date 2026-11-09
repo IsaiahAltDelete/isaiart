@@ -1,0 +1,198 @@
+{
+ "date": "2026-11-09",
+ "updated": "2026-11-09T07:59:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Bills at Vikings, Monday Night Football with both teams 6–1 (8:15 PM ET, ESPN/ABC)",
+  "Wizards at Pistons (7:00 PM ET, NBCSN)",
+  "Wagner at No. 4 UConn (7:00 PM ET, truTV)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 9",
+   "note": "Monday Night Football"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "NBCSN Monday"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Five qualifying events fall inside Monday’s Eastern calendar day. Regional NHL and NBA games, NBA TV games, and ranked college basketball games streaming only on ESPN+ or SECN+ are excluded. The desk skips Tuesday and Wednesday and returns Thursday, when Commanders at Giants is Thursday Night Football on Prime Video.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/9/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261109"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261109"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-09"
+  }
+ ],
+ "events": [
+  {
+   "id": "nba-wsh-det",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "NBCSN Monday"
+   ],
+   "competitors": [
+    {
+     "name": "Washington Wizards",
+     "abbr": "WSH",
+     "detail": "4–6"
+    },
+    {
+     "name": "Detroit Pistons",
+     "abbr": "DET",
+     "detail": "6–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-09T19:00:00-05:00",
+   "watch": "NBCSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "Little Caesars Arena, Detroit",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Detroit enters 6–3.",
+   "blackout": "Local team-network availability varies by market; NBA League Pass restrictions may apply to national games."
+  },
+  {
+   "id": "ncaam-wag-conn",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Wagner Seahawks",
+     "abbr": "WAG",
+     "detail": "0–2"
+    },
+    {
+     "name": "UConn Huskies",
+     "abbr": "CONN",
+     "detail": "No. 4 • 2–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-09T19:00:00-05:00",
+   "watch": "truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National truTV window.",
+   "venue": "Gampel Pavilion, Storrs, Conn.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 4 UConn at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-gram-tex",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Grambling Tigers",
+     "abbr": "GRAM",
+     "detail": "1–0"
+    },
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 7 • 2–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-09T19:00:00-05:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Moody Center, Austin, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 7 Texas at home; 6 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-unf-mia",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "North Florida Ospreys",
+     "abbr": "UNF",
+     "detail": "1–1"
+    },
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 14 • 1–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-09T19:00:00-05:00",
+   "watch": "ACC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ACC Network window.",
+   "venue": "Watsco Center, Coral Gables, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 14 Miami at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-buf-min",
+   "league": "NFL",
+   "label": "NFL • Week 9",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "6–1",
+     "logo": "nfl/buf"
+    },
+    {
+     "name": "Minnesota Vikings",
+     "abbr": "MIN",
+     "detail": "6–1",
+     "logo": "nfl/min"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-09T20:15:00-05:00",
+   "watch": "ESPN • ABC",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window.",
+   "venue": "U.S. Bank Stadium, Minneapolis",
+   "venue_tz": "Central Standard Time",
+   "notes": "Two 6–1 teams close Week 9.",
+   "blackout": "No territorial blackout. Local ABC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  }
+ ]
+}
