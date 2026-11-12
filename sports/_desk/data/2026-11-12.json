@@ -1,0 +1,382 @@
+{
+ "date": "2026-11-12",
+ "updated": "2026-11-12T07:58:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Commanders at Giants, Thursday Night Football (8:15 PM ET, Prime Video)",
+  "No. 4 UConn at No. 17 Ohio State, women’s basketball (6:30 PM ET, FS1)",
+  "Red Wings at Panthers (7:30 PM ET, ESPN+)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 10",
+   "note": "Thursday Night Football"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "ESPN+ national streams"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 12",
+   "note": "Thursday national windows"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Eleven qualifying events fall inside Thursday’s Eastern calendar day. Regional NHL and NBA games, NBA TV and NHL Network games (including Hurricanes at Kraken in Helsinki at noon ET), and ranked college basketball games streaming only on ESPN+, B1G+ or a conference network are excluded.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/10/year/2026/seasontype/2"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-12"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261112"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261112"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261112"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaw-okst-tlsa",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oklahoma State Cowgirls",
+     "abbr": "OKST",
+     "detail": "No. 19 • 3–0"
+    },
+    {
+     "name": "Tulsa Golden Hurricane",
+     "abbr": "TLSA",
+     "detail": "1–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T18:00:00-05:00",
+   "watch": "ESPNU",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPNU window.",
+   "venue": "Reynolds Center, Tulsa, Okla.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 19 Oklahoma State on the road; 5 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-conn-osu",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UConn Huskies",
+     "abbr": "CONN",
+     "detail": "No. 4 • 2–1"
+    },
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 17 • 3–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T18:30:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "Schottenstein Center, Columbus, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Ranked matchup; No. 4 UConn visits unbeaten No. 17 Ohio State.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-sc-clem",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": "No. 1 • 2–0"
+    },
+    {
+     "name": "Clemson Tigers",
+     "abbr": "CLEM",
+     "detail": "3–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T19:00:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Littlejohn Coliseum, Clemson, S.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 1 South Carolina on the road.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-det-fla",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "ESPN+ • Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "Detroit Red Wings",
+     "abbr": "DET",
+     "detail": "",
+     "logo": "nhl/det"
+    },
+    {
+     "name": "Florida Panthers",
+     "abbr": "FLA",
+     "detail": "",
+     "logo": "nhl/fla"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T19:30:00-05:00",
+   "watch": "ESPN+ • Hulu • Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "Amerant Bank Arena, Sunrise, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "First of two ESPN+ national streams tonight.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  },
+  {
+   "id": "ncaaw-lou-ball",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 7 • 4–0"
+    },
+    {
+     "name": "Ball State Cardinals",
+     "abbr": "BALL",
+     "detail": "1–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T20:00:00-05:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "Worthen Arena, Muncie, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 7 Louisville on the road.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-mem-usf",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Memphis Tigers",
+     "abbr": "MEM",
+     "detail": "7–2"
+    },
+    {
+     "name": "South Florida Bulls",
+     "abbr": "USF",
+     "detail": "6–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T20:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Raymond James Stadium, Tampa, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Thursday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-wsh-nyg",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [
+    "Thursday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Washington Commanders",
+     "abbr": "WSH",
+     "detail": "2–5–1",
+     "logo": "nfl/wsh"
+    },
+    {
+     "name": "New York Giants",
+     "abbr": "NYG",
+     "detail": "5–2–1",
+     "logo": "nfl/nyg"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T20:15:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "NFC East game opens Week 10.",
+   "blackout": "Prime Video subscription required; local broadcast availability in the team markets may vary. NFL+ restrictions may apply."
+  },
+  {
+   "id": "ncaaw-uni-iowa",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Northern Iowa Panthers",
+     "abbr": "UNI",
+     "detail": "1–1"
+    },
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 10 • 2–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T20:30:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Carver-Hawkeye Arena, Iowa City, Iowa",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 10 Iowa at home; 7:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ul-ulm",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Louisiana Ragin' Cajuns",
+     "abbr": "UL",
+     "detail": "6–3"
+    },
+    {
+     "name": "UL Monroe Warhawks",
+     "abbr": "ULM",
+     "detail": "2–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T21:00:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Malone Stadium, Monroe, La.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Thursday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-nyi-la",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "ESPN+ • Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "New York Islanders",
+     "abbr": "NYI",
+     "detail": "",
+     "logo": "nhl/nyi"
+    },
+    {
+     "name": "Los Angeles Kings",
+     "abbr": "LA",
+     "detail": "",
+     "logo": "nhl/la"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T22:00:00-05:00",
+   "watch": "ESPN+ • Hulu • Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "Crypto.com Arena, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Late West Coast stream. Puck drop is 7:00 p.m. local.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  },
+  {
+   "id": "ncaaw-ariz-ucla",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Wildcats",
+     "abbr": "ARIZ",
+     "detail": "2–0"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 10 • 2–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-12T22:30:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Pauley Pavilion, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 10 UCLA at home; 7:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
