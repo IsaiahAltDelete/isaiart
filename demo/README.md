@@ -9,6 +9,10 @@ Demo sites and tools built by Key HR. All data is fake.
 - **Employee Open Enrollment:** https://keyhrsales.github.io/demo/openenrollment/ (employee-facing open enrollment site, English and Spanish)
 - **Benefits Platform (prospect template):** https://keyhrsales.github.io/demo/benefitsplatform/ (sample plans and benefits for prospects, English and Spanish)
 
+## Window Classics and Classic Installation
+
+- **2027 Open Enrollment:** https://keyhrsales.github.io/demo/windowclassics/ (employee open enrollment site for both companies, English and Spanish; built from the Employee Open Enrollment site, with a Medical tab, HSA, Humana dental and a company code for each company)
+
 ## Gator's Dockside enrollment demo
 
 An online open enrollment form. Employees choose their benefits, sign, and get a PDF copy. Each enrollment is saved to a private Google Sheet and Drive folder, and Key HR reviews submissions from a password-protected admin page. Key HR staff can also sign in and complete an enrollment on an employee's behalf.
@@ -27,6 +31,7 @@ The old links (`/demo/admin/`, `/demo/staff/`, `/demo/slideshow/`, `/demo/refere
 index.html            Demo directory (home page)
 openenrollment/       Employee open enrollment site
 benefitsplatform/     Prospect benefits template
+windowclassics/       Window Classics and Classic Installation open enrollment site
 gatorsdockside/       Gator's Dockside enrollment demo (form, admin, staff, slideshow, reference)
 admin/ staff/ slideshow/ reference/ admin.html reference.html
                       Redirects from the old Gator's Dockside links
