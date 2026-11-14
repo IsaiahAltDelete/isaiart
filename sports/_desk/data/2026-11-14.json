@@ -1,0 +1,651 @@
+{
+ "date": "2026-11-14",
+ "updated": "2026-11-14T07:57:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 15 USC at No. 6 Indiana (3:30 PM ET, CBS)",
+  "No. 8 Texas at No. 24 LSU (7:30 PM ET, ABC)",
+  "UFC 334: Gane vs. Hokit, with Nunes vs. Harrison (5:00 PM ET, Paramount+)"
+ ],
+ "leagues": [
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 12",
+   "note": "Saturday games with AP Top 25 teams • ranks from the Nov. 8 AP poll"
+  },
+  {
+   "key": "UFC",
+   "name": "UFC",
+   "subtitle": "UFC 334",
+   "note": "Madison Square Garden"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Twenty-one qualifying events fall inside Saturday’s Eastern calendar day: every Saturday game involving an AP Top 25 team, UFC 334, and two ranked college basketball games on network TV. Regional NHL and NBA games, NBA TV and NHL Network games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded. Sunday brings the NFL slate.",
+ "sources": [
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261114"
+  },
+  {
+   "label": "AP Top 25, Week 11",
+   "url": "https://www.espn.com/college-football/rankings"
+  },
+  {
+   "label": "ESPN UFC schedule",
+   "url": "https://www.espn.com/mma/schedule/_/league/ufc"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261114"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-14"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-duke-mia",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "7–2"
+    },
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 5 • 8–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T12:00:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Hard Rock Stadium, Miami Gardens, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 5 Miami at home.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-wake-smu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Wake Forest Demon Deacons",
+     "abbr": "WAKE",
+     "detail": "No. 11 • 8–1"
+    },
+    {
+     "name": "SMU Mustangs",
+     "abbr": "SMU",
+     "detail": "No. 25 • 7–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T12:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Gerald J. Ford Stadium, Dallas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Ranked matchup; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-nu-osu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Northwestern Wildcats",
+     "abbr": "NU",
+     "detail": "6–3"
+    },
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 21 • 6–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T12:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Ohio Stadium, Columbus, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 21 Ohio State at home.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ala-van",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 7 • 7–2"
+    },
+    {
+     "name": "Vanderbilt Commodores",
+     "abbr": "VAN",
+     "detail": "4–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T12:45:00-05:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "FirstBank Stadium, Nashville, Tenn.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 7 Alabama on the road; 11:45 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-dep-nd",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "DePaul Blue Demons",
+     "abbr": "DEP",
+     "detail": "4–0"
+    },
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 13 • 3–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-14T13:00:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Colonial Hall, White Sulphur Springs, W.Va.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Neutral-site game; Notre Dame is the designated home team.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-tenn-tamu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 9 • 7–2"
+    },
+    {
+     "name": "Texas A&M Aggies",
+     "abbr": "TA&M",
+     "detail": "4–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T15:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Kyle Field, College Station, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 9 Tennessee on the road; 2 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-miz-uga",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "6–3"
+    },
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 1 • 8–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T15:30:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Sanford Stadium, Athens, Ga.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 1 Georgia at home.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-bc-nd",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boston College Eagles",
+     "abbr": "BC",
+     "detail": "4–5"
+    },
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 3 • 8–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T15:30:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Notre Dame Stadium, Notre Dame, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 3 Notre Dame at home.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-usc-iu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 15 • 7–2"
+    },
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IU",
+     "detail": "No. 6 • 8–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T15:30:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "venue": "Memorial Stadium, Bloomington, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Ranked Big Ten matchup in Bloomington.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-mich-ore",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Michigan Wolverines",
+     "abbr": "MICH",
+     "detail": "5–4"
+    },
+    {
+     "name": "Oregon Ducks",
+     "abbr": "ORE",
+     "detail": "No. 18 • 6–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T15:30:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "Autzen Stadium, Eugene, Ore.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 18 Oregon at home; 12:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-lsu-gonz",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "3–0"
+    },
+    {
+     "name": "Gonzaga Bulldogs",
+     "abbr": "GONZ",
+     "detail": "No. 14 • 2–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T15:30:00-05:00",
+   "watch": "USA Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National USA Network window.",
+   "venue": "Spokane Numerica Veterans Arena, Spokane, Wash.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 14 Gonzaga hosts LSU in Spokane; 12:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ufc-334",
+   "league": "UFC",
+   "label": "UFC • UFC 334",
+   "flags": [
+    "Numbered event"
+   ],
+   "competitors": [
+    {
+     "name": "UFC 334: Gane vs. Hokit",
+     "abbr": "334",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-11-14T17:00:00-05:00",
+   "watch": "Paramount+",
+   "streaming": "Paramount+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "U.S. coverage is on Paramount+; the card begins at 5:00 PM ET and the final bouts are listed for 9:00 PM ET.",
+   "venue": "Madison Square Garden, New York",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Ciryl Gane faces Josh Hokit at heavyweight. Amanda Nunes vs. Kayla Harrison at women’s bantamweight is also on the card.",
+   "blackout": "Paramount+ subscription required."
+  },
+  {
+   "id": "ncaaf-orst-bois",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oregon State Beavers",
+     "abbr": "ORST",
+     "detail": "5–4"
+    },
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BOIS",
+     "detail": "No. 17 • 8–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T18:00:00-05:00",
+   "watch": "USA Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National USA Network window.",
+   "venue": "Albertsons Stadium, Boise, Idaho",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 17 Boise State at home; 4 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-fla-uk",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "5–4"
+    },
+    {
+     "name": "Kentucky Wildcats",
+     "abbr": "UK",
+     "detail": "No. 13 • 7–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T18:15:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Kroger Field, Lexington, Ky.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 13 Kentucky at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-bay-byu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baylor Bears",
+     "abbr": "BAY",
+     "detail": "6–3"
+    },
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 12 • 7–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T19:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "LaVell Edwards Stadium, Provo, Utah",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 12 BYU at home; 5 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-tex-lsu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 8 • 7–2"
+    },
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "No. 24 • 6–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T19:30:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Tiger Stadium, Baton Rouge, La.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Ranked SEC night game; 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-pur-iowa",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Purdue Boilermakers",
+     "abbr": "PUR",
+     "detail": "3–6"
+    },
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 16 • 7–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T19:30:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Kinnick Stadium, Iowa City, Iowa",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 16 Iowa at home; 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-unlv-unm",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UNLV Rebels",
+     "abbr": "UNLV",
+     "detail": "5–4"
+    },
+    {
+     "name": "New Mexico Lobos",
+     "abbr": "UNM",
+     "detail": "No. 23 • 8–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T19:30:00-05:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "University Stadium, Albuquerque, N.M.",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 23 New Mexico at home; 5:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-sc-ark",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": "No. 20 • 6–3"
+    },
+    {
+     "name": "Arkansas Razorbacks",
+     "abbr": "ARK",
+     "detail": "3–6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T19:45:00-05:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Donald W. Reynolds Razorback Stadium, Fayetteville, Ark.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 20 South Carolina on the road; 6:45 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ttu-okst",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 10 • 8–1"
+    },
+    {
+     "name": "Oklahoma State Cowboys",
+     "abbr": "OKST",
+     "detail": "6–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T21:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Boone Pickens Stadium, Stillwater, Okla.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 10 Texas Tech on the road; 8:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-utah-ariz",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 2 • 9–0"
+    },
+    {
+     "name": "Arizona Wildcats",
+     "abbr": "ARIZ",
+     "detail": "No. 22 • 7–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-14T22:30:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Casino Del Sol Stadium, Tucson, Ariz.",
+   "venue_tz": "Mountain Standard Time (Arizona)",
+   "notes": "Unbeaten No. 2 Utah closes the night; 8:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  }
+ ]
+}
