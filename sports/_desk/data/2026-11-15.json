@@ -1,0 +1,712 @@
+{
+ "date": "2026-11-15",
+ "updated": "2026-11-15T08:00:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Munich is six hours ahead of Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 3 USC vs. No. 1 South Carolina, women’s basketball (1:00 PM ET, ABC)",
+  "Steelers at Bengals, Sunday Night Football (8:20 PM ET, NBC)",
+  "Patriots vs. Lions in Munich (9:30 AM ET, FOX)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 10",
+   "note": "Munich morning game • CBS and FOX regional windows • SNF"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV or national streams"
+  }
+ ],
+ "footer_note": "Twenty-two qualifying events fall inside Sunday’s Eastern calendar day. Regional NHL and NBA games, NHL Network games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded. Monday Night Football is Chargers at Ravens (8:15 PM ET, ESPN).",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/10/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261115"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261115"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-15"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261115"
+  }
+ ],
+ "events": [
+  {
+   "id": "nfl-ne-det",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [
+    "International Series • Munich"
+   ],
+   "competitors": [
+    {
+     "name": "New England Patriots",
+     "abbr": "NE",
+     "detail": "5–4",
+     "logo": "nfl/ne"
+    },
+    {
+     "name": "Detroit Lions",
+     "abbr": "DET",
+     "detail": "6–2",
+     "logo": "nfl/det"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-15T09:30:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "FOX morning window; Detroit is the designated home team.",
+   "venue": "FC Bayern Munich Stadium, Munich, Germany",
+   "venue_tz": "Central European Time",
+   "notes": "Morning game in Munich. Kickoff is 3:30 p.m. local.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  },
+  {
+   "id": "nfl-kc-atl",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "6–2",
+     "logo": "nfl/kc"
+    },
+    {
+     "name": "Atlanta Falcons",
+     "abbr": "ATL",
+     "detail": "3–6",
+     "logo": "nfl/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Mercedes-Benz Stadium, Atlanta",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 10 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-hou-cle",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Houston Texans",
+     "abbr": "HOU",
+     "detail": "3–5",
+     "logo": "nfl/hou"
+    },
+    {
+     "name": "Cleveland Browns",
+     "abbr": "CLE",
+     "detail": "5–4",
+     "logo": "nfl/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Huntington Bank Field, Cleveland",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 10 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-min-gb",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Minnesota Vikings",
+     "abbr": "MIN",
+     "detail": "6–2",
+     "logo": "nfl/min"
+    },
+    {
+     "name": "Green Bay Packers",
+     "abbr": "GB",
+     "detail": "6–3",
+     "logo": "nfl/gb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Lambeau Field, Green Bay, Wis.",
+   "venue_tz": "Central Standard Time",
+   "notes": "NFC North matchup; noon local kickoff.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-jax-ten",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Jacksonville Jaguars",
+     "abbr": "JAX",
+     "detail": "6–2",
+     "logo": "nfl/jax"
+    },
+    {
+     "name": "Tennessee Titans",
+     "abbr": "TEN",
+     "detail": "1–7",
+     "logo": "nfl/ten"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Nissan Stadium, Nashville",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 10 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-mia-ind",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Dolphins",
+     "abbr": "MIA",
+     "detail": "1–7",
+     "logo": "nfl/mia"
+    },
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "2–7",
+     "logo": "nfl/ind"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Lucas Oil Stadium, Indianapolis",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 10 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-car-no",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Carolina Panthers",
+     "abbr": "CAR",
+     "detail": "3–5",
+     "logo": "nfl/car"
+    },
+    {
+     "name": "New Orleans Saints",
+     "abbr": "NO",
+     "detail": "3–5",
+     "logo": "nfl/no"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Caesars Superdome, New Orleans",
+   "venue_tz": "Central Standard Time",
+   "notes": "NFC South game in the early window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-buf-nyj",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "7–1",
+     "logo": "nfl/buf"
+    },
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "2–7",
+     "logo": "nfl/nyj"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 10 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "ncaam-lou-mem",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 10 • 2–0"
+    },
+    {
+     "name": "Memphis Tigers",
+     "abbr": "MEM",
+     "detail": "2–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "FedExForum, Memphis, Tenn.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 10 Louisville on the road; noon local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-bois-neb",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BOIS",
+     "detail": "3–0"
+    },
+    {
+     "name": "Nebraska Cornhuskers",
+     "abbr": "NEB",
+     "detail": "No. 25 • 3–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Sanford Pentagon, Sioux Falls, S.D.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Neutral-site game between unbeaten teams; Nebraska is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-usc-sc",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 3 • 3–0"
+    },
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": "No. 1 • 3–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Bon Secours Wellness Arena, Greenville, S.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Top-three matchup between unbeaten teams; South Carolina is the designated home team.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaw-van-iowa",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Vanderbilt Commodores",
+     "abbr": "VAN",
+     "detail": "No. 8 • 4–0"
+    },
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 10 • 3–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-15T13:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "Tyson Events Center, Sioux City, Iowa",
+   "venue_tz": "Central Standard Time",
+   "notes": "Neutral-site ranked matchup; Iowa is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-okst-sdst",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oklahoma State Cowgirls",
+     "abbr": "OKST",
+     "detail": "No. 19 • 3–1"
+    },
+    {
+     "name": "South Dakota State Jackrabbits",
+     "abbr": "SDST",
+     "detail": "1–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T14:00:00-05:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "First Bank & Trust Arena, Brookings, S.D.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 19 Oklahoma State on the road; 1 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-bay-tex",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baylor Bears",
+     "abbr": "BAY",
+     "detail": "3–0"
+    },
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 7 • 3–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-15T15:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Frost Bank Center, San Antonio",
+   "venue_tz": "Central Standard Time",
+   "notes": "Neutral-site game; Texas is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-mrsh-duke",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Marshall Thundering Herd",
+     "abbr": "MRSH",
+     "detail": "4–0"
+    },
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "No. 5 • 3–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T15:00:00-05:00",
+   "watch": "ACC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ACC Network window.",
+   "venue": "Cameron Indoor Stadium, Durham, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 5 Duke hosts unbeaten Marshall.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-sea-lv",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Seattle Seahawks",
+     "abbr": "SEA",
+     "detail": "5–4",
+     "logo": "nfl/sea"
+    },
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "4–5",
+     "logo": "nfl/lv"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T16:05:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Allegiant Stadium, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Week 10 late window game; 1:05 p.m. local kickoff.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lar-ari",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "5–4",
+     "logo": "nfl/lar"
+    },
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "3–6",
+     "logo": "nfl/ari"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T16:05:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "State Farm Stadium, Glendale, Ariz.",
+   "venue_tz": "Mountain Standard Time (Arizona)",
+   "notes": "NFC West game in the late window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-sf-dal",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "San Francisco 49ers",
+     "abbr": "SF",
+     "detail": "7–1",
+     "logo": "nfl/sf"
+    },
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "4–5",
+     "logo": "nfl/dal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T16:25:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "AT&T Stadium, Arlington, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "San Francisco brings a 7–1 record to Dallas.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "ncaaw-conn-lou",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UConn Huskies",
+     "abbr": "CONN",
+     "detail": "No. 4 • 3–1"
+    },
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 7 • 5–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T17:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "KFC Yum! Center, Louisville, Ky.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Top-10 matchup; Louisville is unbeaten.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-prin-ucla",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Princeton Tigers",
+     "abbr": "PRIN",
+     "detail": "5–0"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 10 • 3–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T18:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Pauley Pavilion, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 10 UCLA hosts unbeaten Princeton; 3 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-syr-sju",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [
+    "Peacock"
+   ],
+   "competitors": [
+    {
+     "name": "Syracuse Orange",
+     "abbr": "SYR",
+     "detail": "2–1"
+    },
+    {
+     "name": "St. John's Red Storm",
+     "abbr": "SJU",
+     "detail": "No. 13 • 3–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T19:00:00-05:00",
+   "watch": "Peacock",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "venue": "Madison Square Garden, New York",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 13 St. John's hosts Syracuse at the Garden.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "nfl-pit-cin",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [
+    "Sunday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "6–2",
+     "logo": "nfl/pit"
+    },
+    {
+     "name": "Cincinnati Bengals",
+     "abbr": "CIN",
+     "detail": "6–2",
+     "logo": "nfl/cin"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-15T20:20:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window.",
+   "venue": "Paycor Stadium, Cincinnati",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "AFC North rivals, both 6–2, in prime time.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  }
+ ]
+}
