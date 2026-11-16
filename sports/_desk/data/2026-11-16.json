@@ -1,0 +1,220 @@
+{
+ "date": "2026-11-16",
+ "updated": "2026-11-16T07:56:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Chargers at Ravens, Monday Night Football (8:15 PM ET, ESPN)",
+  "Canadiens at Rangers (7:30 PM ET, TNT)",
+  "Magic at Celtics (7:00 PM ET, NBCSN)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 10",
+   "note": "Monday Night Football"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "NBCSN Monday"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "TNT Monday"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Five qualifying events fall inside Monday’s Eastern calendar day. Regional NHL and NBA games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded. The desk skips Tuesday and Wednesday and returns Thursday.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/10/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261116"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-16"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261116"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261116"
+  }
+ ],
+ "events": [
+  {
+   "id": "nba-orl-bos",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "NBCSN Monday"
+   ],
+   "competitors": [
+    {
+     "name": "Orlando Magic",
+     "abbr": "ORL",
+     "detail": "5–7",
+     "logo": "nba/orl"
+    },
+    {
+     "name": "Boston Celtics",
+     "abbr": "BOS",
+     "detail": "11–2",
+     "logo": "nba/bos"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-16T19:00:00-05:00",
+   "watch": "NBCSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "TD Garden, Boston",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Boston enters 11–2.",
+   "blackout": "Local team-network availability varies by market; NBA League Pass restrictions may apply to national games."
+  },
+  {
+   "id": "nhl-mtl-nyr",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "TNT Monday"
+   ],
+   "competitors": [
+    {
+     "name": "Montreal Canadiens",
+     "abbr": "MTL",
+     "detail": "",
+     "logo": "nhl/mtl"
+    },
+    {
+     "name": "New York Rangers",
+     "abbr": "NYR",
+     "detail": "",
+     "logo": "nhl/nyr"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-16T19:30:00-05:00",
+   "watch": "TNT • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window in the U.S.",
+   "venue": "Madison Square Garden, New York",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "The only national U.S. NHL broadcast of the day.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  },
+  {
+   "id": "ncaaw-mich-cmu",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Michigan Wolverines",
+     "abbr": "MICH",
+     "detail": "No. 2 • 3–0"
+    },
+    {
+     "name": "Central Michigan Chippewas",
+     "abbr": "CMU",
+     "detail": "0–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-16T20:00:00-05:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "McGuirk Arena, Mount Pleasant, Mich.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 2 Michigan on the road in-state.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-lac-bal",
+   "league": "NFL",
+   "label": "NFL • Week 10",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Chargers",
+     "abbr": "LAC",
+     "detail": "0–8",
+     "logo": "nfl/lac"
+    },
+    {
+     "name": "Baltimore Ravens",
+     "abbr": "BAL",
+     "detail": "4–5",
+     "logo": "nfl/bal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-16T20:15:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window.",
+   "venue": "M&T Bank Stadium, Baltimore",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "The winless Chargers visit Baltimore to close Week 10.",
+   "blackout": "No territorial blackout. Local over-the-air simulcasts may air in the Los Angeles and Baltimore markets; NFL+ restrictions may apply."
+  },
+  {
+   "id": "ncaam-lbsu-ucla",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Long Beach State Beach",
+     "abbr": "LBSU",
+     "detail": "1–2"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 9 • 3–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-16T22:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Pauley Pavilion, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 9 UCLA at home; 7 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
