@@ -1,0 +1,332 @@
+{
+ "date": "2026-11-19",
+ "updated": "2026-11-19T07:56:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Colts at Texans, Thursday Night Football (8:15 PM ET, Prime Video)",
+  "No. 8 Houston vs. No. 11 Kansas in Las Vegas, men’s basketball (11:00 PM ET, ESPN)",
+  "Oilers at Lightning (7:30 PM ET, ESPN+)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 11",
+   "note": "Thursday Night Football"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "ESPN+ national streams"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 13",
+   "note": "Thursday national window"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Nine qualifying events fall inside Thursday’s Eastern calendar day. Regional NHL and NBA games, NBA TV games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/11/year/2026/seasontype/2"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-19"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261119"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261119"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261119"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaam-fla-wvu",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 1 • 5–1"
+    },
+    {
+     "name": "West Virginia Mountaineers",
+     "abbr": "WVU",
+     "detail": "4–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-19T14:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 1 Florida in a neutral-site afternoon game; 11:30 a.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-ttu-unc",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Tech Lady Raiders",
+     "abbr": "TTU",
+     "detail": "4–0"
+    },
+    {
+     "name": "North Carolina Tar Heels",
+     "abbr": "UNC",
+     "detail": "No. 24 • 2–2"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-19T18:00:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "State Farm Field House, Kissimmee, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Neutral-site game; North Carolina is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-edm-tb",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "ESPN+ • Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "Edmonton Oilers",
+     "abbr": "EDM",
+     "detail": "",
+     "logo": "nhl/edm"
+    },
+    {
+     "name": "Tampa Bay Lightning",
+     "abbr": "TB",
+     "detail": "",
+     "logo": "nhl/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-19T19:30:00-05:00",
+   "watch": "ESPN+ • Hulu • Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "Benchmark International Arena, Tampa, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "First of two ESPN+ national streams tonight.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  },
+  {
+   "id": "ncaaf-rice-tem",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Rice Owls",
+     "abbr": "RICE",
+     "detail": "1–9"
+    },
+    {
+     "name": "Temple Owls",
+     "abbr": "TEM",
+     "detail": "2–8"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-19T19:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Lincoln Financial Field, Philadelphia",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Thursday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-stet-lou",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Stetson Hatters",
+     "abbr": "STET",
+     "detail": "1–4"
+    },
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 23 • 2–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-19T20:00:00-05:00",
+   "watch": "ACC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ACC Network window.",
+   "venue": "KFC Yum! Center, Louisville, Ky.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 23 Louisville at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-ind-hou",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [
+    "Thursday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "3–7",
+     "logo": "nfl/ind"
+    },
+    {
+     "name": "Houston Texans",
+     "abbr": "HOU",
+     "detail": "3–6",
+     "logo": "nfl/hou"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-19T20:15:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Reliant Stadium, Houston",
+   "venue_tz": "Central Standard Time",
+   "notes": "AFC South game opens Week 11. Kickoff is 7:15 p.m. local.",
+   "blackout": "Prime Video subscription required; local broadcast availability in the team markets may vary. NFL+ restrictions may apply."
+  },
+  {
+   "id": "nhl-dal-vgk",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "ESPN+ • Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "Dallas Stars",
+     "abbr": "DAL",
+     "detail": "",
+     "logo": "nhl/dal"
+    },
+    {
+     "name": "Vegas Golden Knights",
+     "abbr": "VGK",
+     "detail": "",
+     "logo": "nhl/vgk"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-19T22:00:00-05:00",
+   "watch": "ESPN+ • Hulu • Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "T-Mobile Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Late West Coast stream. Puck drop is 7:00 p.m. local.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  },
+  {
+   "id": "ncaam-hou-ku",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 8 • 5–0"
+    },
+    {
+     "name": "Kansas Jayhawks",
+     "abbr": "KU",
+     "detail": "No. 11 • 5–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-19T23:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site matchup of unbeaten ranked teams; 8 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-tar-usc",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tarleton State Texans",
+     "abbr": "TAR",
+     "detail": "4–1"
+    },
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 18 • 4–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-19T23:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Galen Center, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 18 USC at home; 8 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
