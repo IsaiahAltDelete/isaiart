@@ -85,5 +85,7 @@
  "nba/orl": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
  "nhl/edm": "https://a.espncdn.com/i/teamlogos/nhl/500/edm.png",
  "nhl/tb": "https://a.espncdn.com/i/teamlogos/nhl/500/tb.png",
- "nhl/vgk": "https://a.espncdn.com/i/teamlogos/nhl/500/vgk.png"
+ "nhl/vgk": "https://a.espncdn.com/i/teamlogos/nhl/500/vgk.png",
+ "nba/tor": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+ "nba/det": "https://a.espncdn.com/i/teamlogos/nba/500/det.png"
 }

@@ -1,0 +1,464 @@
+{
+ "date": "2026-11-20",
+ "updated": "2026-11-20T07:57:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Rockets at Nuggets (10:00 PM ET, Prime Video)",
+  "No. 14 Oregon at Michigan State (8:00 PM ET, FOX)",
+  "Clemson at Duke (7:30 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "Prime Video doubleheader"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 13",
+   "note": "Friday national windows • ranks from the Nov. 15 AP poll"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV or national streams"
+  }
+ ],
+ "footer_note": "Fourteen qualifying events fall inside Friday’s Eastern calendar day. Regional NHL and NBA games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded. Saturday brings the full college football slate.",
+ "sources": [
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261120"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261120"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261120"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261120"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-20"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaam-man-mia",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Manhattan Jaspers",
+     "abbr": "MAN",
+     "detail": "1–4"
+    },
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 17 • 4–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T17:00:00-05:00",
+   "watch": "ACC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ACC Network window.",
+   "venue": "Watsco Center, Coral Gables, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 17 Miami at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-isu-ucf",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Iowa State Cyclones",
+     "abbr": "ISU",
+     "detail": "5–5"
+    },
+    {
+     "name": "UCF Knights",
+     "abbr": "UCF",
+     "detail": "5–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T18:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "Acrisure Bounce House, Orlando, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Friday college game on FS1; both teams are 5–5.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-lmd-uva",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Loyola Maryland Greyhounds",
+     "abbr": "L-MD",
+     "detail": "1–4"
+    },
+    {
+     "name": "Virginia Cavaliers",
+     "abbr": "UVA",
+     "detail": "No. 4 • 6–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T19:00:00-05:00",
+   "watch": "ACC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ACC Network window.",
+   "venue": "John Paul Jones Arena, Charlottesville, Va.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Unbeaten No. 4 Virginia at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-clem-duke",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Clemson Tigers",
+     "abbr": "CLEM",
+     "detail": "6–4"
+    },
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "7–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T19:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Wallace Wade Stadium, Durham, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Friday night ACC game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-bgsu-tol",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Bowling Green Falcons",
+     "abbr": "BGSU",
+     "detail": "3–7"
+    },
+    {
+     "name": "Toledo Rockets",
+     "abbr": "TOL",
+     "detail": "8–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T19:30:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Glass Bowl, Toledo, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Friday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nba-tor-det",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Toronto Raptors",
+     "abbr": "TOR",
+     "detail": "5–10",
+     "logo": "nba/tor"
+    },
+    {
+     "name": "Detroit Pistons",
+     "abbr": "DET",
+     "detail": "10–4",
+     "logo": "nba/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T19:30:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Little Caesars Arena, Detroit",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Detroit enters 10–4.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaf-ore-msu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oregon Ducks",
+     "abbr": "ORE",
+     "detail": "No. 14 • 7–3"
+    },
+    {
+     "name": "Michigan State Spartans",
+     "abbr": "MSU",
+     "detail": "3–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T20:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Spartan Stadium, East Lansing, Mich.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 14 Oregon on the road.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-utep-afa",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UTEP Miners",
+     "abbr": "UTEP",
+     "detail": "1–9"
+    },
+    {
+     "name": "Air Force Falcons",
+     "abbr": "AFA",
+     "detail": "8–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T20:00:00-05:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Falcon Stadium, U.S. Air Force Academy, Colo.",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Air Force at home; 6 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaw-hall-conn",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [
+    "Peacock"
+   ],
+   "competitors": [
+    {
+     "name": "Seton Hall Pirates",
+     "abbr": "HALL",
+     "detail": "2–3"
+    },
+    {
+     "name": "UConn Huskies",
+     "abbr": "CONN",
+     "detail": "No. 7 • 3–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T20:00:00-05:00",
+   "watch": "Peacock",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "venue": "PeoplesBank Arena, Hartford, Conn.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 7 UConn hosts Seton Hall in Hartford.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "ncaaf-unm-wyo",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New Mexico Lobos",
+     "abbr": "UNM",
+     "detail": "8–2"
+    },
+    {
+     "name": "Wyoming Cowboys",
+     "abbr": "WYO",
+     "detail": "7–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T21:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "War Memorial Stadium, Laramie, Wyo.",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Mountain West matchup of winning teams; 7 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-eiu-ill",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Eastern Illinois Panthers",
+     "abbr": "EIU",
+     "detail": "1–5"
+    },
+    {
+     "name": "Illinois Fighting Illini",
+     "abbr": "ILL",
+     "detail": "No. 10 • 4–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T21:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "State Farm Center, Champaign, Ill.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 10 Illinois at home; 8 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nba-hou-den",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Houston Rockets",
+     "abbr": "HOU",
+     "detail": "12–4",
+     "logo": "nba/hou"
+    },
+    {
+     "name": "Denver Nuggets",
+     "abbr": "DEN",
+     "detail": "8–5",
+     "logo": "nba/den"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T22:00:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Ball Arena, Denver",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Houston brings a 12–4 record to Denver. Tip is 8:00 p.m. local.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaw-stan-wash",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Stanford Cardinal",
+     "abbr": "STAN",
+     "detail": "4–1"
+    },
+    {
+     "name": "Washington Huskies",
+     "abbr": "WASH",
+     "detail": "No. 16 • 4–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-20T22:00:00-05:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "Alaska Airlines Arena, Seattle",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Unbeaten No. 16 Washington hosts Stanford; 7 p.m. local tip. Also streams on Peacock.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-bay-usc",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baylor Bears",
+     "abbr": "BAY",
+     "detail": "5–0"
+    },
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 4 • 3–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-20T23:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Intuit Dome, Inglewood, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; USC is the designated home team. 8 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
