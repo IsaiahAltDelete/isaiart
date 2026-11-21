@@ -1,0 +1,854 @@
+{
+ "date": "2026-11-21",
+ "updated": "2026-11-21T07:57:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 1 Georgia at South Carolina (7:30 PM ET, ABC)",
+  "No. 4 UCLA at Michigan (3:30 PM ET, CBS)",
+  "LSU at No. 9 Tennessee (3:30 PM ET, ABC)"
+ ],
+ "leagues": [
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 13",
+   "note": "Saturday games with AP Top 25 teams • ranks from the Week 12 AP poll"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV or national streams"
+  }
+ ],
+ "footer_note": "Twenty-eight qualifying events fall inside Saturday’s Eastern calendar day: every Saturday game involving an AP Top 25 team (No. 14 Oregon played Friday) and four ranked college basketball games on national TV or national streams. Regional NHL and NBA games, NBA TV and NHL Network games, and UFC Fight Night are excluded. Sunday brings the NFL slate.",
+ "sources": [
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261121"
+  },
+  {
+   "label": "AP Top 25, Week 12",
+   "url": "https://www.espn.com/college-football/rankings"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261121"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261121"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-21"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-byu-ku",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 12 • 8–2"
+    },
+    {
+     "name": "Kansas Jayhawks",
+     "abbr": "KU",
+     "detail": "4–6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "ABC",
+   "venue": "David Booth Kansas Memorial Stadium, Lawrence, Kan.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 12 BYU on the road; 11 a.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-wake-gt",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Wake Forest Demon Deacons",
+     "abbr": "WAKE",
+     "detail": "No. 10 • 9–1"
+    },
+    {
+     "name": "Georgia Tech Yellow Jackets",
+     "abbr": "GT",
+     "detail": "3–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "ESPN",
+   "venue": "Bobby Dodd Stadium, Atlanta",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 10 Wake Forest on the road.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-osu-neb",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 16 • 7–3"
+    },
+    {
+     "name": "Nebraska Cornhuskers",
+     "abbr": "NEB",
+     "detail": "6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "FOX",
+   "venue": "Memorial Stadium, Lincoln, Neb.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 16 Ohio State on the road; 11 a.m. local kickoff.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-van-fla",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Vanderbilt Commodores",
+     "abbr": "VAN",
+     "detail": "4–6"
+    },
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 23 • 6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "SEC Network",
+   "venue": "Ben Hill Griffin Stadium, Gainesville, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 23 Florida at home.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-wof-miss",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [
+    "SEC Network+"
+   ],
+   "competitors": [
+    {
+     "name": "Wofford Terriers",
+     "abbr": "WOF",
+     "detail": "5–6"
+    },
+    {
+     "name": "Ole Miss Rebels",
+     "abbr": "MISS",
+     "detail": "No. 25 • 6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "SEC Network+",
+   "venue": "Vaught-Hemingway Stadium, Oxford, Miss.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 25 Ole Miss hosts FCS Wofford; 11 a.m. local kickoff.",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National SEC Network+ streaming window.",
+   "blackout": "ESPN+ subscription required."
+  },
+  {
+   "id": "ncaaf-mem-navy",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Memphis Tigers",
+     "abbr": "MEM",
+     "detail": "No. 24 • 8–2"
+    },
+    {
+     "name": "Navy Midshipmen",
+     "abbr": "NAVY",
+     "detail": "3–6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "ESPN2",
+   "venue": "Navy-Marine Corps Memorial Stadium, Annapolis, Md.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 24 Memphis on the road.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-detm-msu",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Detroit Mercy Titans",
+     "abbr": "DETM",
+     "detail": "0–4"
+    },
+    {
+     "name": "Michigan State Spartans",
+     "abbr": "MSU",
+     "detail": "No. 2 • 4–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T12:00:00-05:00",
+   "watch": "Big Ten Network",
+   "venue": "Breslin Center, East Lansing, Mich.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 2 Michigan State at home.",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-hou-wvu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 20 • 7–3"
+    },
+    {
+     "name": "West Virginia Mountaineers",
+     "abbr": "WVU",
+     "detail": "5–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T13:00:00-05:00",
+   "watch": "TNT",
+   "venue": "Milan Puskar Stadium, Morgantown, W.Va.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 20 Houston on the road.",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-wku-lib",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [
+    "ESPN+"
+   ],
+   "competitors": [
+    {
+     "name": "Western Kentucky Hilltoppers",
+     "abbr": "WKU",
+     "detail": "4–6"
+    },
+    {
+     "name": "Liberty Flames",
+     "abbr": "LIB",
+     "detail": "No. 22 • 9–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T13:00:00-05:00",
+   "watch": "ESPN+",
+   "venue": "Williams Stadium, Lynchburg, Va.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 22 Liberty at home.",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National ESPN+ streaming window.",
+   "blackout": "ESPN+ subscription required."
+  },
+  {
+   "id": "ncaaw-sc-prov",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [
+    "Peacock"
+   ],
+   "competitors": [
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": "No. 1 • 5–0"
+    },
+    {
+     "name": "Providence Friars",
+     "abbr": "PROV",
+     "detail": "2–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T13:30:00-05:00",
+   "watch": "Peacock",
+   "venue": "Alumni Hall, Providence, R.I.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Unbeaten No. 1 South Carolina on the road.",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "ncaaf-utc-ala",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [
+    "SEC Network+"
+   ],
+   "competitors": [
+    {
+     "name": "Chattanooga Mocs",
+     "abbr": "UTC",
+     "detail": "7–4"
+    },
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 7 • 8–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T14:00:00-05:00",
+   "watch": "SEC Network+",
+   "venue": "Bryant-Denny Stadium, Tuscaloosa, Ala.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 7 Alabama hosts FCS Chattanooga; 1 p.m. local kickoff.",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National SEC Network+ streaming window.",
+   "blackout": "ESPN+ subscription required."
+  },
+  {
+   "id": "ncaaf-iowa-ill",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 13 • 8–2"
+    },
+    {
+     "name": "Illinois Fighting Illini",
+     "abbr": "ILL",
+     "detail": "6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T14:30:00-05:00",
+   "watch": "Big Ten Network",
+   "venue": "Gies Memorial Stadium, Champaign, Ill.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 13 Iowa on the road; 1:30 p.m. local kickoff.",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ucla-mich",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 4 • 10–0"
+    },
+    {
+     "name": "Michigan Wolverines",
+     "abbr": "MICH",
+     "detail": "5–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T15:30:00-05:00",
+   "watch": "CBS",
+   "venue": "Michigan Stadium, Ann Arbor, Mich.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Unbeaten No. 4 UCLA visits the Big House.",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ark-tex",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Arkansas Razorbacks",
+     "abbr": "ARK",
+     "detail": "4–6"
+    },
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 8 • 8–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T15:30:00-05:00",
+   "watch": "ESPN",
+   "venue": "DKR-Texas Memorial Stadium, Austin",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 8 Texas at home; 2:30 p.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-iu-wash",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [
+    "Peacock"
+   ],
+   "competitors": [
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IU",
+     "detail": "No. 6 • 9–1"
+    },
+    {
+     "name": "Washington Huskies",
+     "abbr": "WASH",
+     "detail": "6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T15:30:00-05:00",
+   "watch": "Peacock",
+   "venue": "Husky Stadium, Seattle",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 6 Indiana on the road; 12:30 p.m. local kickoff.",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "ncaaf-lsu-tenn",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "6–4"
+    },
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 9 • 8–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T15:30:00-05:00",
+   "watch": "ABC",
+   "venue": "Neyland Stadium, Knoxville, Tenn.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 9 Tennessee hosts LSU.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ttu-bay",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 11 • 9–1"
+    },
+    {
+     "name": "Baylor Bears",
+     "abbr": "BAY",
+     "detail": "6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T15:30:00-05:00",
+   "watch": "FOX",
+   "venue": "McLane Stadium, Waco, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 11 Texas Tech on the road; 2:30 p.m. local kickoff.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-md-usc",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Maryland Terrapins",
+     "abbr": "MD",
+     "detail": "4–6"
+    },
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 18 • 7–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T18:15:00-05:00",
+   "watch": "Big Ten Network",
+   "venue": "Los Angeles Memorial Coliseum, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "No. 18 USC at home; 3:15 p.m. local kickoff.",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-vt-mia",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Virginia Tech Hokies",
+     "abbr": "VT",
+     "detail": "6–4"
+    },
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 5 • 9–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:00:00-05:00",
+   "watch": "ESPN",
+   "venue": "Hard Rock Stadium, Miami Gardens, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 5 Miami at home.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ariz-ksu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Wildcats",
+     "abbr": "ARIZ",
+     "detail": "No. 19 • 7–3"
+    },
+    {
+     "name": "Kansas State Wildcats",
+     "abbr": "KSU",
+     "detail": "4–6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:00:00-05:00",
+   "watch": "FS1",
+   "venue": "Bill Snyder Family Stadium, Manhattan, Kan.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 19 Arizona on the road; 6 p.m. local kickoff.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-mich-vill",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Michigan Wolverines",
+     "abbr": "MICH",
+     "detail": "No. 18 • 3–1"
+    },
+    {
+     "name": "Villanova Wildcats",
+     "abbr": "VILL",
+     "detail": "3–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:00:00-05:00",
+   "watch": "FOX",
+   "venue": "Xfinity Mobile Arena, Philadelphia",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 18 Michigan visits Villanova in Philadelphia.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-uga-sc",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 1 • 9–1"
+    },
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": "6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:30:00-05:00",
+   "watch": "ABC",
+   "venue": "Williams-Brice Stadium, Columbia, S.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 1 Georgia on the road in prime time.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-smu-nd",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "SMU Mustangs",
+     "abbr": "SMU",
+     "detail": "7–3"
+    },
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 3 • 9–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:30:00-05:00",
+   "watch": "NBC",
+   "venue": "Notre Dame Stadium, Notre Dame, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 3 Notre Dame hosts SMU.",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-uk-miz",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kentucky Wildcats",
+     "abbr": "UK",
+     "detail": "No. 17 • 7–3"
+    },
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "6–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:30:00-05:00",
+   "watch": "SEC Network",
+   "venue": "Memorial Stadium, Columbia, Mo.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 17 Kentucky on the road; 6:30 p.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-pitt-lou",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Pittsburgh Panthers",
+     "abbr": "PITT",
+     "detail": "6–4"
+    },
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 21 • 7–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T19:30:00-05:00",
+   "watch": "ESPN2",
+   "venue": "L&N Federal Credit Union Stadium, Louisville, Ky.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 21 Louisville at home.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-utah-tcu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 2 • 10–0"
+    },
+    {
+     "name": "TCU Horned Frogs",
+     "abbr": "TCU",
+     "detail": "5–5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T21:00:00-05:00",
+   "watch": "FOX",
+   "venue": "Amon G. Carter Stadium, Fort Worth, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Unbeaten No. 2 Utah on the road; 8 p.m. local kickoff.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-sdsu-bois",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 13",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "San Diego State Aztecs",
+     "abbr": "SDSU",
+     "detail": "5–5"
+    },
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BOIS",
+     "detail": "No. 15 • 9–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-21T21:30:00-05:00",
+   "watch": "USA Network",
+   "venue": "Albertsons Stadium, Boise, Idaho",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 15 Boise State closes the night; 7:30 p.m. local kickoff.",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National USA Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-wsu-duke",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Washington State Cougars",
+     "abbr": "WSU",
+     "detail": "2–3"
+    },
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "No. 5 • 3–2"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-21T23:00:00-05:00",
+   "watch": "ESPN2",
+   "venue": "Acrisure Arena, Palm Springs, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; Duke is the designated home team. 8 p.m. local tip.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
