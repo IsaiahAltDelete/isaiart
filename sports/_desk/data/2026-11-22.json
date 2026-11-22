@@ -1,0 +1,636 @@
+{
+ "date": "2026-11-22",
+ "updated": "2026-11-22T07:57:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Mexico City is one hour behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Vikings vs. 49ers in Mexico City, Sunday Night Football (8:20 PM ET, NBC)",
+  "Jaguars at Giants (4:25 PM ET, CBS)",
+  "FC Cincinnati at Nashville SC, MLS playoffs (4:00 PM ET, FS1)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 11",
+   "note": "CBS and FOX regional windows • SNF in Mexico City"
+  },
+  {
+   "key": "MLS",
+   "name": "MLS",
+   "subtitle": "Playoffs",
+   "note": "Round One"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Nineteen qualifying events fall inside Sunday’s Eastern calendar day. Regional NHL and NBA games, NHL Network games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded. Monday Night Football is Bengals at Commanders (8:15 PM ET, ESPN).",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/11/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN MLS scoreboard",
+   "url": "https://www.espn.com/soccer/scoreboard/_/league/usa.1/date/20261122"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261122"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261122"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-22"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaam-neb-btlr",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Nebraska Cornhuskers",
+     "abbr": "NEB",
+     "detail": "No. 24 • 5–0"
+    },
+    {
+     "name": "Butler Bulldogs",
+     "abbr": "BTLR",
+     "detail": "4–2"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-22T12:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "Credit Union 1 Arena, Chicago",
+   "venue_tz": "Central Standard Time",
+   "notes": "Unbeaten No. 24 Nebraska in a neutral-site game; Butler is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-mia-buf",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Dolphins",
+     "abbr": "MIA",
+     "detail": "1–8",
+     "logo": "nfl/mia"
+    },
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "8–1",
+     "logo": "nfl/buf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Highmark Stadium, Orchard Park, N.Y.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 11 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-no-chi",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New Orleans Saints",
+     "abbr": "NO",
+     "detail": "3–6",
+     "logo": "nfl/no"
+    },
+    {
+     "name": "Chicago Bears",
+     "abbr": "CHI",
+     "detail": "7–2",
+     "logo": "nfl/chi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Soldier Field, Chicago",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 11 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ten-dal",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Titans",
+     "abbr": "TEN",
+     "detail": "1–8",
+     "logo": "nfl/ten"
+    },
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "4–6",
+     "logo": "nfl/dal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "AT&T Stadium, Arlington, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 11 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-tb-det",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tampa Bay Buccaneers",
+     "abbr": "TB",
+     "detail": "3–6",
+     "logo": "nfl/tb"
+    },
+    {
+     "name": "Detroit Lions",
+     "abbr": "DET",
+     "detail": "7–2",
+     "logo": "nfl/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Ford Field, Detroit",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Detroit returns home after the Munich game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ari-kc",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "3–7",
+     "logo": "nfl/ari"
+    },
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "7–2",
+     "logo": "nfl/kc"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Arrowhead Stadium, Kansas City, Mo.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Week 11 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-pit-phi",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "6–3",
+     "logo": "nfl/pit"
+    },
+    {
+     "name": "Philadelphia Eagles",
+     "abbr": "PHI",
+     "detail": "2–7",
+     "logo": "nfl/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Lincoln Financial Field, Philadelphia",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Pennsylvania matchup in the early window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-bal-car",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baltimore Ravens",
+     "abbr": "BAL",
+     "detail": "4–6",
+     "logo": "nfl/bal"
+    },
+    {
+     "name": "Carolina Panthers",
+     "abbr": "CAR",
+     "detail": "4–5",
+     "logo": "nfl/car"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Bank of America Stadium, Charlotte, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Week 11 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "ncaaw-osu-tex",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 19 • 5–1"
+    },
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 6 • 5–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-22T13:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Dickies Arena, Fort Worth, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Neutral-site ranked matchup; Texas is the designated home team.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-neb-crei",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Nebraska Cornhuskers",
+     "abbr": "NEB",
+     "detail": "No. 23 • 5–0"
+    },
+    {
+     "name": "Creighton Bluejays",
+     "abbr": "CREI",
+     "detail": "4–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T14:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "Liberty First Credit Union Arena, Omaha, Neb.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Unbeaten No. 23 Nebraska on the road; 1 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-usu-tcu",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Utah State Aggies",
+     "abbr": "USU",
+     "detail": "2–4"
+    },
+    {
+     "name": "TCU Horned Frogs",
+     "abbr": "TCU",
+     "detail": "No. 15 • 7–0"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-22T15:30:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Dickies Arena, Fort Worth, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Unbeaten No. 15 TCU in a neutral-site game.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mls-cin-nsh",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One"
+   ],
+   "competitors": [
+    {
+     "name": "FC Cincinnati",
+     "abbr": "CIN",
+     "detail": ""
+    },
+    {
+     "name": "Nashville SC",
+     "abbr": "NSH",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T16:00:00-05:00",
+   "watch": "FS1 • Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "National",
+   "coverage": "National FS1 window; also streams on Apple TV.",
+   "venue": "GEODIS Park, Nashville",
+   "venue_tz": "Central Standard Time",
+   "notes": "Eastern Conference playoff match; 3 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider access or an Apple TV subscription is required."
+  },
+  {
+   "id": "nfl-nyj-lac",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "2–8",
+     "logo": "nfl/nyj"
+    },
+    {
+     "name": "Los Angeles Chargers",
+     "abbr": "LAC",
+     "detail": "1–8",
+     "logo": "nfl/lac"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T16:05:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "SoFi Stadium, Inglewood, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Week 11 late window game; 1:05 p.m. local kickoff.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lv-den",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "4–6",
+     "logo": "nfl/lv"
+    },
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "7–2",
+     "logo": "nfl/den"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T16:25:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Empower Field at Mile High, Denver",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "AFC West game in the late window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-jax-nyg",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Jacksonville Jaguars",
+     "abbr": "JAX",
+     "detail": "7–2",
+     "logo": "nfl/jax"
+    },
+    {
+     "name": "New York Giants",
+     "abbr": "NYG",
+     "detail": "5–3–1",
+     "logo": "nfl/nyg"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T16:25:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Two winning teams in the late window.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "ncaaw-ucla-tenn",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 10 • 5–0"
+    },
+    {
+     "name": "Tennessee Lady Volunteers",
+     "abbr": "TENN",
+     "detail": "6–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T17:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Food City Center, Knoxville, Tenn.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Two unbeaten teams; No. 10 UCLA visits Tennessee.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mls-clt-chi",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One"
+   ],
+   "competitors": [
+    {
+     "name": "Charlotte FC",
+     "abbr": "CLT",
+     "detail": ""
+    },
+    {
+     "name": "Chicago Fire FC",
+     "abbr": "CHI",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T18:30:00-05:00",
+   "watch": "FS1 • Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "National",
+   "coverage": "National FS1 window; also streams on Apple TV.",
+   "venue": "SeatGeek Stadium, Bridgeview, Ill.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Eastern Conference playoff match; 5:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider access or an Apple TV subscription is required."
+  },
+  {
+   "id": "nfl-min-sf",
+   "league": "NFL",
+   "label": "NFL • Week 11",
+   "flags": [
+    "Sunday Night Football",
+    "International Series • Mexico City"
+   ],
+   "competitors": [
+    {
+     "name": "Minnesota Vikings",
+     "abbr": "MIN",
+     "detail": "7–2",
+     "logo": "nfl/min"
+    },
+    {
+     "name": "San Francisco 49ers",
+     "abbr": "SF",
+     "detail": "8–1",
+     "logo": "nfl/sf"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-22T20:20:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window; San Francisco is the designated home team.",
+   "venue": "Estadio Banorte, Mexico City",
+   "venue_tz": "Central Standard Time (Mexico City)",
+   "notes": "Two of the NFC’s best records meet in Mexico City. Kickoff is 7:20 p.m. local.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  },
+  {
+   "id": "mls-rsl-van",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One",
+    "Apple TV"
+   ],
+   "competitors": [
+    {
+     "name": "Real Salt Lake",
+     "abbr": "RSL",
+     "detail": ""
+    },
+    {
+     "name": "Vancouver Whitecaps",
+     "abbr": "VAN",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-22T20:30:00-05:00",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Apple TV streaming window.",
+   "venue": "BC Place, Vancouver",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Western Conference playoff match; 5:30 p.m. local kickoff.",
+   "blackout": "Apple TV subscription required."
+  }
+ ]
+}
