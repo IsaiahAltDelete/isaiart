@@ -1,0 +1,970 @@
+{
+ "date": "2026-11-27",
+ "updated": "2026-11-27T07:57:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. The Bahamas match Eastern time. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Broncos at Steelers, Black Friday (3:00 PM ET, Prime Video)",
+  "No. 5 Texas at Texas A&M (7:30 PM ET, ABC)",
+  "Lakers at Spurs (9:30 PM ET, Prime Video)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 12",
+   "note": "Black Friday game"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 14",
+   "note": "Friday national windows • ranks from the Week 13 AP poll"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "Prime Video doubleheader"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "TNT doubleheader"
+  },
+  {
+   "key": "MLS",
+   "name": "MLS",
+   "subtitle": "Playoffs",
+   "note": "Round One"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Thirty-one qualifying events fall inside Friday’s Eastern calendar day. Regional NHL and NBA games, NHL Network games, and ranked college basketball games streaming only on ESPN+, SECN+, ACCNX or B1G+ are excluded. Saturday brings rivalry weekend across college football.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/12/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261127"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261127"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-27"
+  },
+  {
+   "label": "ESPN MLS scoreboard",
+   "url": "https://www.espn.com/soccer/scoreboard/_/league/usa.1/date/20261127"
+  },
+  {
+   "label": "ESPN men's college basketball scoreboard",
+   "url": "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20261127"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaam-uva-xav",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Virginia Cavaliers",
+     "abbr": "UVA",
+     "detail": "No. 2 • 8–0"
+    },
+    {
+     "name": "Xavier Musketeers",
+     "abbr": "XAV",
+     "detail": "6–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T11:00:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Imperial Arena, Nassau, Bahamas",
+   "venue_tz": "Eastern Standard Time (Bahamas)",
+   "notes": "Unbeaten No. 2 Virginia in a neutral-site game in Nassau.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-msst-miss",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Mississippi State Bulldogs",
+     "abbr": "MSST",
+     "detail": "5–6"
+    },
+    {
+     "name": "Ole Miss Rebels",
+     "abbr": "MISS",
+     "detail": "No. 23 • 7–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T12:00:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Vaught-Hemingway Stadium, Oxford, Miss.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Egg Bowl rivalry game; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-tlsa-utsa",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tulsa Golden Hurricane",
+     "abbr": "TLSA",
+     "detail": "7–4"
+    },
+    {
+     "name": "UTSA Roadrunners",
+     "abbr": "UTSA",
+     "detail": "9–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T12:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Alamodome, San Antonio",
+   "venue_tz": "Central Standard Time",
+   "notes": "UTSA enters 9–2; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-buff-akr",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Buffalo Bulls",
+     "abbr": "BUFF",
+     "detail": "8–3"
+    },
+    {
+     "name": "Akron Zips",
+     "abbr": "AKR",
+     "detail": "2–9"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T12:00:00-05:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "InfoCision Stadium, Akron, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Black Friday MAC game on CBS Sports Network.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-tol-ohio",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Toledo Rockets",
+     "abbr": "TOL",
+     "detail": "9–2"
+    },
+    {
+     "name": "Ohio Bobcats",
+     "abbr": "OHIO",
+     "detail": "8–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T12:00:00-05:00",
+   "watch": "ESPNU",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPNU window.",
+   "venue": "Peden Stadium, Athens, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "MAC matchup of winning teams.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-neb-iowa",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Nebraska Cornhuskers",
+     "abbr": "NEB",
+     "detail": "7–4"
+    },
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 13 • 9–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T12:00:00-05:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "venue": "Kinnick Stadium, Iowa City, Iowa",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 13 Iowa hosts Nebraska; 11 a.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaam-sju-isu",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "St. John's Red Storm",
+     "abbr": "SJU",
+     "detail": "No. 13 • 6–1"
+    },
+    {
+     "name": "Iowa State Cyclones",
+     "abbr": "ISU",
+     "detail": "4–2"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T13:00:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; No. 13 St. John's. 10 a.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-gtwn-ucla",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Georgetown Hoyas",
+     "abbr": "GTWN",
+     "detail": "6–1"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 6 • 6–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T14:30:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Jenny Craig Pavilion, San Diego",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; UCLA is the designated home team. 11:30 a.m. local tip.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "nfl-den-pit",
+   "league": "NFL",
+   "label": "NFL • Week 12",
+   "flags": [
+    "Black Friday"
+   ],
+   "competitors": [
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "8–2",
+     "logo": "nfl/den"
+    },
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "6–4",
+     "logo": "nfl/pit"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T15:00:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Acrisure Stadium, Pittsburgh",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Black Friday afternoon game; Denver enters 8–2.",
+   "blackout": "Prime Video subscription required; local broadcast availability in the team markets may vary. NFL+ restrictions may apply."
+  },
+  {
+   "id": "ncaaf-fla-fsu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 20 • 7–4"
+    },
+    {
+     "name": "Florida State Seminoles",
+     "abbr": "FSU",
+     "detail": "5–6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T15:30:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Doak Campbell Stadium, Tallahassee, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "In-state rivalry; No. 20 Florida on the road.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-tem-mem",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Temple Owls",
+     "abbr": "TEM",
+     "detail": "2–9"
+    },
+    {
+     "name": "Memphis Tigers",
+     "abbr": "MEM",
+     "detail": "8–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T15:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Simmons Bank Liberty Stadium, Memphis, Tenn.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Memphis at home; 2:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-ndsu-sjsu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "North Dakota State Bison",
+     "abbr": "NDSU",
+     "detail": "9–2"
+    },
+    {
+     "name": "San José State Spartans",
+     "abbr": "SJSU",
+     "detail": "5–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T15:30:00-05:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "CEFCU Stadium, San Jose, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "FCS power North Dakota State visits San José State; 12:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-afa-unm",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Air Force Falcons",
+     "abbr": "AFA",
+     "detail": "9–2"
+    },
+    {
+     "name": "New Mexico Lobos",
+     "abbr": "UNM",
+     "detail": "9–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T16:30:00-05:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "University Stadium, Albuquerque, N.M.",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Two 9–2 Mountain West teams; 2:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaam-tex-smc",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 7 • 7–0"
+    },
+    {
+     "name": "Saint Mary's Gaels",
+     "abbr": "SMC",
+     "detail": "7–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T17:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Jenny Craig Pavilion, San Diego",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Unbeaten No. 7 Texas in a neutral-site game; Saint Mary's is the designated home team.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaam-vill-ku",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Villanova Wildcats",
+     "abbr": "VILL",
+     "detail": "5–2"
+    },
+    {
+     "name": "Kansas Jayhawks",
+     "abbr": "KU",
+     "detail": "No. 12 • 6–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T17:00:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Allen Fieldhouse, Lawrence, Kan.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 12 Kansas hosts Villanova; 4 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-nyr-chi",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "TNT Black Friday"
+   ],
+   "competitors": [
+    {
+     "name": "New York Rangers",
+     "abbr": "NYR",
+     "detail": "",
+     "logo": "nhl/nyr"
+    },
+    {
+     "name": "Chicago Blackhawks",
+     "abbr": "CHI",
+     "detail": "",
+     "logo": "nhl/chi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T17:30:00-05:00",
+   "watch": "TNT • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window in the U.S.",
+   "venue": "United Center, Chicago",
+   "venue_tz": "Central Standard Time",
+   "notes": "First game of the TNT doubleheader; 4:30 p.m. local puck drop.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  },
+  {
+   "id": "ncaam-wku-ill",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Western Kentucky Hilltoppers",
+     "abbr": "WKU",
+     "detail": "5–2"
+    },
+    {
+     "name": "Illinois Fighting Illini",
+     "abbr": "ILL",
+     "detail": "No. 4 • 6–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T18:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "State Farm Center, Champaign, Ill.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 4 Illinois at home; 5 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-bgsu-iu",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Bowling Green Falcons",
+     "abbr": "BGSU",
+     "detail": "4–2"
+    },
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IU",
+     "detail": "No. 23 • 7–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T18:00:00-05:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Simon Skjodt Assembly Hall, Bloomington, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Unbeaten No. 23 Indiana at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nba-mia-ny",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Miami Heat",
+     "abbr": "MIA",
+     "detail": "10–7",
+     "logo": "nba/mia"
+    },
+    {
+     "name": "New York Knicks",
+     "abbr": "NY",
+     "detail": "12–6",
+     "logo": "nba/ny"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T19:00:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Madison Square Garden, New York",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Early game of the Prime Video doubleheader.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaf-tex-tamu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 5 • 9–2"
+    },
+    {
+     "name": "Texas A&M Aggies",
+     "abbr": "TA&M",
+     "detail": "4–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T19:30:00-05:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Kyle Field, College Station, Texas",
+   "venue_tz": "Central Standard Time",
+   "notes": "Lone Star rivalry; No. 5 Texas on the road. 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-minn-wis",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Minnesota Golden Gophers",
+     "abbr": "MINN",
+     "detail": "6–5"
+    },
+    {
+     "name": "Wisconsin Badgers",
+     "abbr": "WIS",
+     "detail": "7–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T19:30:00-05:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Camp Randall Stadium, Madison, Wis.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Border rivalry for Paul Bunyan’s Axe; 6:30 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaam-oak-hou",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oakland Golden Grizzlies",
+     "abbr": "OAK",
+     "detail": "1–7"
+    },
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 1 • 6–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T19:30:00-05:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "Fertitta Center, Houston",
+   "venue_tz": "Central Standard Time",
+   "notes": "Unbeaten No. 1 Houston at home.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-pit-buf",
+   "league": "NHL",
+   "label": "NHL • Regular season",
+   "flags": [
+    "TNT Black Friday"
+   ],
+   "competitors": [
+    {
+     "name": "Pittsburgh Penguins",
+     "abbr": "PIT",
+     "detail": "",
+     "logo": "nhl/pit"
+    },
+    {
+     "name": "Buffalo Sabres",
+     "abbr": "BUF",
+     "detail": "",
+     "logo": "nhl/buf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T20:00:00-05:00",
+   "watch": "TNT • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window in the U.S.",
+   "venue": "KeyBank Center, Buffalo, N.Y.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Second game of the TNT doubleheader.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  },
+  {
+   "id": "mls-mia-clb",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One"
+   ],
+   "competitors": [
+    {
+     "name": "Inter Miami CF",
+     "abbr": "MIA",
+     "detail": ""
+    },
+    {
+     "name": "Columbus Crew",
+     "abbr": "CLB",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T20:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One • Apple TV",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "ScottsMiracle-Gro Field, Columbus, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Eastern Conference playoff match. Also streams on Apple TV.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-mia-ala",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 17 • 6–2"
+    },
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 15 • 6–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T20:30:00-05:00",
+   "watch": "ESPNU",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPNU window.",
+   "venue": "T-Mobile Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site ranked matchup; 5:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-tenn-lou",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 9 • 7–0"
+    },
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 25 • 5–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T21:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site ranked matchup; unbeaten No. 9 Tennessee. 6 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-wvu-utah",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "West Virginia Mountaineers",
+     "abbr": "WVU",
+     "detail": "5–6"
+    },
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 2 • 11–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T21:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Rice-Eccles Stadium, Salt Lake City",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Unbeaten No. 2 Utah at home; 7 p.m. local kickoff.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "nba-lal-sa",
+   "league": "NBA",
+   "label": "NBA • Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Lakers",
+     "abbr": "LAL",
+     "detail": "15–3",
+     "logo": "nba/lal"
+    },
+    {
+     "name": "San Antonio Spurs",
+     "abbr": "SA",
+     "detail": "15–4",
+     "logo": "nba/sa"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T21:30:00-05:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Frost Bank Center, San Antonio",
+   "venue_tz": "Central Standard Time",
+   "notes": "Two of the West’s best records meet. Tip is 8:30 p.m. local.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "mls-van-rsl",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One"
+   ],
+   "competitors": [
+    {
+     "name": "Vancouver Whitecaps",
+     "abbr": "VAN",
+     "detail": ""
+    },
+    {
+     "name": "Real Salt Lake",
+     "abbr": "RSL",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-27T22:00:00-05:00",
+   "watch": "FS1",
+   "streaming": "FOX One • Apple TV",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "venue": "America First Field, Sandy, Utah",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "Western Conference playoff match; 8 p.m. local kickoff. Also streams on Apple TV.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-crei-gonz",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Creighton Bluejays",
+     "abbr": "CREI",
+     "detail": "6–1"
+    },
+    {
+     "name": "Gonzaga Bulldogs",
+     "abbr": "GONZ",
+     "detail": "No. 22 • 5–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T23:00:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "T-Mobile Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; Gonzaga is the designated home team. 8 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaam-ttu-sdsu",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 5 • 6–1"
+    },
+    {
+     "name": "San Diego State Aztecs",
+     "abbr": "SDSU",
+     "detail": "6–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-27T23:30:00-05:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; No. 5 Texas Tech. 8:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
