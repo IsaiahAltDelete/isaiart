@@ -1,0 +1,785 @@
+{
+ "date": "2026-11-28",
+ "updated": "2026-11-28T07:56:00-05:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are on standard time. Arizona matches Mountain time; Hawaii is five hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 15 USC at No. 10 UCLA (3:30 PM ET, CBS)",
+  "Auburn at No. 6 Alabama, the Iron Bowl (7:30 PM ET, ABC)",
+  "Michigan at No. 25 Ohio State (12:00 PM ET, FOX)"
+ ],
+ "leagues": [
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 14",
+   "note": "Rivalry Saturday games with AP Top 25 teams • ranks from the Week 13 AP poll"
+  },
+  {
+   "key": "MLS",
+   "name": "MLS",
+   "subtitle": "Playoffs",
+   "note": "Round One"
+  },
+  {
+   "key": "NCAAW",
+   "name": "Women's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  },
+  {
+   "key": "NCAAM",
+   "name": "Men's College Basketball",
+   "subtitle": "Regular season",
+   "note": "AP Top 25 teams on national TV"
+  }
+ ],
+ "footer_note": "Twenty-five qualifying events fall inside Saturday’s Eastern calendar day: every Saturday game involving an AP Top 25 team (Texas, Utah, Iowa, Florida and Ole Miss played Friday), six MLS playoff matches and two ranked college basketball games on national TV. Regional NHL and NBA games, NBA TV and NHL Network games are excluded. Sunday brings the NFL slate.",
+ "sources": [
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261128"
+  },
+  {
+   "label": "AP Top 25, Week 13",
+   "url": "https://www.espn.com/college-football/rankings"
+  },
+  {
+   "label": "ESPN MLS scoreboard",
+   "url": "https://www.espn.com/soccer/scoreboard/_/league/usa.1/date/20261128"
+  },
+  {
+   "label": "ESPN women's college basketball scoreboard",
+   "url": "https://www.espn.com/womens-college-basketball/scoreboard/_/date/20261128"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-11-28"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-nd-syr",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 3 • 10–1"
+    },
+    {
+     "name": "Syracuse Orange",
+     "abbr": "SYR",
+     "detail": "5–6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T12:00:00-05:00",
+   "watch": "ABC",
+   "venue": "JMA Wireless Dome, Syracuse, N.Y.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 3 Notre Dame on the road.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-bc-mia",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boston College Eagles",
+     "abbr": "BC",
+     "detail": "5–6"
+    },
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 4 • 10–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T12:00:00-05:00",
+   "watch": "ESPN",
+   "venue": "Hard Rock Stadium, Miami Gardens, Fla.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 4 Miami at home.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-lou-uk",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 18 • 8–3"
+    },
+    {
+     "name": "Kentucky Wildcats",
+     "abbr": "UK",
+     "detail": "7–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T12:00:00-05:00",
+   "watch": "ESPN2",
+   "venue": "Kroger Field, Lexington, Ky.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "In-state rivalry; No. 18 Louisville on the road.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-mich-osu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Michigan Wolverines",
+     "abbr": "MICH",
+     "detail": "6–5"
+    },
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 25 • 7–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T12:00:00-05:00",
+   "watch": "FOX",
+   "venue": "Ohio Stadium, Columbus, Ohio",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "The Michigan-Ohio State rivalry; No. 25 Ohio State at home.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "mls-chi-clt",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One",
+    "Apple TV"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago Fire FC",
+     "abbr": "CHI",
+     "detail": ""
+    },
+    {
+     "name": "Charlotte FC",
+     "abbr": "CLT",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T12:30:00-05:00",
+   "venue": "Bank of America Stadium, Charlotte, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Eastern Conference playoff match.",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Apple TV streaming window.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "ncaaf-lib-most",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [
+    "ESPN+"
+   ],
+   "competitors": [
+    {
+     "name": "Liberty Flames",
+     "abbr": "LIB",
+     "detail": "No. 21 • 10–1"
+    },
+    {
+     "name": "Missouri State Bears",
+     "abbr": "MOST",
+     "detail": "4–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T14:00:00-05:00",
+   "watch": "ESPN+",
+   "venue": "Robert W. Plaster Stadium, Springfield, Mo.",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 21 Liberty on the road; 1 p.m. local kickoff.",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National ESPN+ streaming window.",
+   "blackout": "ESPN+ subscription required."
+  },
+  {
+   "id": "mls-sj-hou",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One",
+    "Apple TV"
+   ],
+   "competitors": [
+    {
+     "name": "San Jose Earthquakes",
+     "abbr": "SJ",
+     "detail": ""
+    },
+    {
+     "name": "Houston Dynamo FC",
+     "abbr": "HOU",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T14:30:00-05:00",
+   "venue": "Shell Energy Stadium, Houston",
+   "venue_tz": "Central Standard Time",
+   "notes": "Western Conference playoff match.",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Apple TV streaming window.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "ncaaf-gt-uga",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Georgia Tech Yellow Jackets",
+     "abbr": "GT",
+     "detail": "3–8"
+    },
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 1 • 10–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T15:30:00-05:00",
+   "watch": "ABC",
+   "venue": "Sanford Stadium, Athens, Ga.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "In-state rivalry; No. 1 Georgia at home.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-duke-wake",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "7–4"
+    },
+    {
+     "name": "Wake Forest Demon Deacons",
+     "abbr": "WAKE",
+     "detail": "No. 8 • 10–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T15:30:00-05:00",
+   "watch": "ESPN",
+   "venue": "Allegacy Federal Credit Union Stadium, Winston-Salem, N.C.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "No. 8 Wake Forest hosts Duke.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-usc-ucla",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 15 • 8–3"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 10 • 10–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T15:30:00-05:00",
+   "watch": "CBS",
+   "venue": "Rose Bowl, Pasadena, Calif.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Crosstown rivalry between ranked teams; 12:30 p.m. local kickoff.",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-cin-byu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Cincinnati Bearcats",
+     "abbr": "CIN",
+     "detail": "6–5"
+    },
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 11 • 9–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T15:30:00-05:00",
+   "watch": "FOX",
+   "venue": "LaVell Edwards Stadium, Provo, Utah",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 11 BYU at home; 1:30 p.m. local kickoff.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ou-miz",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oklahoma Sooners",
+     "abbr": "OU",
+     "detail": "No. 19 • 7–4"
+    },
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "No. 24 • 7–4"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T16:15:00-05:00",
+   "watch": "SEC Network",
+   "venue": "Memorial Stadium, Columbia, Mo.",
+   "venue_tz": "Central Standard Time",
+   "notes": "Ranked SEC matchup; 3:15 p.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mls-ne-phi",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One",
+    "Apple TV"
+   ],
+   "competitors": [
+    {
+     "name": "New England Revolution",
+     "abbr": "NE",
+     "detail": ""
+    },
+    {
+     "name": "Philadelphia Union",
+     "abbr": "PHI",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T16:30:00-05:00",
+   "venue": "Subaru Park, Chester, Pa.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Eastern Conference playoff match.",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Apple TV streaming window.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "ncaaf-bois-csu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BOIS",
+     "detail": "No. 22 • 9–2"
+    },
+    {
+     "name": "Colorado State Rams",
+     "abbr": "CSU",
+     "detail": "3–8"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T18:00:00-05:00",
+   "watch": "USA Network",
+   "venue": "Canvas Stadium, Fort Collins, Colo.",
+   "venue_tz": "Mountain Standard Time",
+   "notes": "No. 22 Boise State on the road; 4 p.m. local kickoff.",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National USA Network window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mls-nsh-cin",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One",
+    "Apple TV"
+   ],
+   "competitors": [
+    {
+     "name": "Nashville SC",
+     "abbr": "NSH",
+     "detail": ""
+    },
+    {
+     "name": "FC Cincinnati",
+     "abbr": "CIN",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T18:30:00-05:00",
+   "venue": "TQL Stadium, Cincinnati",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Eastern Conference playoff match.",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Apple TV streaming window.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "ncaaf-tenn-van",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 7 • 9–2"
+    },
+    {
+     "name": "Vanderbilt Commodores",
+     "abbr": "VAN",
+     "detail": "4–7"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T19:00:00-05:00",
+   "watch": "ESPN",
+   "venue": "FirstBank Stadium, Nashville, Tenn.",
+   "venue_tz": "Central Standard Time",
+   "notes": "In-state rivalry; No. 7 Tennessee on the road. 6 p.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-pur-iu",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Purdue Boilermakers",
+     "abbr": "PUR",
+     "detail": "3–8"
+    },
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IU",
+     "detail": "No. 12 • 9–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T19:00:00-05:00",
+   "watch": "FS1",
+   "venue": "Memorial Stadium, Bloomington, Ind.",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Old Oaken Bucket game; No. 12 Indiana at home.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FS1 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaw-duke-conn",
+   "league": "NCAAW",
+   "label": "NCAAW • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "No. 5 • 6–0"
+    },
+    {
+     "name": "UConn Huskies",
+     "abbr": "CONN",
+     "detail": "No. 7 • 4–3"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-28T19:00:00-05:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "TD Garden, Boston",
+   "venue_tz": "Eastern Standard Time",
+   "notes": "Top-10 neutral-site matchup; UConn is the designated home team.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-aub-ala",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [
+    "Disney+"
+   ],
+   "competitors": [
+    {
+     "name": "Auburn Tigers",
+     "abbr": "AUB",
+     "detail": "7–4"
+    },
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 6 • 9–2"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T19:30:00-05:00",
+   "watch": "ABC",
+   "venue": "Bryant-Denny Stadium, Tuscaloosa, Ala.",
+   "venue_tz": "Central Standard Time",
+   "notes": "The Iron Bowl; No. 6 Alabama at home. 6:30 p.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-wash-ore",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Washington Huskies",
+     "abbr": "WASH",
+     "detail": "7–4"
+    },
+    {
+     "name": "Oregon Ducks",
+     "abbr": "ORE",
+     "detail": "No. 14 • 8–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T19:30:00-05:00",
+   "watch": "NBC",
+   "venue": "Autzen Stadium, Eugene, Ore.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Northwest rivalry; No. 14 Oregon at home. 4:30 p.m. local kickoff.",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "mls-stl-lafc",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One",
+    "Apple TV"
+   ],
+   "competitors": [
+    {
+     "name": "St. Louis CITY SC",
+     "abbr": "STL",
+     "detail": ""
+    },
+    {
+     "name": "LAFC",
+     "abbr": "LAFC",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T20:30:00-05:00",
+   "venue": "BMO Stadium, Los Angeles",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Western Conference playoff match.",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Apple TV streaming window.",
+   "blackout": "Apple TV subscription required."
+  },
+  {
+   "id": "ncaaf-asu-ariz",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona State Sun Devils",
+     "abbr": "ASU",
+     "detail": "6–5"
+    },
+    {
+     "name": "Arizona Wildcats",
+     "abbr": "ARIZ",
+     "detail": "No. 16 • 8–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T21:00:00-05:00",
+   "watch": "FOX",
+   "venue": "Casino Del Sol Stadium, Tucson, Ariz.",
+   "venue_tz": "Mountain Standard Time (Arizona)",
+   "notes": "Territorial Cup rivalry; No. 16 Arizona at home. 7 p.m. local kickoff.",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-bay-hou",
+   "league": "NCAAF",
+   "label": "NCAAF • Week 14",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baylor Bears",
+     "abbr": "BAY",
+     "detail": "6–5"
+    },
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 17 • 8–3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T21:30:00-05:00",
+   "watch": "ESPN2",
+   "venue": "TDECU Stadium, Houston",
+   "venue_tz": "Central Standard Time",
+   "notes": "No. 17 Houston closes the night; 8:30 p.m. local kickoff.",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mls-dal-por",
+   "league": "MLS",
+   "label": "MLS • Playoffs",
+   "flags": [
+    "Round One"
+   ],
+   "competitors": [
+    {
+     "name": "FC Dallas",
+     "abbr": "DAL",
+     "detail": ""
+    },
+    {
+     "name": "Portland Timbers",
+     "abbr": "POR",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-11-28T22:30:00-05:00",
+   "venue": "Providence Park, Portland, Ore.",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Western Conference playoff match.",
+   "watch": "FS1 • Apple TV",
+   "streaming": "FOX One • Apple TV",
+   "coverage_type": "National",
+   "coverage": "National FS1 window; also streams on Apple TV.",
+   "blackout": "No territorial blackout is expected. TV-provider access or an Apple TV subscription is required."
+  },
+  {
+   "id": "ncaam-crei-lou",
+   "league": "NCAAM",
+   "label": "NCAAM • Regular season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Creighton Bluejays",
+     "abbr": "CREI",
+     "detail": "7–1"
+    },
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": "No. 25 • 6–1"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-11-28T22:30:00-05:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Standard Time",
+   "notes": "Neutral-site game; Louisville is the designated home team. 7:30 p.m. local tip.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ]
+}
